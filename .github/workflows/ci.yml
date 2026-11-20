@@ -1,4 +1,5 @@
-# Checks the Studio on every push and pull request, on Windows and Linux (and macOS when asked):
+# Checks the Studio on every pull request and every push to main, on Windows and Linux (and macOS on a release tag or
+# when asked); a release branch is checked through its pull request, so no push runs twice. It runs:
 # the test suite, with every hook and the tool server started exactly as Claude Code starts them;
 # the guard red-team; the doctor; Claude Code's own plugin check; the bootstrap attendees run (check only);
 # the RAG demo rehearsed stage by stage;
@@ -7,7 +8,7 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [main, "release/**"]
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
     inputs:

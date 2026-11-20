@@ -110,7 +110,7 @@ commands above are what it runs.
 
 ## What was checked, and what was not
 
-- Run: CI on every push, on Windows and Linux: the Studio's tests, the doctor and the bootstrap started as an attendee
+- Run: CI on every pull request, on Windows and Linux: the Studio's tests, the doctor and the bootstrap started as an attendee
   starts them, and every Python starter's tests and gold set, including the hybrid kit with its real models. CI got
   the same 38 of 40 on both, on a CPU with no GPU.
 - Run: this demo end to end, which is where the video comes from, and the offline fallback above.

@@ -133,13 +133,13 @@ The video (under a minute, no sound) is made from real output of the commands in
 ## What was run, and what was not
 
 Run on 20 November 2026:
-- **CI on every push** to the release branch, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's
-  276 tests (274 passed and 2 skipped on Linux, the two that need the internal pricing workbook; 273 passed and 3
-  skipped on Windows, where the runner also lacks Chrome for one visual check); the guard's red-team, 137 of 137; the
-  doctor, and the bootstrap in check-only mode, started the way an attendee starts them, both ending
-  `ready for a live session`; the handbook demo rehearsed stage by stage; and Claude Code's own plugin check on the
-  marketplace and both plugins, with Claude Code from its native installer. The numbers are from Actions run 44741845670; every push runs
-  the same checks, and the Actions tab shows the latest.
+- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 276 tests (274 passed and 2 skipped
+  on Linux, the two that need the internal pricing workbook; 273 passed and 3 skipped on Windows, where the runner
+  also lacks Chrome for one visual check); the guard's red-team, 137 of 137; the doctor, and the bootstrap in
+  check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the handbook demo
+  rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code
+  from its native installer. The numbers are from Actions run 44741845670, on the release branch; every pull request
+  and every push to main runs the same checks, and the Actions tab shows the latest.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
   ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety
   violations.
