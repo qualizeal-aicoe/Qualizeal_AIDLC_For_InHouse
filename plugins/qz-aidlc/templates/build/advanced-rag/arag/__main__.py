@@ -124,7 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         if idx is None:
             flags = sum(len(d.flags) for d in res.docs)
             print(f"Read {len(res.docs)} documents into {sum(len(d.nodes) for d in res.docs)} sections; "
-                  f"nothing is indexed until stage 2. See the tree: python -m arag map <document>")
+                  f"nothing is indexed until stage 2. See the tree: uv run -m arag map <document>")
         else:
             stats = idx.build(cfg, res)
             flags = stats["flags"]
@@ -132,8 +132,8 @@ def main(argv: list[str] | None = None) -> int:
         for p in res.problems:
             print(f"  skipped: {p}")
         if flags:
-            later = "kept out of the sections; `python -m arag flags` lists them from stage 2"
-            print(f"  {flags} flag(s) recorded: {'python -m arag flags' if idx else later}")
+            later = "kept out of the sections; `uv run -m arag flags` lists them from stage 2"
+            print(f"  {flags} flag(s) recorded: {'uv run -m arag flags' if idx else later}")
         return 0
     if args.cmd == "flags":
         con = need("index").connect(cfg)

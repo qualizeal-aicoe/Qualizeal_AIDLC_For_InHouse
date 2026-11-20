@@ -1,6 +1,7 @@
 # Checks the Studio on every push and pull request, on Windows and Linux (and macOS when asked):
 # the test suite, with every hook and the tool server started exactly as Claude Code starts them;
-# the guard red-team; the doctor; Claude Code's own plugin check; the RAG demo rehearsed stage by stage;
+# the guard red-team; the doctor; Claude Code's own plugin check; the bootstrap attendees run (check only);
+# the RAG demo rehearsed stage by stage;
 # and each starter built and tested with the offline stub (no keys, no model spend).
 name: ci
 on:
@@ -59,7 +60,7 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then "$PY" -m playwright install --with-deps chromium; else "$PY" -m playwright install chromium; fi
       - name: Test suite
         shell: bash
-        run: '"$PY" -m pytest -q -p no:cacheprovider tests'
+        run: '"$PY" -m pytest -q -rs -p no:cacheprovider tests'
       - name: Guard red-team
         if: always()
         shell: bash
@@ -97,11 +98,26 @@ jobs:
           claude plugin validate plugins/qz-aidlc
           claude plugin validate plugins/qz-console
           if [ "$RUNNER_OS" = "Linux" ]; then claude plugin test plugins/qz-console; fi
+      # The script an attendee runs, end to end except the installs: it must find Claude Code, uv and Python, read this
+      # repository without a prompt (the checkout's own credentials), and get "ready for a live session" from the doctor.
+      - name: The bootstrap an attendee runs, check only (PowerShell)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:Path += ";$env:USERPROFILE\.local\bin"
+          .\setup\bootstrap.cmd -CheckOnly -Repo "${{ github.repository }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: The bootstrap an attendee runs, check only
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: sh setup/bootstrap.sh --check-only "${{ github.repository }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: doctor-${{ matrix.os }}-${{ matrix.python }}
-          path: doctor-report-*.json
+          path: |
+            doctor-report-*.json
+            doctor-report.json
           if-no-files-found: ignore
 
   starters:

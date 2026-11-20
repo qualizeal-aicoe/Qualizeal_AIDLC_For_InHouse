@@ -50,7 +50,7 @@ if ($LASTEXITCODE -ne 0) {
 
 if (-not $CheckOnly) {
   Step "The Studio in Claude Code"
-  # Claude Code updates the Studio in the background with git; HTTPS avoids a hang on old SSH keys.
+  # Claude Code fetches the Studio with git; HTTPS avoids a hang on an old SSH key.
   [Environment]::SetEnvironmentVariable("CLAUDE_CODE_PLUGIN_PREFER_HTTPS", "1", "User")
   $env:CLAUDE_CODE_PLUGIN_PREFER_HTTPS = "1"
   claude plugin marketplace add $Repo

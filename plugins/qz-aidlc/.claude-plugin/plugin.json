@@ -1,7 +1,7 @@
 {
   "name": "qz-aidlc",
   "version": "1.0.0",
-  "description": "QualiZeal AI-DLC Studio: governed lanes for agentic AI work - architect, spec with fresh-eyes review, build, a vectorless RAG kit built live by stage, evaluate, test, audit, deliver, demo, bid, office decks, workbooks and mail for each reader, a full-stack developer agent and the Knowledge Fabric - with routing that fits the model and effort to the task and to what is left, a guard that reads every command on a line, per-turn undo, goal mode, a GitHub agent, publishing that saves locally first, an audit chain, run ledger and report cards.",
+  "description": "QualiZeal AI-DLC Studio: tested starters for LangGraph, the OpenAI Agents SDK, the Claude Agent SDK, an MCP server, AWS Strands, Microsoft Agent Framework and Go; vectorless and hybrid RAG kits with cited answers and gates; lanes to architect, spec with fresh-eyes review, build, evaluate, test, audit, deliver, demo, bid and write office decks and mail; routing that fits the model and effort to the task; a guard that reads every command on a line, per-turn undo, goal mode, a GitHub agent, publishing that saves locally first, an audit chain, run ledger and report cards.",
   "author": {
     "name": "QualiZeal AI Center of Excellence"
   },

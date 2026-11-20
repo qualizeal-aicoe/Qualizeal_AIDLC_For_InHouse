@@ -19,7 +19,7 @@ from ..util import now, read_json, write_json
 
 RUNNERS = ("python3", "python", "uv", "node", "npx", "tsx", "go", "dotnet", "java", "deno", "bun")
 BASE_ENV = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "TEMP", "TMP", "SYSTEMROOT", "PYTHONPATH", "VIRTUAL_ENV", "GOPATH", "GOCACHE", "GOMODCACHE", "GOFLAGS", "GOPROXY",
-            "DOTNET_ROOT", "NODE_PATH", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "NODE_EXTRA_CA_CERTS", "USERPROFILE", "APPDATA", "LOCALAPPDATA")
+            "DOTNET_ROOT", "NODE_PATH", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "NODE_EXTRA_CA_CERTS", "UV_SYSTEM_CERTS", "USERPROFILE", "APPDATA", "LOCALAPPDATA")
 
 
 def load(proj: Path, cfg_path: str = "evals/eval.json") -> tuple[dict, list[dict]]:

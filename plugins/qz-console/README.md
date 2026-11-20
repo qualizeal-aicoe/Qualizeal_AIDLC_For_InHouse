@@ -32,6 +32,6 @@ guard rule names, and the name at the centre.
 
 It reads no files, makes no network requests, runs no processes, calls no model and adds nothing to the conversation.
 Labels hold names only (a file's last two path parts, a tool, a rule id), never content or the guard's message.
-It needs `qz-aidlc` 0.2.0 or later for the lane and stage line; without it the map still shows every call.
+The lane and stage line comes from `qz-aidlc`, installed beside it; without it the map still shows every call.
 
 Tested with Claude Code's mod test runner (`hooks/qz-console.test.tsx`, 13 tests) on Claude Code 2.1.328.

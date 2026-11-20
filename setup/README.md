@@ -1,14 +1,21 @@
 # Setting up the QualiZeal AI-DLC Studio
 
-Pick the line that matches you. Each one ends in Claude with `/qz-aidlc:qz-setup`, which records your plan,
-turns on the usage reading (with your yes) and creates the projects folder.
+On a laptop, from the cloned repository:
 
-| You are | Do this |
+| System | Run | Checks only, installs nothing |
+|---|---|---|
+| Windows | `setup\bootstrap.cmd` | `setup\bootstrap.cmd -CheckOnly` |
+| macOS or Linux | `sh setup/bootstrap.sh` | `sh setup/bootstrap.sh --check-only` |
+
+The bootstrap installs what is missing into your user folder (Claude Code, uv, Python 3.12), adds the Studio to Claude
+Code and runs the doctor, which should end with `Result: ready for a live session`. No administrator rights are
+needed, and it is safe to run again after any fix. It writes `doctor-report.json` in the repository folder: send that
+to the AI CoE (AI Center of Excellence) if a line still says FAIL.
+
+| Also here | For |
 |---|---|
-| In an organisation whose admin syncs plugins | Nothing: the Studio appears in Claude. Run `/qz-aidlc:qz-setup`. |
-| On your own plan (Pro, Max, Ultra), in the Claude app | Customize > Plugins > Add marketplace `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`, then install qz-aidlc and qz-console. |
-| On a laptop with Claude Code | `/plugin` > Marketplaces > Add `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`, then install both. For IT installing many laptops: `install.ps1` (Windows) or `install.sh` (macOS, Linux, WSL) in this folder do the same and are safe to run again. |
-| The organisation's admin | In Claude Code run `/qz-aidlc:qz-setup org`: it writes the managed settings and the rollout steps. |
+| `install.ps1`, `install.sh` | IT installing many laptops: they add the marketplace and both plugins, nothing else |
+| `/qz-aidlc:qz-setup org`, in Claude Code | The organisation's admin: managed settings and rollout steps |
 
-The repository is private, so a laptop install needs you signed in to GitHub on that machine.
-The full guide is [docs/SETUP-GUIDE.md](../docs/SETUP-GUIDE.md).
+The repository is private, so a laptop needs a GitHub account that can read it. The full guide is
+[docs/SETUP-GUIDE.md](../docs/SETUP-GUIDE.md).

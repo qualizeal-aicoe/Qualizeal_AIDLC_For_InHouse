@@ -3,7 +3,7 @@
 
 __version__ = "1.0.0"
 
-# Each module belongs to one story of the live build. `python -m vrag stages` shows which are present.
+# Each module belongs to one story of the live build. `uv run -m vrag stages` shows which are present.
 STAGES = {
     1: ("ingest", "Read every listed document into a tree of sections with headings and pages"),
     2: ("search", "Rank sections with BM25 full-text search, filtered by who may read them"),

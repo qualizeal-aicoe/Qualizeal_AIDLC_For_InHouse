@@ -1,4 +1,4 @@
-"""python -m vrag <command> — ingest, search, ask, map, flags, eval, serve, stages."""
+"""uv run -m vrag <command> — ingest, search, ask, map, flags, eval, serve, stages."""
 from __future__ import annotations
 
 import argparse
@@ -68,7 +68,7 @@ def show(ans, as_json: bool) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m vrag", description="Vectorless RAG over a document set")
+    ap = argparse.ArgumentParser(prog="uv run -m vrag", description="Vectorless RAG over a document set")
     sp = ap.add_subparsers(dest="cmd", required=True)
     sp.add_parser("stages", help="which stages of the build are present")
     sp.add_parser("ingest", help="read the corpus and rebuild the index")
@@ -113,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
         if idx is None:
             flags = sum(len(d.flags) for d in res.docs)
             print(f"Read {len(res.docs)} documents into {sum(len(d.nodes) for d in res.docs)} sections; "
-                  f"nothing is indexed until stage 2. See the tree: python -m vrag map <document>")
+                  f"nothing is indexed until stage 2. See the tree: uv run -m vrag map <document>")
         else:
             stats = idx.build(cfg, res)
             flags = stats["flags"]
@@ -121,8 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         for p in res.problems:
             print(f"  skipped: {p}")
         if flags:
-            later = "kept out of the sections; `python -m vrag flags` lists them from stage 2"
-            print(f"  {flags} flag(s) recorded: {'python -m vrag flags' if idx else later}")
+            later = "kept out of the sections; `uv run -m vrag flags` lists them from stage 2"
+            print(f"  {flags} flag(s) recorded: {'uv run -m vrag flags' if idx else later}")
         return 0
     if args.cmd == "flags":
         con = need("index").connect(cfg)

@@ -15,3 +15,5 @@ venv/
 !.env.example
 docs/internal/
 release-drop/*.zip
+# What the bootstrap and the doctor write about this machine
+doctor-report*.json

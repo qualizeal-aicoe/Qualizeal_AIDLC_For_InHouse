@@ -93,7 +93,7 @@ def build(cfg, result) -> dict:
 def connect(cfg) -> sqlite3.Connection:
     path = cfg.path("index", "path")
     if not path.is_file():
-        raise SystemExit("No index yet: run `python -m vrag ingest` first.")
+        raise SystemExit("No index yet: run `uv run -m vrag ingest` first.")
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False)
     con.row_factory = sqlite3.Row
     return con
