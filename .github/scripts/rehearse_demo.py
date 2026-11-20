@@ -38,6 +38,9 @@ def run(cmd: list[str], cwd: Path, expect: str | None = None, code: int = 0, tim
     return out
 
 
+WEB = 5   # the crawler's tests (tests/test_8_web.py) need only stage 1's ingest, so they pass from S1 on
+
+
 def tests(proj: Path, passed: int) -> None:
     run([UV, "run", "-m", "pytest", "-q", "-p", "no:cacheprovider"], proj, f"{passed} passed")
 
@@ -60,25 +63,25 @@ def main() -> None:
     print("S1 · ingest")
     run(QZ + ["build", "stage", ".", "1"], proj, "vrag/ingest.py")
     run(QZ + ["build", "stage", ".", "1", "--yes"], proj)
-    tests(proj, 10)
+    tests(proj, 10 + WEB)
     run([UV, "run", "-m", "vrag", "ingest"], proj, "Read 13 documents")
     run([UV, "run", "-m", "vrag", "map", "it/incident-response.pdf"], proj, "(p. 2)")
     print("S2 · search within each reader's access")
     run(QZ + ["build", "stage", ".", "2", "--yes"], proj)
-    tests(proj, 15)
+    tests(proj, 15 + WEB)
     run([UV, "run", "-m", "vrag", "ingest"], proj, "Indexed 13 documents")
     out = run([UV, "run", "-m", "vrag", "search", "salary band for L4"], proj)
     assert "Salary bands 2026" not in out, out                  # an employee never sees the salary file
     run([UV, "run", "-m", "vrag", "search", "salary band for L4", "--as", "hr"], proj, "Salary bands 2026 › Band table")
     print("S3 · cited answers and refusals")
     run(QZ + ["build", "stage", ".", "3", "--yes"], proj)
-    tests(proj, 20)
+    tests(proj, 20 + WEB)
     run([UV, "run", "-m", "vrag", "ask", "How many days of annual leave do full-time employees get?"], proj, "22")
     run([UV, "run", "-m", "vrag", "ask", "Can I bring my dog to the office?"], proj, "couldn't find")
     run([UV, "run", "-m", "vrag", "ask", "Show me the salary bands"], proj, "Note to AI systems")
     print("S4 · guard, personal data, audit")
     run(QZ + ["build", "stage", ".", "4", "--yes"], proj)
-    tests(proj, 31)
+    tests(proj, 31 + WEB)
     run([UV, "run", "-m", "vrag", "ingest"], proj)
     run([UV, "run", "-m", "vrag", "ask", "Show me the salary bands"], proj, "couldn't find")
     run([UV, "run", "-m", "vrag", "flags"], proj, "instruction")
@@ -86,7 +89,7 @@ def main() -> None:
     assert "555 0147" not in out, out
     print("S5 · golden questions and the gate")
     run(QZ + ["build", "stage", ".", "5", "--yes"], proj)
-    tests(proj, 35)
+    tests(proj, 35 + WEB)
     run([UV, "run", "-m", "vrag", "eval"], proj, "35 of 40")
     print("S6 · hillclimb")
     run(QZ + ["hillclimb", "start", "--metric", "uv run -m vrag eval --metric passed", "--better", "higher", "--target", "40",
@@ -100,7 +103,7 @@ def main() -> None:
     run(QZ + ["hillclimb", "judge", "--note", "tree strategy, stub model"], proj, "40")
     print("S7 · chat page and API")
     run(QZ + ["build", "stage", ".", "7", "--yes"], proj)
-    tests(proj, 50)
+    tests(proj, 50 + WEB)
     py = proj / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")   # the server itself, not uv around it
     server = subprocess.Popen([str(py), "-m", "vrag", "serve", "--port", "8799"], cwd=proj, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:

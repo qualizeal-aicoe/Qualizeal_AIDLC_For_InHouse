@@ -144,8 +144,8 @@ The video (under a minute, no sound) is made from real output of the commands in
 ## What was run, and what was not
 
 Run on 20 November 2026:
-- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 276 tests (274 passed and 2 skipped
-  on Linux, the two that need the internal pricing workbook; 273 passed and 3 skipped on Windows, where the runner
+- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 291 tests (289 passed and 2 skipped
+  on Linux, the two that need the internal pricing workbook; 288 passed and 3 skipped on Windows, where the runner
   also lacks Chrome for one visual check); the guard's red-team, 140 of 140; the doctor, and the bootstrap in
   check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the handbook demo
   rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code
