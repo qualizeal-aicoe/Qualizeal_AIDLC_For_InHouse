@@ -22,8 +22,8 @@ def html(r: dict) -> str:
         tiles += f'<div class="tile"><div class="k">{esc(p)}</div><div class="v">{pct}%</div><div class="s">{v["got"]} of {v["max"]}' + (f' · {v["manual"]} to score by hand' if v["manual"] else "") + "</div></div>"
     rows = ""
     for i in sorted(r["items"], key=lambda x: (x["score"] is None, x["score"] if x["score"] is not None else 9)):
-        sc_ = "MANUAL" if i["score"] is None else f"{i['score']}/2"
-        c = "warn" if i["score"] is None else ("bad" if i["score"] == 0 else "ok" if i["score"] == 2 else "warn")
+        sc_ = "N/A" if i.get("na") else "MANUAL" if i["score"] is None else f"{i['score']}/2"
+        c = "" if i.get("na") else "warn" if i["score"] is None else ("bad" if i["score"] == 0 else "ok" if i["score"] == 2 else "warn")
         rows += (f"<tr><td>{esc(i['id'])}{' <b>blocker</b>' if i['blocker'] else ''}<br><span class='s'>{esc(i['pillar'])}</span></td><td>{esc(i['title'])}<br><span class='s'>{esc(' · '.join(i['maps']))}</span></td>"
                  f"<td><span class='chip {c}'>{sc_}</span></td><td>{esc(i['note'])}</td><td class='s'>{esc(', '.join(i['evidence'][:4]))}</td></tr>")
     body = f"""{chips}<div class="tiles" style="grid-template-columns:repeat(4,1fr)">{tiles}</div>
@@ -41,6 +41,8 @@ def _print(r: dict) -> None:
             print(f"  {'BLOCKER' if i['blocker'] else 'GAP    '} {i['id']} {i['title']}: {i['note']}")
     if r["manual"]:
         print(f"  MANUAL  {', '.join(r['manual'])}: score with evidence (qz-auditor agent, then: qz audit-project judge --file <scores.json>)")
+    if r.get("not_applicable"):
+        print(f"  N/A     {', '.join(r['not_applicable'])}: no model runs in this project, so these belong to the agent that calls it")
 
 
 def main(name: str, rest: list[str]) -> None:

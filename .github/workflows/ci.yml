@@ -110,9 +110,13 @@ jobs:
       matrix:
         include:
           - { stack: langgraph, os: ubuntu-latest }
+          - { stack: langgraph, os: windows-latest }
           - { stack: openai-agents-py, os: ubuntu-latest }
           - { stack: openai-agents-py, os: windows-latest }
+          - { stack: mcp-server-py, os: ubuntu-latest }
+          - { stack: mcp-server-py, os: windows-latest }
           - { stack: claude-agent-sdk-py, os: ubuntu-latest }
+          - { stack: claude-agent-sdk-py, os: windows-latest }
           - { stack: strands-agentcore, os: ubuntu-latest }
           - { stack: claude-agent-sdk-ts, os: ubuntu-latest }
           - { stack: go-anthropic, os: ubuntu-latest }

@@ -100,7 +100,8 @@ def test_writes_outside_the_project_ask_and_references_are_read_only(tmp_path):
     assert ask("cp /etc/hosts ./local").action is None          # reading from outside is fine
     assert ask("echo x > sub/f.txt").action is None
     assert ask("echo x > /tmp/scratch.txt").action is None
-    assert ask(f"echo x > {ref}/notes.md").rule == "QZ-WR-REFERENCE"
+    assert ask(f"echo x > {ref.as_posix()}/notes.md").rule == "QZ-WR-REFERENCE"   # as Bash spells it: C:/x, not C:\\x (Bash eats unquoted backslashes)
+    assert ask(f'echo x > "{ref}/notes.md"').rule == "QZ-WR-REFERENCE"           # inside double quotes a backslash stays
     assert guard.decide("Write", {"file_path": str(ref / "a.py"), "content": "x"}, proj).rule == "QZ-WR-REFERENCE"
     assert guard.decide("Write", {"file_path": str(Path.home() / "qz-elsewhere" / "a.py"), "content": "x"}, proj).rule == "QZ-ASK-OUTSIDE"
     assert guard.decide("Write", {"file_path": str(proj / "src" / "a.py"), "content": "x"}, proj).action is None

@@ -1,0 +1,31 @@
+{
+  "title": "MCP server (Python)",
+  "summary": "A read-only MCP server on the official SDK (mcp 2.3): checked arguments, customer text marked untrusted, capped results, pinned tool descriptions, a chained audit file.",
+  "verified": "RUN: the scaffold's 6 tests and its 8 contract cases ran here through a real MCP client in memory with mcp 2.3.0, including the argument checks, the untrusted envelope, the tool pins and the audit chain; the project audit reads READY. Not run against a live client session or over HTTP.",
+  "stack_line": "A read-only MCP server in Python (mcp 2.3).",
+  "policy": "server/policy.py",
+  "agent_dir": "server/",
+  "common": false,
+  "own_readme": true,
+  "adapter": [
+    "uv",
+    "run",
+    "--quiet",
+    "python",
+    "evals/adapter.py"
+  ],
+  "pass_env": [],
+  "secret_env": [],
+  "test_cmd": "uv run -m pytest -q",
+  "run_cmd": "uv run -m server.app",
+  "setup_steps": [
+    "- uses: astral-sh/setup-uv@v6",
+    "- run: uv sync --locked"
+  ],
+  "live": "No model and no key: connect a client with claude mcp add orders -- uv run --project . -m server.app",
+  "next": [
+    "Replace orders() in server/data.py with a read-only call to your order system.",
+    "Change a tool, then run uv run -m server.pin and commit tests/tool_pins.json with it.",
+    "Before serving a team over HTTP, put OAuth in front of it (the SDK's token_verifier and AuthSettings)."
+  ]
+}

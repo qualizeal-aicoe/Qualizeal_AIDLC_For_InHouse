@@ -38,6 +38,8 @@ TRACE = r"opentelemetry|OpenTelemetry|go\.opentelemetry\.io|langsmith|LANGSMITH|
 STATE = r"checkpointer|Checkpointer|SqliteSaver|PostgresSaver|InMemorySaver|session_id|resume|SessionManager|AgentThread|CheckpointManager|temporal"
 INJECT = r"prompt[_ -]?injection|untrusted|sanitize|sanitise|guardrail|Guardrail|content[_ -]?filter|scan_injection|delimit|<untrusted|shield|moderation"
 PII = r"redact|mask_pii|pii|PII|presidio|anonymi[sz]e|scrub"
+READONLY = r"readOnlyHint\s*=\s*True|read_only_hint\s*=\s*True|readOnlyHint\s*:\s*true"
+DESTRUCTIVE = r"destructiveHint\s*=\s*True|destructive_hint\s*=\s*True|destructiveHint\s*:\s*true"
 AUDITLOG = r"audit[_ -]?(log|trail|chain|record|event)|hash[_-]?chain|append[-_]only|immutable log|AuditLog"
 KEYREAD = r"(os\.environ(\.get)?[\[(]\s*[\"'][A-Z0-9_]*(API_KEY|TOKEN|SECRET)|os\.getenv\(\s*[\"'][A-Z0-9_]*(API_KEY|TOKEN|SECRET)|process\.env\.[A-Z0-9_]*(API_KEY|TOKEN|SECRET)|process\.env\[[\"'][A-Z0-9_]*(API_KEY|TOKEN|SECRET)|GetEnvironmentVariable\(\"[A-Z0-9_]*(API_KEY|TOKEN|SECRET)|os\.Getenv\(\"[A-Z0-9_]*(API_KEY|TOKEN|SECRET))"
 BROKER = r"_BASE_URL|base_url\s*=|api_gateway|egress[-_ ]?proxy|credential[-_ ]?proxy|secretsmanager|SecretsManager|SecretClient|KeyVault|key[-_]?vault|hvac\.Client|vault\.read|DefaultAzureCredential|ManagedIdentityCredential|workload[-_ ]identity|AssumeRole|assume_role|get_secret_value|GetSecretValue"
@@ -98,11 +100,15 @@ def scan(root: Path) -> dict:
     repo = Repo(root)
     items = []
 
-    def add(meta, score, evidence, note):
-        items.append({**meta, "score": score, "evidence": evidence[:6], "note": note})
+    def add(meta, score, evidence, note, na=False):
+        items.append({**meta, "score": None if na else score, "evidence": evidence[:6], "note": NA if na else note, **({"na": True} if na else {})})
 
     tools = repo.grep(TOOLDEF)
-    agentic = bool(tools) or bool(stacks(repo))
+    found = stacks(repo)
+    agentic = bool(tools) or bool(found)
+    # A tool server (an MCP server with no model SDK) has no agent loop and spends no tokens: items about those do not apply.
+    server_only = bool(found) and set(found) <= {"MCP"} and not repo.grep(MODEL_ID)
+    NA = "Not applicable: no model runs in this project (a tool server). Score it in the agent that calls these tools."
     # ---- security
     sec = []
     for name, text in repo.files.items():
@@ -116,8 +122,10 @@ def scan(root: Path) -> dict:
     gi = repo.files.get(".gitignore", "")
     add(_i("Security", "SEC-2", "Environment files stay out of git", ["LLM02"]), 0 if envs else (2 if re.search(r"^\.env", gi, re.M) else 1), envs, "A .env file is present in the tree." if envs else ("'.env' is ignored." if ".env" in gi else "Add .env to .gitignore before someone needs it."))
     gate = repo.grep(GATE)
-    add(_i("Security", "SEC-3", "Tool calls with side effects need permission or approval", ["LLM06", "ASI02", "ASI09"], True), (2 if gate else 0) if tools else None, gate or tools,
-        "An approval or permission hook is wired." if gate else ("Tools are defined and nothing gates them: add an approval step for anything that writes, sends, pays or deletes." if tools else "No tool definitions found; score by hand if tools live elsewhere."))
+    ro = repo.grep(READONLY) if tools and not repo.grep(DESTRUCTIVE) else []
+    add(_i("Security", "SEC-3", "Tool calls with side effects need permission or approval", ["LLM06", "ASI02", "ASI09"], True), (2 if gate or ro else 0) if tools else None, gate or ro or tools,
+        "An approval or permission hook is wired." if gate else ("Every tool is marked read-only and none destructive: nothing to gate. Confirm the hints are true." if ro
+        else ("Tools are defined and nothing gates them: add an approval step for anything that writes, sends, pays or deletes." if tools else "No tool definitions found; score by hand if tools live elsewhere.")))
     ex = repo.grep(EXEC)
     sb = repo.grep(SANDBOX, code_only=False, exclude=None)
     add(_i("Security", "SEC-4", "Code or shell execution is sandboxed or absent", ["LLM05", "ASI05"], True), 2 if not ex else (1 if sb else 0), ex, "No shell or eval calls in agent code." if not ex else ("Execution exists and a sandbox or allow-list is mentioned: confirm the agent cannot reach it unsandboxed." if sb else "Shell or eval is reachable with no sandbox or allow-list in sight."))
@@ -144,20 +152,20 @@ def scan(root: Path) -> dict:
         "MANUAL: confirm each agent runs under its own identity (service account, workload identity, SPIFFE ID), so permissions and logs tell agents apart and one agent's grant cannot be borrowed by another." + (" Identity code exists." if ident else " No identity code was found."))
     # ---- reliability
     b = repo.grep(BOUNDS)
-    add(_i("Reliability", "REL-1", "The agent loop has a hard stop", ["LLM10", "ASI08"], True), (2 if b else 0) if agentic else None, b, "A turn, step or recursion limit is set." if b else "No limit on turns or tool calls: one bad loop can run until the budget is gone.")
+    add(_i("Reliability", "REL-1", "The agent loop has a hard stop", ["LLM10", "ASI08"], True), (2 if b else 0) if agentic else None, b, "A turn, step or recursion limit is set." if b else "No limit on turns or tool calls: one bad loop can run until the budget is gone.", na=server_only)
     t = repo.grep(TIMEOUT)
     add(_i("Reliability", "REL-2", "Model and tool calls have timeouts and retries", ["ASI08"]), 2 if len(t) >= 2 else (1 if t else 0), t, "Timeouts or retries appear in the code." if t else "No timeout or retry handling found.")
     s = repo.grep(STATE)
-    add(_i("Reliability", "REL-3", "Long tasks can resume: state is checkpointed", ["ASI08"]), 2 if s else (1 if not agentic else 0), s, "Checkpointing or session state is used." if s else "No checkpoint or session store: a crash loses the task.")
+    add(_i("Reliability", "REL-3", "Long tasks can resume: state is checkpointed", ["ASI08"]), 2 if s else (1 if not agentic else 0), s, "Checkpointing or session state is used." if s else "No checkpoint or session store: a crash loses the task.", na=server_only)
     tests = repo.has(r"(^|/)(tests?/.*\.(py|ts|js|cs|go)|.*_test\.go|.*\.(spec|test)\.(ts|js)|.*Tests?\.cs|test_.*\.py)$")
     wf = {n: tx for n, tx in repo.files.items() if re.search(r"^\.github/workflows/.*\.ya?ml$|^\.gitlab-ci\.yml$|^azure-pipelines\.yml$|^buildkite/|^\.buildkite/", n)}
     ci_tests = [n for n, tx in wf.items() if re.search(r"pytest|go test|dotnet test|npm (run )?test|vitest|jest|playwright", tx)]
     add(_i("Reliability", "REL-4", "Automated tests run in CI", ["ASI08"]), 2 if tests and ci_tests else (1 if tests else 0), ci_tests or tests, "Tests exist and a pipeline runs them." if tests and ci_tests else ("Tests exist but no pipeline runs them." if tests else "No tests found."))
     # ---- cost
     bud = repo.grep(BUDGET)
-    add(_i("Cost", "COST-1", "Spend is capped per call and per task", ["LLM10"]), 2 if len(bud) >= 2 else (1 if bud else 0), bud, "Token or budget limits are set." if bud else "No max_tokens or budget anywhere: cost per task is unbounded.")
+    add(_i("Cost", "COST-1", "Spend is capped per call and per task", ["LLM10"]), 2 if len(bud) >= 2 else (1 if bud else 0), bud, "Token or budget limits are set." if bud else "No max_tokens or budget anywhere: cost per task is unbounded.", na=server_only)
     us = repo.grep(USAGE)
-    add(_i("Cost", "COST-2", "Token usage is recorded per task", ["LLM10"]), 2 if us else 0, us, "Usage is read from responses." if us else "Usage is never read, so cost per task cannot be reported.")
+    add(_i("Cost", "COST-2", "Token usage is recorded per task", ["LLM10"]), 2 if us else 0, us, "Usage is read from responses." if us else "Usage is never read, so cost per task cannot be reported.", na=server_only)
     mids = sorted({m for n, tx in repo.files.items() if Path(n).suffix in CODE and not re.search(r"test|eval", n) for m in re.findall(MODEL_ID, tx)})
     files_with = repo.grep(MODEL_ID)
     add(_i("Cost", "COST-3", "Model choice is configuration, not scattered literals", []), 2 if len(files_with) <= 1 else 1, files_with, f"Model ids in code: {', '.join(mids) or 'none'}." + ("" if len(files_with) <= 1 else " They appear in several files: move them to one configuration point so a model change is one edit."))
@@ -169,7 +177,7 @@ def scan(root: Path) -> dict:
     add(_i("Evaluation", "EVAL-2", "Evaluations run in CI and can block a merge", ["LLM09"]), 2 if ci_eval else 0, ci_eval, "A pipeline runs evaluations." if ci_eval else "Evaluations are not part of any pipeline.")
     safety = [n for n in gold if re.search(r"safety|inject|jailbreak|adversar|security", repo.files.get(n, "") + n, re.I)]
     add(_i("Evaluation", "EVAL-3", "The gold set includes attack and refusal cases", ["LLM01", "ASI01"]), 2 if safety else 0, safety, "Safety or injection cases are present." if safety else "No injection, leak or unsafe-action cases in the gold set.")
-    add(_i("Evaluation", "EVAL-4", "Tool-use paths are evaluated, not only final text", ["ASI02"]), 2 if any(re.search(r"tool_called|tool_sequence|trajectory|tool_calls", repo.files.get(n, "")) for n in gold) else (0 if agentic else None), [], "Trajectory checks found in the gold set." if any(re.search(r"tool_called|tool_sequence|trajectory|tool_calls", repo.files.get(n, "")) for n in gold) else "No check looks at which tools were called or in what order.")
+    add(_i("Evaluation", "EVAL-4", "Tool-use paths are evaluated, not only final text", ["ASI02"]), 2 if any(re.search(r"tool_called|tool_sequence|trajectory|tool_calls", repo.files.get(n, "")) for n in gold) else (0 if agentic else None), [], "Trajectory checks found in the gold set." if any(re.search(r"tool_called|tool_sequence|trajectory|tool_calls", repo.files.get(n, "")) for n in gold) else "No check looks at which tools were called or in what order.", na=server_only)
     # ---- observability
     tr = repo.grep(TRACE)
     add(_i("Observability", "OBS-1", "Every run is traced end to end", ["ASI10"]), 2 if tr else 0, tr, "Tracing is wired." if tr else "No tracing: a wrong answer cannot be explained afterwards.")
@@ -207,13 +215,16 @@ def finish(r: dict) -> dict:
     pillars = {}
     for i in r["items"]:
         p = pillars.setdefault(i["pillar"], {"got": 0, "max": 0, "manual": 0})
+        if i.get("na"):
+            continue
         if i["score"] is None:
             p["manual"] += 1
         else:
             p["got"] += i["score"]
             p["max"] += 2
     blockers = [i["id"] for i in scored if i["blocker"] and i["score"] == 0]
-    manual = [i["id"] for i in r["items"] if i["score"] is None]
+    manual = [i["id"] for i in r["items"] if i["score"] is None and not i.get("na")]
+    r["not_applicable"] = [i["id"] for i in r["items"] if i.get("na")]
     pct = round(100 * got / mx, 1) if mx else 0.0
     r.update(score=got, max=mx, percent=pct, pillars=pillars, blockers=blockers, manual=manual,
              verdict="NOT READY" if blockers or pct < 70 else ("READY, WITH MANUAL ITEMS OPEN" if manual else "READY"))

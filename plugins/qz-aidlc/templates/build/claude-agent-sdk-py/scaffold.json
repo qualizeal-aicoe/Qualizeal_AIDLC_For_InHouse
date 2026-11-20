@@ -1,15 +1,39 @@
 {
   "title": "Claude Agent SDK (Python)",
   "summary": "ClaudeSDKClient with in-process MCP tools, can_use_tool as the approval gate, no built-in tools, turn and budget limits.",
-  "verified": "RUN: tests and gold set ran here against the offline stub with claude-agent-sdk 0.2.180 (same tools, same permission callback). LIVE PATH STARTED ONLY: the SDK accepted these options and launched its bundled runtime here, which stopped at sign-in because this sandbox holds no model credentials. No live model call was made.",
+  "verified": "RUN: tests and gold set ran here against the offline stub with claude-agent-sdk 0.2.186 (same tools, same permission callback). The live path was started once with 0.2.180: the SDK accepted these options and launched its bundled runtime, which stopped at sign-in because this sandbox holds no model credentials. No live model call was made.",
   "stack_line": "A Claude Agent SDK agent in Python (claude-agent-sdk 0.2).",
-  "policy": "agent/policy.py", "agent_dir": "agent/",
-  "adapter": ["python3", "evals/adapter.py"],
-  "pass_env": ["ANTHROPIC_API_KEY", "AGENT_MODEL", "CLAUDE_CODE_USE_BEDROCK", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"],
-  "secret_env": ["ANTHROPIC_API_KEY"],
-  "test_cmd": "python3 -m pytest -q tests",
-  "run_cmd": "python3 -m agent.app \"Where is my order ORD-1001?\"",
-  "setup_steps": ["- uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n          cache: pip", "- run: pip install -r requirements.txt"],
+  "policy": "agent/policy.py",
+  "agent_dir": "agent/",
+  "adapter": [
+    "uv",
+    "run",
+    "--quiet",
+    "python",
+    "evals/adapter.py"
+  ],
+  "pass_env": [
+    "ANTHROPIC_API_KEY",
+    "AGENT_MODEL",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "AWS_REGION",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN"
+  ],
+  "secret_env": [
+    "ANTHROPIC_API_KEY"
+  ],
+  "test_cmd": "uv run -m pytest -q tests",
+  "run_cmd": "uv run -m agent.app \"Where is my order ORD-1001?\"",
+  "setup_steps": [
+    "- uses: astral-sh/setup-uv@v6",
+    "- run: uv sync --locked"
+  ],
   "live": "The SDK drives the Claude Code runtime bundled with the package. Set ANTHROPIC_API_KEY (or the Bedrock variables) and AGENT_MODE=live.",
-  "next": ["Replace the tool bodies in agent/tools.py with calls to your systems.", "Route the approval in make_gate() to a real person (queue, chat, ticket) instead of the approve argument.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."]
+  "next": [
+    "Replace the tool bodies in agent/tools.py with calls to your systems.",
+    "Route the approval in make_gate() to a real person (queue, chat, ticket) instead of the approve argument.",
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+  ]
 }

@@ -1,0 +1,28 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - name: Unit tests and the tool pins
+        run: uv run -m pytest -q
+      - name: Contract cases through a real MCP client
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run --label ci
+      - name: Agentic project audit
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qz-reports
+          path: |
+            evals/results/report.html
+            .qz/outputs/project-audit/audit.html
