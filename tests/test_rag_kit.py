@@ -77,3 +77,20 @@ def test_the_kit_ships_no_build_leftovers():
     text = " ".join(p.read_text(encoding="utf-8", errors="ignore") for p in KIT.rglob("*")
                     if p.is_file() and p.suffix in (".md", ".py", ".json", ".jsonl", ".toml", ".html"))
     assert "fictional" in text and "ANTHROPIC_API_KEY" in text
+
+
+def test_the_hybrid_kit_materialises_with_its_models_switched_on_and_its_tests_offline(tmp_path):
+    """The advanced kit runs its own tests in CI (offline embedder and reranker) and its gates with the real models;
+    here: it scaffolds clean, its settings switch the real models on, and its defaults stay offline."""
+    import tomllib
+    dest = tmp_path / "kb"
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "qz.py"), "build", "new", "advanced-rag", str(dest), "--name", "Handbook Assistant"],
+                       capture_output=True, text=True, timeout=120, env={**os.environ, "CLAUDE_PLUGIN_ROOT": str(ROOT)})
+    assert r.returncode == 0, r.stdout + r.stderr
+    toml = tomllib.loads((dest / "arag.toml").read_text(encoding="utf-8"))
+    assert toml["answer"]["strategy"] == "hybrid" and toml["dense"]["embedder"] == "fastembed" and toml["rerank"]["reranker"] == "cross-encoder"
+    cfg = (dest / "arag" / "config.py").read_text(encoding="utf-8")
+    assert '"embedder": "hash"' in cfg and '"reranker": "overlap"' in cfg
+    for f in ("README.md", "CLAUDE.md", "docs/design.md", "docs/runbook.md", "uv.lock", "tests/test_8_hybrid.py", "arag/core.py", "arag/explain.py"):
+        assert (dest / f).is_file(), f
+    assert not list(dest.rglob("__pycache__")) and not (dest / ".arag").exists()

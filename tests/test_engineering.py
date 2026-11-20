@@ -265,7 +265,8 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
         assert not [p for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in str(p) and p.suffix in (".py", ".md", ".json", ".yml") and "__NAME__" in p.read_text(encoding="utf-8", errors="ignore")]
         assert qz(dest, "vendor", ".", "--check").stdout.startswith("Vendored kit: in sync")
     # The staged knowledge-app kit carries no agent eval kit; tests/test_rag_kit.py checks it stage by stage.
-    assert {k: (m.get("common"), m.get("kit"), bool(build.staging(k))) for k, m in every.items() if k not in stacks and k not in servers} == {"vectorless-rag": (False, False, True)}
+    assert {k: (m.get("common"), m.get("kit"), bool(build.staging(k))) for k, m in every.items() if k not in stacks and k not in servers} == {
+        "vectorless-rag": (False, False, True), "advanced-rag": (False, False, False)}
     for name, meta in stacks.items():
         assert meta["verified"].startswith("RUN:"), name
         dest = tmp_path / name

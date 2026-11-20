@@ -1,0 +1,19 @@
+[project]
+name = "knowledge-assistant-hybrid"
+version = "0.1.0"
+description = "Hybrid RAG over a document set: BM25 and dense vectors, reranked, cited, traced. From the QualiZeal AI-DLC Studio."
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "pypdf>=5,<7",
+    "numpy>=1.26,<3",
+    "fastembed==0.9.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<10"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

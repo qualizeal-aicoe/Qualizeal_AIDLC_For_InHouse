@@ -1,9 +1,15 @@
-# RAG lane · knowledge assistants over documents, with no vector database
+# RAG lane · knowledge assistants over documents, with no vector database to run
 
 `qz ...` means `uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 "${CLAUDE_PLUGIN_ROOT}/scripts/qz.py" ...`. The `vectorless-rag` build stack is a
 tested reference (ingest with headings and pages, SQLite FTS5 BM25, cited answers and refusals, guardrails, golden
 questions and a gate, optional model navigation of the outline). Start from it, never from an empty folder. In the
 project, read `docs/contracts.md` and the story; do not read the codebase to begin.
+
+Two tested references. `vectorless-rag` (BM25 over a heading tree; staged, for live builds and demos) and
+`advanced-rag` (BM25 and dense vectors over only what the asker may read, fused by reciprocal rank, reranked by a
+cross-encoder; CPU-only ONNX models, still no vector database). On the sample handbook, with no model writing
+answers: BM25 alone 35 of 40, hybrid 38 of 40. Pick `advanced-rag` when people ask in their own words, the
+documents run long, or a trace of every answer and portable knowledge cores are needed.
 
 Entry: a live build or demo → Live; the person's own documents → Adapt; "which retrieval is better" → Measure.
 
@@ -26,10 +32,16 @@ an owner, version, status and readers. Write 30 or more golden questions (refusa
 instruction). `uv run -m vrag ingest`, `uv run -m vrag flags`, `uv run -m vrag eval --gate`. Add synonyms or switch on
 the model only when the evaluation improves.
 
-**Measure**: `uv run -m vrag eval --json` for each configuration; report the table. A vendor's own benchmark (for
+**Adapt, hybrid**: `qz build new advanced-rag <folder>`. The same corpus rules; then `uv run -m arag ingest`,
+`uv run -m arag calibrate` (set `[rerank] min_score` from it), `uv run -m arag eval --gate` and `uv run -m arag
+compare --gate`. A wrong answer is diagnosed from its trace: `uv run -m arag explain <id>`. Move an index with
+`uv run -m arag core export <file>` and `core load <file>`: the sources travel inside and every file is checked.
+
+**Measure**: `uv run -m vrag eval --json` for each configuration, or `uv run -m arag compare` for BM25 against hybrid on
+the same questions; report the table. A vendor's own benchmark (for
 example PageIndex's FinanceBench score) is context, not evidence: the golden set decides.
 
-Never, unless the person asks: an embedding service or vector database; sending documents to a hosted parser or MCP
+Never, unless the person asks: a hosted embedding service or a vector database server; sending documents to a hosted parser or MCP
 server (the PageIndex MCP uploads to its cloud; the archived SQLite MCP server has a known SQL injection). Never:
 access control applied after retrieval, or an answer without a citation.
 

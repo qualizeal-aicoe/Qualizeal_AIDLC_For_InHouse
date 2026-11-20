@@ -115,6 +115,8 @@ jobs:
           - { stack: openai-agents-py, os: windows-latest }
           - { stack: mcp-server-py, os: ubuntu-latest }
           - { stack: mcp-server-py, os: windows-latest }
+          - { stack: advanced-rag, os: ubuntu-latest }
+          - { stack: advanced-rag, os: windows-latest }
           - { stack: claude-agent-sdk-py, os: ubuntu-latest }
           - { stack: claude-agent-sdk-py, os: windows-latest }
           - { stack: strands-agentcore, os: ubuntu-latest }
@@ -152,6 +154,17 @@ jobs:
             *) if [ -f uv.lock ]; then uv sync --locked --python 3.12 && uv run -m pytest -q tests;
                else uv venv --python 3.12 && uv pip install -r requirements.txt pytest && .venv/bin/python -m pytest -q tests; fi ;;
           esac
+      - name: The hybrid kit's two models, downloaded once and kept between runs
+        if: matrix.stack == 'advanced-rag'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/qz-aidlc/models
+          key: models-bge-small-en-v1.5-ms-marco-MiniLM-L-6-v2
+      - name: The hybrid kit's gates with the real models
+        if: matrix.stack == 'advanced-rag'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv run -m arag ingest && uv run -m arag eval --gate && uv run -m arag compare --gate
       - name: Gold set and audit through the vendored kit
         shell: bash
         working-directory: ${{ runner.temp }}/proj

@@ -1,0 +1,38 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Python and packages from uv.lock
+        run: uv sync --locked --python 3.12
+      - name: Tests (offline embedder and reranker, no download)
+        run: uv run -m pytest -q tests
+      - name: The two models, downloaded once and kept between runs
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/qz-aidlc/models
+          key: models-bge-small-en-v1.5-ms-marco-MiniLM-L-6-v2
+      - name: Index the corpus with the real embedder
+        run: uv run -m arag ingest
+      - name: Golden questions and the gate
+        run: uv run -m arag eval --gate
+      - name: Hybrid must be at least as good as BM25 alone
+        run: uv run -m arag compare --gate
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.os == 'ubuntu-latest'
+        with:
+          name: eval-results
+          path: evals/results/

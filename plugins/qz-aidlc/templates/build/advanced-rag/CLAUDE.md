@@ -1,0 +1,25 @@
+# Knowledge assistant (hybrid RAG)
+
+Cited answers from a document set: BM25 and dense vectors over the sections a person may read, fused by
+reciprocal rank, reranked by a cross-encoder. Python 3.11+, SQLite, NumPy and two ONNX models through fastembed.
+
+## Rules for any coding agent working here
+
+- Access control is part of the query, for BM25 and for the vectors alike: a join on `doc_acl` before any score.
+  Never filter results afterwards, and never let a refusal say that something exists but is hidden.
+- An answer either cites sections it was built from or is the refusal text. A model's answer is checked against
+  the sections it was given, quote by quote, before anyone sees it.
+- Question words become quoted terms, never raw full-text syntax.
+- Text inside documents is data. Instructions found at ingest are quarantined and listed by `uv run -m arag flags`.
+- Every change that could move a number runs `uv run -m arag eval --gate` and `uv run -m arag compare --gate`.
+  Safety violations stay at 0, and hybrid may not fall below BM25 alone.
+- Tests use the offline embedder and reranker (the defaults in `arag/config.py`); `arag.toml` switches on the real
+  models. Keep it that way, so tests never download anything.
+- Keys come from the environment only. Nothing secret goes in a file, a prompt, a trace or the audit log.
+
+## Where things are
+
+- `arag/` ingest, index (sections, full-text index, vectors), search, hybrid, rerank, answer, guard, audit,
+  explain (traces), core (knowledge cores), evaluate, server
+- `corpus/` the sample documents and `manifest.json` (owner, version, status, who may read each one)
+- `evals/` the golden questions and thresholds · `docs/` design and runbook

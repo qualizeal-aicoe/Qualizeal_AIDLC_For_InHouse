@@ -5,7 +5,8 @@ passed gate, build what it decided; if not, say that the stack is unconfirmed an
 
 1. **Pick the stack** (`stage scaffold`). `agent_scaffold [list]` shows the stacks and what was checked for each.
    Use the stack the decision record names. With no decision, ask one question. A knowledge assistant over documents
-   is the `vectorless-rag` stack: follow the RAG lane (`lanes/rag.md`) instead of the steps below.
+   is the `vectorless-rag` or `advanced-rag` stack, and a tool server is `mcp-server-py`: follow the RAG lane
+   (`lanes/rag.md`) for the first two instead of the steps below.
 2. **Scaffold.** `agent_scaffold [new, <stack>, <dest>, --name NAME]`. It creates: one read tool, one side-effecting
    tool behind a human approval gate, limits in one policy file, tracing, an offline stub model, a 10-case gold set,
    CI, a runbook, rules for coding agents, and the vendored kit under `.claude/qz/` so CI needs nothing installed.

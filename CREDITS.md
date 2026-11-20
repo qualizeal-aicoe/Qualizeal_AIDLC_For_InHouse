@@ -22,6 +22,7 @@ Nothing below was copied: no code, prompt, rubric or text. We read each project 
 | The hillclimb loop; playbook steps copied word for word; catching up; the principles card | pstack by Lauren Tan (cursor/plugins) | MIT |
 | A model reading a document's outline to choose sections | PageIndex (VectifyAI) | MIT |
 | A local code graph behind one explore tool | CodeGraph (colbymchenry) | MIT |
+| Hybrid retrieval fused by reciprocal rank before reranking; the stage names of an answer's trace; knowledge cores that keep provenance and sources; counting what access control removed without saying so in the answer | TrustGraph (trustgraph-ai) | Apache-2.0 |
 | The context layer, forecasts, confirmed memory, the run map, risk-scored review, code search, budgeted knowledge selection, the terse voice | substrate, txtai, caveman, headroom, rtk, code-review-graph, semble, context-mode, ci, lot-map, auto-ontology-mcp, ragflow, SpectraFuse, exxperts, mattpocock/skills | Apache-2.0, MIT, Elastic 2.0, ci-proto: ideas only |
 | Design, UI testing and deck practices | public skill collections, read but not copied | as published |
 
