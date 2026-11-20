@@ -148,16 +148,17 @@ The video (under a minute, no sound) is made from real output of the commands in
 ## What was run, and what was not
 
 Run on 20 November 2026:
-- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 291 tests (289 passed and 2 skipped
-  on Linux, the two that need the internal pricing workbook; 288 passed and 3 skipped on Windows, where the runner
+- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 292 tests (290 passed and 2 skipped
+  on Linux, the two that need the internal pricing workbook; 289 passed and 3 skipped on Windows, where the runner
   also lacks Chrome for one visual check); the guard's red-team, 140 of 140; the doctor, and the bootstrap in
   check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the handbook demo
   rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code
-  from its native installer. The numbers are from Actions run 44760740981, on the release branch; every pull request
+  from its native installer. The numbers are from Actions run 44806606335, on the release branch; every pull request
   and every push to main runs the same checks, and the Actions tab shows the latest.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
   ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety
-  violations.
+  violations. The command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail
+  rather than skip if the server were missing.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
   and both plugins installed at 1.0.0 by Claude Code 2.1.329, in a clean configuration.
 - **The handbook demo end to end**, which is where the video comes from, and its offline fallback, which answers 35 of
