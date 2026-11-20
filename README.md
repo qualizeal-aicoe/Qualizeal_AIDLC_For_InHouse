@@ -103,9 +103,9 @@ one day before, the 75 minutes, and the fallback when a laptop will not cooperat
 small: a knowledge assistant over a fictional company's handbook, built with the hybrid kit. It answers from the
 documents with the section it used, and refuses when the handbook does not say or the person asking may not read it.
 
-[![The handbook demo, 57 seconds](docs/media/handbook-demo-poster.jpg)](docs/media/handbook-demo.mp4)
+[![The handbook demo, under a minute](docs/media/handbook-demo-poster.jpg)](docs/media/handbook-demo.mp4)
 
-The video (57 seconds, no sound) is made from real output of the commands in the plan; nothing in it was mocked.
+The video (under a minute, no sound) is made from real output of the commands in the plan; nothing in it was mocked.
 
 ## How it keeps prompts, keys and pricing safe
 
@@ -135,9 +135,10 @@ The video (57 seconds, no sound) is made from real output of the commands in the
 Run on 20 November 2026:
 - **CI on every push** to the release branch, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's
   276 tests (274 passed and 2 skipped on Linux, the two that need the internal pricing workbook; 273 passed and 3
-  skipped on Windows); the guard's red-team, 137 of 137; the doctor and the bootstrap started the way an attendee starts
-  them; the handbook demo rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both
-  plugins, with Claude Code from its native installer. The numbers are from Actions run 44736566026; every push runs
+  skipped on Windows, where the runner also lacks Chrome for one visual check); the guard's red-team, 137 of 137; the
+  doctor, and the bootstrap in check-only mode, started the way an attendee starts them, both ending
+  `ready for a live session`; the handbook demo rehearsed stage by stage; and Claude Code's own plugin check on the
+  marketplace and both plugins, with Claude Code from its native installer. The numbers are from Actions run 44741845670; every push runs
   the same checks, and the Actions tab shows the latest.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
   ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety

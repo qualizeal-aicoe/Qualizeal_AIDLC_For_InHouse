@@ -7,9 +7,9 @@ One small use case, start to finish: a knowledge assistant over a company handbo
 handbook does not say, or when the person asking may not read it. Northwind Freight, whose handbook it is, is a
 fictional company.
 
-[![The handbook demo, 57 seconds](media/handbook-demo-poster.jpg)](media/handbook-demo.mp4)
+[![The handbook demo, under a minute](media/handbook-demo-poster.jpg)](media/handbook-demo.mp4)
 
-The video (57 seconds, no sound) is made from real output of the commands below; nothing in it was mocked.
+The video (under a minute, no sound) is made from real output of the commands below; nothing in it was mocked.
 
 ## Five days before: every laptop ready
 
@@ -103,8 +103,8 @@ commands above are what it runs.
   international travel?"`. Offline it passes 35 of 40, so `uv run -m arag eval --gate` fails its 0.9 accuracy floor
   (0.857), which is the point of having the models; `compare --gate` still passes, as a tie.
 - **uv reports a certificate error** ("invalid peer certificate", "UnknownIssuer"): the company's network re-signs
-  HTTPS. Set the environment variable `UV_SYSTEM_CERTS=1`, so uv trusts what the computer already trusts, open a new
-  terminal and run the command again.
+  HTTPS. Set the environment variable `UV_SYSTEM_CERTS=true`, so uv trusts what the computer already trusts, open a
+  new terminal and run the command again.
 - **A laptop cannot install at all**: pair with a neighbour; the video covers the presenter's screen.
 - **A FAIL on the day**: follow the fix line under it. If it is not quick, pair up and look at it after the session.
 

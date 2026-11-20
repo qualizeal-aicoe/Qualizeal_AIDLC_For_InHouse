@@ -205,7 +205,7 @@ def check_network(rep: Report) -> None:
             reason = getattr(e, "reason", e)
             tls = isinstance(reason, ssl.SSLError) or "CERTIFICATE" in str(reason).upper()
             bad_tls = bad_tls or tls
-            fix = ("the company's network re-signs HTTPS: set UV_SYSTEM_CERTS=1 so uv trusts what this computer trusts, and point "
+            fix = ("the company's network re-signs HTTPS: set UV_SYSTEM_CERTS=true so uv trusts what this computer trusts, and point "
                    "SSL_CERT_FILE (Python) and NODE_EXTRA_CA_CERTS (Claude Code) at the company's root certificate (IT has it)" if tls else
                    "check the proxy: set HTTPS_PROXY (and NO_PROXY) in the env block of ~/.claude/settings.json")
             rep.add("FAIL" if need else "WARN", f"{host} is not reachable ({url.split('/')[2]}: {str(reason)[:100]})", fix)

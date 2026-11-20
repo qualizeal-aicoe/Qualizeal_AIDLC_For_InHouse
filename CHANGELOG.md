@@ -27,8 +27,8 @@ way on every laptop and to be taught in a live session.
 - **CI (continuous integration) on Windows and Linux** for the Studio and every Python starter, with macOS on a
   release tag or by hand. The hooks and the tool server are started exactly as Claude Code starts them, and the
   bootstrap runs in check-only mode.
-- **A live-session plan**, [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md), and a 57-second video of the handbook demo in
-  `docs/media/`.
+- **A live-session plan**, [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md), and a video of the handbook demo, under a
+  minute long, in `docs/media/`.
 
 ### Changed
 
