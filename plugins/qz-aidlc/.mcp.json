@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "qz": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--quiet",
+        "--no-project",
+        "--no-python-downloads",
+        "--python",
+        ">=3.11,<3.14",
+        "python",
+        "-I",
+        "-B",
+        "-X",
+        "utf8",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/qz_mcp.py"
+      ]
+    },
+    "atlassian": {
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v2/mcp"
+    }
+  }
+}

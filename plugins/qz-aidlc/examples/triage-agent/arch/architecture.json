@@ -1,0 +1,505 @@
+{
+  "title": "Support ticket triage",
+  "client": "Northwind Logistics",
+  "summary": "A fixed workflow with one model call classifies each new ticket, attaches the customer's shipments and sends anything uncertain or sensitive to a person.",
+  "levels": {
+    "enterprise": {
+      "title": "Where triage sits",
+      "layers": [
+        {
+          "id": "E1",
+          "name": "People",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "cust",
+              "label": "Customers",
+              "sub": "raise tickets by e-mail and portal",
+              "kind": "person"
+            },
+            {
+              "id": "agents",
+              "label": "Support agents",
+              "sub": "work tickets from their queue",
+              "kind": "team"
+            },
+            {
+              "id": "duty",
+              "label": "Duty manager",
+              "sub": "handles escalations and low-confidence tickets",
+              "kind": "person"
+            }
+          ]
+        },
+        {
+          "id": "E2",
+          "name": "Client systems",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "helpdesk",
+              "label": "Helpdesk",
+              "sub": "system of record for tickets and queues",
+              "kind": "external"
+            },
+            {
+              "id": "triage",
+              "label": "Ticket triage",
+              "sub": "the system being designed",
+              "kind": "system"
+            },
+            {
+              "id": "orders",
+              "label": "Order system",
+              "sub": "shipments by customer",
+              "kind": "external"
+            }
+          ]
+        },
+        {
+          "id": "E3",
+          "name": "Platform",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "bedrock",
+              "label": "Amazon Bedrock (EU)",
+              "sub": "hosted models inside the client's AWS account",
+              "kind": "external"
+            },
+            {
+              "id": "obs",
+              "label": "Observability",
+              "sub": "traces, cost and accuracy dashboards",
+              "kind": "observability"
+            }
+          ]
+        }
+      ],
+      "flows": [
+        {
+          "from": "cust",
+          "to": "helpdesk",
+          "label": "new ticket"
+        },
+        {
+          "from": "helpdesk",
+          "to": "triage",
+          "label": "ticket created event"
+        },
+        {
+          "from": "triage",
+          "to": "orders",
+          "label": "shipments for this customer"
+        },
+        {
+          "from": "triage",
+          "to": "bedrock",
+          "label": "ticket text for classification"
+        },
+        {
+          "from": "triage",
+          "to": "helpdesk",
+          "label": "queue, reason, shipments"
+        },
+        {
+          "from": "helpdesk",
+          "to": "agents",
+          "label": "ticket in the right queue"
+        },
+        {
+          "from": "triage",
+          "to": "duty",
+          "label": "escalation or low confidence",
+          "tone": "warn"
+        },
+        {
+          "from": "triage",
+          "to": "obs",
+          "label": "trace and cost per ticket"
+        }
+      ],
+      "steps": [
+        {
+          "title": "A ticket arrives",
+          "flows": [
+            0,
+            1
+          ],
+          "caption": "The customer raises a ticket; the helpdesk tells triage a new one exists."
+        },
+        {
+          "title": "Triage gathers and decides",
+          "flows": [
+            2,
+            3
+          ],
+          "caption": "Triage reads the customer's shipments and asks the model for a queue and a reason."
+        },
+        {
+          "title": "The ticket lands",
+          "flows": [
+            4,
+            5
+          ],
+          "caption": "Queue, reason and shipments are written back, and the ticket shows up in the right team's queue."
+        },
+        {
+          "title": "People keep the hard ones",
+          "flows": [
+            6,
+            7
+          ],
+          "caption": "Escalations and low-confidence tickets go to the duty manager, and every decision leaves a trace."
+        }
+      ]
+    },
+    "system": {
+      "title": "Inside ticket triage",
+      "layers": [
+        {
+          "id": "S1",
+          "name": "Entry",
+          "boundary": "untrusted input: ticket text",
+          "nodes": [
+            {
+              "id": "hook",
+              "label": "Webhook receiver",
+              "sub": "verifies the helpdesk signature",
+              "kind": "service"
+            },
+            {
+              "id": "queue",
+              "label": "Work queue",
+              "sub": "one message per ticket, retried once",
+              "kind": "queue"
+            }
+          ]
+        },
+        {
+          "id": "S2",
+          "name": "Triage service",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "worker",
+              "label": "Triage worker",
+              "sub": "orchestrates lookup, classification and write-back",
+              "kind": "service"
+            },
+            {
+              "id": "guard",
+              "label": "Input and tool guard",
+              "sub": "pins the customer id, screens injected instructions",
+              "kind": "guard"
+            },
+            {
+              "id": "lookup",
+              "label": "Shipment lookup",
+              "sub": "order API client with a timeout",
+              "kind": "tool"
+            }
+          ]
+        },
+        {
+          "id": "S3",
+          "name": "Model plane",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "classifier",
+              "label": "Classifier call",
+              "sub": "one structured call returning queue, reason, confidence",
+              "kind": "model"
+            },
+            {
+              "id": "budget",
+              "label": "Token budget",
+              "sub": "caps tokens per ticket",
+              "kind": "guard"
+            }
+          ]
+        },
+        {
+          "id": "S4",
+          "name": "State and evidence",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "store",
+              "label": "Decision store",
+              "sub": "queue, reason, confidence per ticket",
+              "kind": "store"
+            },
+            {
+              "id": "traces",
+              "label": "Trace store",
+              "sub": "every call, 90 days",
+              "kind": "store"
+            },
+            {
+              "id": "ledger",
+              "label": "Cost ledger",
+              "sub": "tokens and cost per ticket",
+              "kind": "observability"
+            }
+          ]
+        }
+      ],
+      "flows": [
+        {
+          "from": "hook",
+          "to": "queue",
+          "label": "verified ticket id"
+        },
+        {
+          "from": "queue",
+          "to": "worker",
+          "label": "ticket to triage"
+        },
+        {
+          "from": "worker",
+          "to": "guard",
+          "label": "ticket text and customer id",
+          "tone": "accent"
+        },
+        {
+          "from": "guard",
+          "to": "lookup",
+          "label": "customer id from the record"
+        },
+        {
+          "from": "guard",
+          "to": "classifier",
+          "label": "screened text"
+        },
+        {
+          "from": "budget",
+          "to": "classifier",
+          "label": "token cap"
+        },
+        {
+          "from": "classifier",
+          "to": "worker",
+          "label": "queue, reason, confidence"
+        },
+        {
+          "from": "worker",
+          "to": "store",
+          "label": "decision"
+        },
+        {
+          "from": "worker",
+          "to": "traces",
+          "label": "spans"
+        },
+        {
+          "from": "classifier",
+          "to": "ledger",
+          "label": "token usage"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Verified in",
+          "flows": [
+            0,
+            1
+          ],
+          "caption": "Only signed helpdesk events enter; each ticket becomes one queued message."
+        },
+        {
+          "title": "Guarded before anything runs",
+          "flows": [
+            2,
+            3,
+            4
+          ],
+          "caption": "The guard fixes the customer id from the ticket record and screens the text before any tool or model sees it."
+        },
+        {
+          "title": "One bounded model call",
+          "flows": [
+            5,
+            6
+          ],
+          "caption": "A single structured call returns queue, reason and confidence, inside a per-ticket token cap."
+        },
+        {
+          "title": "Everything is kept",
+          "flows": [
+            7,
+            8,
+            9
+          ],
+          "caption": "The decision, the trace and the cost of every ticket are stored for 90 days."
+        }
+      ]
+    },
+    "workflow": {
+      "title": "One ticket, start to finish",
+      "layers": [
+        {
+          "id": "W1",
+          "name": "Input",
+          "boundary": "untrusted content",
+          "nodes": [
+            {
+              "id": "ticket",
+              "label": "New ticket",
+              "sub": "text written by a customer",
+              "kind": "external"
+            }
+          ]
+        },
+        {
+          "id": "W2",
+          "name": "Checks",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "screen",
+              "label": "Screen and pin",
+              "sub": "strip instructions, pin customer id",
+              "kind": "guard"
+            },
+            {
+              "id": "conf",
+              "label": "Confidence check",
+              "sub": "0.70 threshold and escalation terms",
+              "kind": "guard"
+            }
+          ]
+        },
+        {
+          "id": "W3",
+          "name": "Work",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "agent",
+              "label": "Triage step",
+              "sub": "classifies with one model call",
+              "kind": "agent"
+            },
+            {
+              "id": "ship",
+              "label": "get_shipments",
+              "sub": "read-only order lookup",
+              "kind": "tool"
+            },
+            {
+              "id": "write",
+              "label": "set_queue",
+              "sub": "writes queue and reason to the helpdesk",
+              "kind": "tool"
+            }
+          ]
+        },
+        {
+          "id": "W4",
+          "name": "People",
+          "boundary": "",
+          "nodes": [
+            {
+              "id": "gate",
+              "label": "Duty manager review",
+              "sub": "approves or re-routes uncertain and sensitive tickets",
+              "kind": "gate"
+            },
+            {
+              "id": "assigned",
+              "label": "Queue owner",
+              "sub": "receives the ticket",
+              "kind": "team"
+            }
+          ]
+        }
+      ],
+      "flows": [
+        {
+          "from": "ticket",
+          "to": "screen",
+          "label": "raw text"
+        },
+        {
+          "from": "screen",
+          "to": "ship",
+          "label": "pinned customer id"
+        },
+        {
+          "from": "screen",
+          "to": "agent",
+          "label": "screened text"
+        },
+        {
+          "from": "ship",
+          "to": "agent",
+          "label": "open shipments"
+        },
+        {
+          "from": "agent",
+          "to": "conf",
+          "label": "queue, reason, confidence"
+        },
+        {
+          "from": "conf",
+          "to": "write",
+          "label": "confident and not sensitive"
+        },
+        {
+          "from": "conf",
+          "to": "gate",
+          "label": "below 0.70 or escalation term",
+          "tone": "warn"
+        },
+        {
+          "from": "gate",
+          "to": "write",
+          "label": "approved or corrected queue",
+          "tone": "warn"
+        },
+        {
+          "from": "write",
+          "to": "assigned",
+          "label": "ticket in queue"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Treat the ticket as data",
+          "flows": [
+            0,
+            1,
+            2
+          ],
+          "caption": "The text is screened and the customer id is taken from the ticket record, so nothing in the text can redirect a lookup."
+        },
+        {
+          "title": "Classify with context",
+          "flows": [
+            3,
+            4
+          ],
+          "caption": "With the customer's shipments in hand, one model call proposes a queue, a reason and a confidence."
+        },
+        {
+          "title": "Confident tickets flow through",
+          "flows": [
+            5,
+            8
+          ],
+          "caption": "If confidence is 0.70 or more and no escalation term appears, the queue is set and the owner sees the ticket."
+        },
+        {
+          "title": "A person decides the rest",
+          "flows": [
+            6,
+            7
+          ],
+          "caption": "Anything uncertain or sensitive waits for the duty manager, who approves or corrects the queue."
+        }
+      ]
+    }
+  }
+}

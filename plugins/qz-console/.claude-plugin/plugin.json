@@ -1,0 +1,32 @@
+{
+  "name": "qz-console",
+  "version": "1.0.0",
+  "description": "QualiZeal console: a live map beside the chat of the AI-DLC harness at work - lanes, agents, policy guard, human gates, Knowledge Fabric, GitHub, Jira, bid and demo tools - with the run's lane, stage and token budget",
+  "author": { "name": "QualiZeal AI Center of Excellence" },
+  "homepage": "https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse",
+  "license": "Proprietary",
+  "keywords": ["mod", "map", "harness", "observability", "AI-DLC", "QualiZeal"],
+  "icon": "./.claude-plugin/icon.png",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "theme": {
+      "type": "string",
+      "title": "Colours",
+      "options": ["auto", "dark", "light"],
+      "default": "auto",
+      "description": "Dark, light, or auto (dark on a dark surface, light on a light one)."
+    },
+    "showRules": {
+      "type": "boolean",
+      "title": "Show guard rule names",
+      "default": true,
+      "description": "Show which guard rule blocked or asked (for example QZ-SH-ENV-CREDS). The rule's message is never shown: it may quote what the guard found."
+    },
+    "coreName": {
+      "type": "string",
+      "title": "Name at the centre",
+      "default": "QZ",
+      "description": "What the circle in the middle says, up to six characters."
+    }
+  }
+}

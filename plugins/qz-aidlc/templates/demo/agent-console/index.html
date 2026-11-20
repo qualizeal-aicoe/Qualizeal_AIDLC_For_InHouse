@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="console">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-DLC Console</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_ds/qz-ds.css">
+<style>
+  .console { display: grid; grid-template-columns: 270px minmax(0, 1fr) 330px; gap: 16px; padding: 18px 22px 40px; align-items: start; }
+  .col { display: grid; gap: 14px; position: sticky; top: calc(var(--nav-h) + 18px); }
+  .runcard .id { font-family: var(--font-mono); font-size: 12px; color: var(--mute); }
+  .runcard h2 { font-size: 16px; line-height: 1.35; margin: 4px 0 10px; }
+  .agent { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 6px 0; font-size: 13px; }
+  .agent .av { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; }
+  .agent .st { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); }
+  .agent.on .st { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .timeline { display: grid; gap: 10px; }
+  .ev { display: grid; grid-template-columns: 54px 1fr; gap: 12px; animation: slidein .45s var(--ease) both; }
+  .ev .t { font-family: var(--font-mono); font-size: 12px; color: var(--mute); padding-top: 14px; text-align: right; }
+  .ev .card { padding: 12px 16px; border-left: 3px solid var(--border-strong); }
+  .ev .head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .ev .who { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; color: #fff; }
+  .ev .ttl { font-weight: 600; font-size: 14px; }
+  .ev .det { font-size: 13px; color: var(--dim); margin-top: 4px; }
+  .ev.guard-deny .card { border-left-color: var(--bad); background: var(--bad-soft); }
+  .ev.guard-ask .card { border-left-color: var(--warn); }
+  .ev.test-fail .card { border-left-color: var(--bad); } .ev.test-pass .card { border-left-color: var(--ok); }
+  .ev.kf .card { border-left-color: var(--accent); } .ev.artifact .card { border-left-color: #7B5BFF; } .ev.gate .card { border-left-color: var(--warn); }
+  .srcrow { display: grid; grid-template-columns: 1fr 60px auto; gap: 10px; align-items: center; font-size: 13px; padding: 5px 0; }
+  .opt { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  #b-used { font-size: 26px; letter-spacing: -.02em; }
+  .stagebar { display: grid; grid-template-columns: 112px 1fr 50px; gap: 8px; align-items: center; font-size: 12px; padding: 3px 0; }
+  .hash { font-family: var(--font-mono); font-size: 11px; color: var(--dim); display: grid; gap: 3px; }
+  .hash span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .guardgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .guardgrid div { padding: 10px 6px; border-radius: 10px; background: var(--bg-2); }
+  .guardgrid b { display: block; font-size: 22px; }
+  .measure { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); }
+  .measure:last-child { border-bottom: 0; } .measure b { font-size: 16px; } .measure span.xs { grid-column: 1 / -1; }
+  .done-banner { padding: 18px 20px; display: none; }
+  .done-banner.in { display: block; animation: slidein .5s var(--ease) both; }
+  @media (max-width: 1320px) { .console { grid-template-columns: 228px minmax(0, 1fr) 282px; gap: 12px; padding: 14px; } }
+  @media (max-width: 1000px) { .console { grid-template-columns: 1fr; } .col { position: static; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="client" data-brand-logo="clientLogo"><span data-brand="client">Client</span></div>
+  <div class="divider"></div>
+  <div class="product"><h1 style="font:inherit;margin:0"><b data-brand="product">AI-DLC Console</b></h1><span>Demonstration by QualiZeal</span><span>AI Center of Excellence</span></div>
+  <div class="spacer"></div>
+  <div class="controls"><button class="btn sm primary" id="play">▶ Play</button><button class="btn sm" id="step">Step</button>
+    <div class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></div><button class="btn sm" id="restart">Restart</button></div>
+</header>
+<div class="console">
+  <div class="col">
+    <div class="panel pad runcard"><div class="id" id="r-id"></div><h2 id="r-title"></h2><div class="row wrap-ok" id="r-chips"></div></div>
+    <div class="panel pad"><div class="tag" style="margin-bottom:8px">AI-DLC stages</div><div class="stepper" id="stages"></div></div>
+    <div class="panel pad"><div class="tag" style="margin-bottom:4px">Agents</div><div id="agents"></div></div>
+  </div>
+  <div>
+    <div class="panel pad" style="margin-bottom:14px"><div class="row between"><div><div class="eyebrow">Run timeline</div><div class="h2" id="now">Ready to replay</div></div><span class="statusbar"><span class="live" id="clock">00:00</span><span id="evcount">0 events</span></span></div></div>
+    <div class="panel done-banner" id="done"></div>
+    <div class="timeline" id="tl"></div>
+  </div>
+  <div class="col">
+    <div class="panel pad budget"><div class="row between"><span class="tag">Token budget</span><span class="chip mono" id="b-pct">0%</span></div><div style="margin:6px 0"><b id="b-used">0</b> <span class="dim small" id="b-of"></span></div><div class="meter grad"><i id="b-bar"></i></div>
+      <div style="margin-top:14px" id="bystage"></div></div>
+    <div class="panel pad"><div class="tag" style="margin-bottom:10px">Policy guard</div><div class="guardgrid"><div><b class="ok" id="g-allow">0</b><span class="xs">allowed</span></div><div><b class="warn" id="g-ask">0</b><span class="xs">asked</span></div><div><b class="bad" id="g-deny">0</b><span class="xs">blocked</span></div></div>
+      <div class="xs mute" style="margin-top:10px">Secrets redacted: <b id="g-red">0</b> · prompt injections flagged: <b>0</b></div></div>
+    <div class="panel pad"><div class="row between"><span class="tag">Audit chain</span><span class="chip ok" id="a-ok">verified</span></div><div class="hash" id="hash" style="margin-top:8px"></div></div>
+    <div class="panel pad"><div class="tag" style="margin-bottom:4px">AI-DLC measures</div><div id="measures"><p class="small dim">Filled in when the run closes.</p></div></div>
+  </div>
+</div>
+<aside class="drawer" id="drawer"></aside>
+<p class="xs mute" id="foot" style="padding:0 22px 30px"></p>
+<script src="../_ds/qz-ds.js"></script>
+<script src="scenario.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

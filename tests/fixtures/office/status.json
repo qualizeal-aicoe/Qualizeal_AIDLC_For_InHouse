@@ -1,0 +1,12 @@
+{"project": "Refund automation", "date": "2026-12-18", "period": "week 2", "week": 2,
+ "rag": {"overall": "amber", "schedule": "amber", "scope": "green", "quality": "green", "team": "green"},
+ "headline": "The gateway sandbox arrived three days late; the API is on track.",
+ "impact": "UAT may move by a week unless the gateway team confirms test cards by Monday.",
+ "done": ["Refund API: create and approve endpoints", "Screens: list and detail"],
+ "next": ["Gateway integration", "Test automation for the approval flow"],
+ "blockers": [{"text": "Gateway test cards", "owner": "Gateway team", "need": "confirm by Monday"}],
+ "decisions": ["Approve moving UAT to 18 January if the cards slip again"],
+ "risks": ["Gateway sandbox stability"],
+ "milestones": [{"name": "UAT", "planned": "2027-01-11", "forecast": "2027-01-11", "status": "at risk"}],
+ "items": {"W1": 1.0, "W2": 0.5, "W3": 0.25},
+ "to_name": "Asha", "sender": "Ravi"}

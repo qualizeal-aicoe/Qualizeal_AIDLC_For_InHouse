@@ -1,0 +1,156 @@
+# Checks the Studio on every push and pull request, on Windows and Linux (and macOS when asked):
+# the test suite, with every hook and the tool server started exactly as Claude Code starts them;
+# the guard red-team; the doctor; Claude Code's own plugin check; the RAG demo rehearsed stage by stage;
+# and each starter built and tested with the offline stub (no keys, no model spend).
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main, "release/**"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: "Also run on macOS (macOS minutes cost ten times as much)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PYTHONUTF8: "1"
+  UV_NO_PROGRESS: "1"
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        shell: bash
+        run: |
+          m='{"os":"windows-latest","python":"3.12"},{"os":"ubuntu-latest","python":"3.11"},{"os":"ubuntu-latest","python":"3.13"}'
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.macos }}" = "true" ]; then m="$m,{\"os\":\"macos-latest\",\"python\":\"3.12\"}"; fi
+          case "${{ github.ref }}" in refs/tags/*) m="$m,{\"os\":\"macos-latest\",\"python\":\"3.12\"}" ;; esac
+          echo "matrix={\"include\":[$m]}" >> "$GITHUB_OUTPUT"
+
+  studio:
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Python and the Studio's own packages
+        shell: bash
+        run: |
+          uv python install ${{ matrix.python }}
+          uv venv .venv-ci --python ${{ matrix.python }}
+          uv pip install --python .venv-ci -r plugins/qz-aidlc/requirements.txt "pytest>=8,<10"
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "PY=$(cygpath -w "$PWD/.venv-ci/Scripts/python.exe")" >> "$GITHUB_ENV"; else echo "PY=$PWD/.venv-ci/bin/python" >> "$GITHUB_ENV"; fi
+      - name: Browser for the design, web and UI checks
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then "$PY" -m playwright install --with-deps chromium; else "$PY" -m playwright install chromium; fi
+      - name: Test suite
+        shell: bash
+        run: '"$PY" -m pytest -q -p no:cacheprovider tests'
+      - name: Guard red-team
+        if: always()
+        shell: bash
+        run: '"$PY" -I -X utf8 plugins/qz-aidlc/scripts/qz.py redteam'
+      - name: Doctor, started the way an attendee starts it (PowerShell)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py doctor --ci --json "doctor-report-${{ matrix.os }}-${{ matrix.python }}.json"
+      - name: Doctor, started the way an attendee starts it
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py doctor --ci --json "doctor-report-${{ matrix.os }}-${{ matrix.python }}.json"
+      - name: RAG demo rehearsed stage by stage, as the presenter runs it
+        if: always()
+        shell: bash
+        run: '"$PY" -I -X utf8 .github/scripts/rehearse_demo.py "$RUNNER_TEMP/handbook-assistant"'
+      - name: Claude Code's plugin check, with the native installer (PowerShell)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://claude.ai/install.ps1 | iex
+          $env:Path += ";$env:USERPROFILE\.local\bin"
+          claude --version
+          claude plugin validate .
+          claude plugin validate plugins/qz-aidlc
+          claude plugin validate plugins/qz-console
+      - name: Claude Code's plugin check, with the native installer
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          export PATH="$HOME/.local/bin:$PATH"
+          claude --version
+          claude plugin validate .
+          claude plugin validate plugins/qz-aidlc
+          claude plugin validate plugins/qz-console
+          if [ "$RUNNER_OS" = "Linux" ]; then claude plugin test plugins/qz-console; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: doctor-${{ matrix.os }}-${{ matrix.python }}
+          path: doctor-report-*.json
+          if-no-files-found: ignore
+
+  starters:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { stack: langgraph, os: ubuntu-latest }
+          - { stack: claude-agent-sdk-py, os: ubuntu-latest }
+          - { stack: strands-agentcore, os: ubuntu-latest }
+          - { stack: claude-agent-sdk-ts, os: ubuntu-latest }
+          - { stack: go-anthropic, os: ubuntu-latest }
+          - { stack: maf-dotnet, os: ubuntu-latest }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        if: matrix.stack == 'claude-agent-sdk-ts'
+        with:
+          node-version: "22"
+      - uses: actions/setup-go@v5
+        if: matrix.stack == 'go-anthropic'
+        with:
+          go-version: "1.26"
+      - uses: actions/setup-dotnet@v4
+        if: matrix.stack == 'maf-dotnet'
+        with:
+          dotnet-version: "10.0.x"
+      - name: Create the project from the starter
+        shell: bash
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py build new ${{ matrix.stack }} "$RUNNER_TEMP/proj" --name "Order Support"
+      - name: Install, build and test
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: |
+          case "${{ matrix.stack }}" in
+            claude-agent-sdk-ts) npm ci && npm run typecheck && npm test ;;
+            go-anthropic) go vet ./... && go test ./... ;;
+            maf-dotnet) dotnet build src/Agent && dotnet test tests/Agent.Tests ;;
+            *) if [ -f uv.lock ]; then uv sync --locked --python 3.12 && uv run -m pytest -q tests;
+               else uv venv --python 3.12 && uv pip install -r requirements.txt pytest && .venv/bin/python -m pytest -q tests; fi ;;
+          esac
+      - name: Gold set and audit through the vendored kit
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: |
+          if [ -f .claude/qz/scripts/qz.py ]; then
+            uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run --label ci
+            uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
+          fi

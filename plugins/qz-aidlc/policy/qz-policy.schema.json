@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "qz-aidlc/policy/1.0.0",
+  "title": "QualiZeal guard policy",
+  "type": "object",
+  "required": [
+    "version",
+    "deny"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "$comment": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "maxCommandChars": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "unverifiableCalls": {
+          "enum": [
+            "allow-and-log",
+            "deny"
+          ]
+        },
+        "frameworkPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scanDiffExcludePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Paths (regular expressions) the merge-request diff scan skips: documentation and examples the platform team ships on purpose."
+        }
+      },
+      "additionalProperties": false
+    },
+    "allow": {
+      "$ref": "#/$defs/rules"
+    },
+    "deny": {
+      "$ref": "#/$defs/rules"
+    },
+    "ask": {
+      "$ref": "#/$defs/rules"
+    },
+    "local": {
+      "$ref": "#/$defs/rules",
+      "description": "v1.7.0: local, reversible steps in the person's own workspace (results/, usecases/, a practice branch, generated tests and docs). They run after the person's typed yes in the chat (allow-with-audit, LOCAL_WRITE_CONFIRMED); an ask on the same line wins."
+    },
+    "write": {
+      "type": "object",
+      "properties": {
+        "denyPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "secretPatterns": {
+          "$ref": "#/$defs/patterns"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "piiPatterns": {
+          "$ref": "#/$defs/patterns"
+        }
+      },
+      "additionalProperties": false
+    },
+    "read": {
+      "type": "object",
+      "properties": {
+        "denyPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcp": {
+      "type": "object",
+      "properties": {
+        "denyTools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "match"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^QZ-[A-Z0-9-]+$"
+              },
+              "match": {
+                "type": "string"
+              },
+              "writeVerbs": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "writeVerbs": {
+          "type": "string"
+        },
+        "readOnlyServers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "server",
+              "allow"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^QZ-[A-Z0-9-]+$"
+              },
+              "server": {
+                "type": "string"
+              },
+              "allow": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "allowedHosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deniedHostPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "envVarNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowedEnvironments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deniedEnvTokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "injection": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "tool",
+          "match"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^QZ-[A-Z0-9-]+$"
+          },
+          "tool": {
+            "enum": [
+              "shell",
+              "write",
+              "read",
+              "mcp",
+              "any"
+            ]
+          },
+          "match": {
+            "type": "string"
+          },
+          "flags": {
+            "type": "string",
+            "pattern": "^[gimsuy]*$"
+          },
+          "message": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "beforeAllow": {
+            "type": "boolean",
+            "description": "ask and deny rules: evaluated before any allow rule short-circuits (an ask: a human gate on the framework's own tools; a deny: a framework command no agent runs, such as the prompt hook's own line)"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "match"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^QZ-[A-Z0-9-]+$"
+          },
+          "match": {
+            "type": "string"
+          },
+          "flags": {
+            "type": "string"
+          },
+          "placeholderSafe": {
+            "type": "boolean"
+          },
+          "luhn": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -1,0 +1,282 @@
+{
+ "name": "knowledge-desk-architecture",
+ "title": "Knowledge Desk \u00b7 from Jira and GitHub to a cited answer",
+ "subtitle": "Solution view. People only receive what their groups may read, and every sentence names its source.",
+ "level": "solution",
+ "zones": [
+  {
+   "id": "people",
+   "name": "People",
+   "trust": "public"
+  },
+  {
+   "id": "edge",
+   "name": "Edge",
+   "trust": "public"
+  },
+  {
+   "id": "app",
+   "name": "Application",
+   "trust": "private"
+  },
+  {
+   "id": "data",
+   "name": "Data",
+   "trust": "private"
+  },
+  {
+   "id": "sources",
+   "name": "Sources",
+   "trust": "external"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "user",
+   "zone": "people",
+   "label": "Engineer or analyst",
+   "sub": "signed in",
+   "kind": "user"
+  },
+  {
+   "id": "page",
+   "zone": "people",
+   "label": "Chat page",
+   "sub": "JavaScript, no build step",
+   "kind": "browser"
+  },
+  {
+   "id": "idp",
+   "zone": "edge",
+   "label": "Identity provider",
+   "sub": "single sign-on, RS256 keys",
+   "kind": "idp"
+  },
+  {
+   "id": "gw",
+   "zone": "edge",
+   "label": "API gateway",
+   "sub": "token, rate limit, headers",
+   "kind": "gateway"
+  },
+  {
+   "id": "logs",
+   "zone": "edge",
+   "label": "Request log",
+   "sub": "an id on every reply",
+   "kind": "logs"
+  },
+  {
+   "id": "ingest",
+   "zone": "app",
+   "label": "Ingest service",
+   "sub": "split, label, store",
+   "kind": "etl"
+  },
+  {
+   "id": "screen",
+   "zone": "app",
+   "label": "Instruction screen",
+   "sub": "holds back orders in text",
+   "kind": "guard"
+  },
+  {
+   "id": "search",
+   "zone": "app",
+   "label": "Search service",
+   "sub": "text and vectors, by group",
+   "kind": "search"
+  },
+  {
+   "id": "agent",
+   "zone": "app",
+   "label": "Answering agent",
+   "sub": "plan, search, write, verify",
+   "kind": "agent"
+  },
+  {
+   "id": "llm",
+   "zone": "app",
+   "label": "Model provider",
+   "sub": "stub, Claude or Bedrock",
+   "kind": "llm"
+  },
+  {
+   "id": "store",
+   "zone": "data",
+   "label": "Knowledge store",
+   "sub": "SQLite full-text",
+   "kind": "database"
+  },
+  {
+   "id": "vectors",
+   "zone": "data",
+   "label": "Vectors",
+   "sub": "SQLite or Pinecone",
+   "kind": "vector"
+  },
+  {
+   "id": "jira",
+   "zone": "sources",
+   "label": "Jira",
+   "sub": "issues and comments",
+   "kind": "tracker"
+  },
+  {
+   "id": "github",
+   "zone": "sources",
+   "label": "GitHub",
+   "sub": "files, issues, pull requests",
+   "kind": "repo"
+  }
+ ],
+ "flows": [
+  {
+   "id": "f1",
+   "from": "jira",
+   "to": "ingest",
+   "label": "issues (API token)"
+  },
+  {
+   "id": "f2",
+   "from": "github",
+   "to": "ingest",
+   "label": "files, issues (token)"
+  },
+  {
+   "id": "f3",
+   "from": "ingest",
+   "to": "screen",
+   "label": "every passage"
+  },
+  {
+   "id": "f4",
+   "from": "ingest",
+   "to": "store",
+   "label": "passages + who may read"
+  },
+  {
+   "id": "f5",
+   "from": "ingest",
+   "to": "vectors",
+   "label": "embeddings"
+  },
+  {
+   "id": "f6",
+   "from": "user",
+   "to": "page",
+   "label": "question"
+  },
+  {
+   "id": "f7",
+   "from": "page",
+   "to": "gw",
+   "label": "question + token (HTTPS)"
+  },
+  {
+   "id": "f8",
+   "from": "gw",
+   "to": "idp",
+   "label": "check signature"
+  },
+  {
+   "id": "f9",
+   "from": "gw",
+   "to": "agent",
+   "label": "checked request",
+   "control": "RS256 token verified at the gateway"
+  },
+  {
+   "id": "f10",
+   "from": "agent",
+   "to": "search",
+   "label": "search as the asker"
+  },
+  {
+   "id": "f11",
+   "from": "search",
+   "to": "store",
+   "label": "full-text match"
+  },
+  {
+   "id": "f12",
+   "from": "search",
+   "to": "vectors",
+   "label": "nearest passages"
+  },
+  {
+   "id": "f13",
+   "from": "agent",
+   "to": "llm",
+   "label": "passages + question"
+  },
+  {
+   "id": "f14",
+   "from": "gw",
+   "to": "page",
+   "label": "answer with sources"
+  },
+  {
+   "id": "f15",
+   "from": "gw",
+   "to": "logs",
+   "label": "request id, status"
+  }
+ ],
+ "steps": [
+  {
+   "title": "Knowledge comes in",
+   "caption": "Connectors read Jira issues and GitHub files. Their tokens come from the environment, never from a file.",
+   "flows": [
+    "f1",
+    "f2"
+   ]
+  },
+  {
+   "title": "Screened, labelled, stored",
+   "caption": "Each passage is checked for text that gives orders, labelled with who may read it, and stored as text and as a vector.",
+   "flows": [
+    "f3",
+    "f4",
+    "f5"
+   ]
+  },
+  {
+   "title": "A person asks",
+   "caption": "The page sends the question with a short-lived token. The gateway checks its signature, issuer and audience.",
+   "flows": [
+    "f6",
+    "f7",
+    "f8"
+   ]
+  },
+  {
+   "title": "Only what they may read",
+   "caption": "The agent searches with the asker's groups. A passage outside those groups never leaves the store.",
+   "flows": [
+    "f9",
+    "f10",
+    "f11",
+    "f12"
+   ]
+  },
+  {
+   "title": "Compose, then verify",
+   "caption": "The model writes sentences that each point at a passage. A sentence its passage does not support is dropped.",
+   "flows": [
+    "f13"
+   ],
+   "focus": [
+    "screen"
+   ]
+  },
+  {
+   "title": "A cited answer",
+   "caption": "Every sentence ends with its source, and every reply carries a request id for the log.",
+   "flows": [
+    "f14",
+    "f15"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,15 @@
+{
+  "title": "LangGraph agent (Python)",
+  "summary": "create_agent with HumanInTheLoopMiddleware for the approval gate, a checkpointer for resume, model and recursion limits, OpenTelemetry.",
+  "verified": "RUN: the scaffold's tests and gold set ran here against the offline stub with langchain 1.5.0 and langgraph 1.2.21, including interrupt and resume. Not run against a live model here.",
+  "stack_line": "A LangGraph agent in Python (langchain 1.5, langgraph 1.2).",
+  "policy": "agent/policy.py", "agent_dir": "agent/",
+  "adapter": ["python3", "evals/adapter.py"],
+  "pass_env": ["ANTHROPIC_API_KEY", "AGENT_MODEL", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"],
+  "secret_env": ["ANTHROPIC_API_KEY"],
+  "test_cmd": "python3 -m pytest -q tests",
+  "run_cmd": "python3 -m agent.app \"Where is my order ORD-1001?\"",
+  "setup_steps": ["- uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n          cache: pip", "- run: pip install -r requirements.txt"],
+  "live": "Set ANTHROPIC_API_KEY (or AWS credentials and AGENT_MODEL=bedrock_converse:<model id>) and AGENT_MODE=live.",
+  "next": ["Replace the two tool bodies in agent/tools.py with calls to your systems.", "Swap InMemorySaver for SqliteSaver or PostgresSaver in agent/app.py before anything runs longer than one process.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."]
+}

@@ -1,0 +1,49 @@
+Northwind AI-DLC pilot proposal: narration
+
+Slide 1 · cover
+Open with the outcome: two product teams shipping stories through a governed agentic lifecycle, measured from day one.
+→ next slide
+
+Slide 2 · Six steps from your repositories to a working AI-DLC
+Walk left to right. The point is that we build from their code, not from a template.
+→ next slide
+
+Slide 3 · Agents work between gates; a named person opens each
+Walk one story left to right. Stress that gates are enforced by the harness, not by convention: until the named person approves, the guard blocks the next stage's writes.
+→ next slide
+
+Slide 4 · Four agents, each with a defined job and limits
+Limits are enforced by the policy guard, which the next slide shows.
+→ next slide
+
+Slide 5 · What happens on every tool call
+Every one of these is tested by a red-team suite of 53 cases before each release.
+→ next slide
+
+Slide 6 · What sits around the agents
+The harness layer is the product. Everything else is Northwind's existing estate.
+→ next slide
+
+Slide 7 · Governance, safety and observability are built in
+Each bullet maps to a control we demonstrate in week 2.
+→ next slide
+
+Slide 8 · Every story closes with a report card
+Numbers on this slide are targets, labelled as such.
+→ next slide
+
+Slide 9 · Sixteen weeks, a working demo every two to three weeks
+Diamonds are demos. The first is at the end of week 2.
+→ next slide
+
+Slide 10 · Offshore team delivers; one manager stays onshore
+Only the roles in this plan carry a rate. Licences for Claude, GitHub and Atlassian are Northwind's.
+→ next slide
+
+Slide 11 · What is proven today and what we confirm with you
+This slide is what makes the proposal credible. Do not skip it.
+→ next slide
+
+Slide 12 · Why QualiZeal, and what happens next
+Close on the ask: approval for the sixteen-week pilot, and a date for the discovery workshop. Name who owns each next step before leaving the room. If they hesitate, offer the two-week discovery on its own as the first commitment.
+→ end

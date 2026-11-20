@@ -1,0 +1,30 @@
+flowchart TB
+  subgraph g_W1["Input · trust boundary: untrusted content"]
+    n_ticket[/"New ticket<br/>text written by a customer"/]
+  end
+  subgraph g_W2["Checks"]
+    n_screen["Screen and pin<br/>strip instructions, pin customer id"]
+    n_conf["Confidence check<br/>0.70 threshold and escalation terms"]
+  end
+  subgraph g_W3["Work"]
+    n_agent{{"Triage step<br/>classifies with one model call"}}
+    n_ship["get_shipments<br/>read-only order lookup"]
+    n_write["set_queue<br/>writes queue and reason to the helpdesk"]
+  end
+  subgraph g_W4["People"]
+    n_gate{{"Duty manager review<br/>approves or re-routes uncertain and sensitive tickets"}}
+    n_assigned(["Queue owner<br/>receives the ticket"])
+  end
+  n_ticket -->|"raw text"| n_screen
+  n_screen -->|"pinned customer id"| n_ship
+  n_screen -->|"screened text"| n_agent
+  n_ship -->|"open shipments"| n_agent
+  n_agent -->|"queue, reason, confidence"| n_conf
+  n_conf -->|"confident and not sensitive"| n_write
+  n_conf -.->|"below 0.70 or escalation term"| n_gate
+  n_gate -.->|"approved or corrected queue"| n_write
+  n_write -->|"ticket in queue"| n_assigned
+  classDef qzgate fill:#FFF4E5,stroke:#F47B20,stroke-width:2px,color:#0A2540;
+  class n_gate qzgate;
+  classDef qzguard fill:#E8F1FB,stroke:#0A2540,stroke-width:2px,color:#0A2540;
+  class n_screen,n_conf qzguard;

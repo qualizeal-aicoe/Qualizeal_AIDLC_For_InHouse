@@ -1,0 +1,22 @@
+# Line endings stay LF in every checkout, Windows included, so hashes, quotes in tests and the release manifest
+# match on every machine. Windows batch and PowerShell files keep CRLF, which cmd.exe needs.
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.mp4 binary
+*.webm binary
+*.mp3 binary
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.xlsx binary
+*.zip binary
+*.db binary
+*.onnx binary

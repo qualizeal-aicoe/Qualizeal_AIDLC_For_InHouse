@@ -1,0 +1,47 @@
+{
+  "budgets": {
+    "default": 600000,
+    "requirements-analysis": 400000,
+    "code-generation": 900000,
+    "build-and-test": 700000,
+    "brief": 150000,
+    "draft": 500000,
+    "pricing": 60000,
+    "render": 120000,
+    "build": 800000
+  },
+  "pricing_per_mtok_usd": {
+    "input": 3.0,
+    "output": 15.0,
+    "cache_read": 0.3,
+    "cache_write": 3.75,
+    "label": "ASSUMED: API list price for a Sonnet-class model, used only to express seat usage as an equivalent cost"
+  },
+  "baseline_hours": {
+    "deliver": 16,
+    "demo": 24,
+    "bid": 20,
+    "label": "ASSUMED: effort for the same output without AI-DLC; set per team in .qz/config.json"
+  },
+  "staffing": {
+    "default_location": "Offshore",
+    "onshore_max_fte": 1.0,
+    "onshore_role_types": [
+      "Managerial Roles"
+    ],
+    "onshore_name_words": [
+      "manager",
+      "pmo"
+    ],
+    "label": "Every role offshore; one onshore PMO or manager only when the client asks"
+  },
+  "workspace": {
+    "device_root": "D:\\New_Projects",
+    "label": "Where projects are kept on the person's computer when the tools run in a cloud session. Change it per person with QZ_DEVICE_ROOT, or on a laptop with ~/.qz/workspace.json {\"root\": ...}"
+  },
+  "egress": {
+    "web_fetch": "open",
+    "web_hosts": [],
+    "label": "Set web_fetch to \"allowlist\" in .qz/config.json and the agent asks before reading any site that is not in the policy's allowedHosts or in web_hosts. Cloud metadata addresses are always refused."
+  }
+}

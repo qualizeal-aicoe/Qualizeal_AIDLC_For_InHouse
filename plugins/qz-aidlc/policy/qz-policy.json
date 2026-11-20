@@ -1,0 +1,863 @@
+{
+  "$schema": "./qz-policy.schema.json",
+  "version": "1.0.0",
+  "$comment": "QualiZeal guard policy for AI-DLC on Claude Code. Ported from QualiZeal's production AI-DLC guard policy 1.8.1 and harness policy 1.2.0: generic rules kept, harness paths moved from .kiro to .claude, client-specific rules removed, QualiZeal rules added (QZ-*). First matching deny or ask wins; allow only lifts an ask when the ask is not marked beforeAllow.",
+  "settings": {
+    "maxCommandChars": 20000,
+    "unverifiableCalls": "allow-and-log",
+    "frameworkPaths": [
+      "\\.claude/(hooks|agents|settings(\\.local)?\\.json|tools|aidlc-common|skills/aidlc|rules)/?",
+      "(^|/)CLAUDE\\.md$",
+      "AGENTS\\.md$",
+      "aidlc/spaces/[^/]+/memory/org\\.md$",
+      "(^|[/\\s'\\\"=(])\\.qz[\\\\/](policy|audit|runs|outputs)[\\\\/]",
+      "(^|/)\\.mcp\\.json$",
+      "aidlc/spaces/[^/]+/(?:[^/]+/)*audit/",
+      "(^|[\\s/'\\\"=])aidlc/active-spac[e?*]"
+    ],
+    "scanDiffExcludePaths": []
+  },
+  "allow": [
+    {
+      "id": "QZ-AL-ENGINE",
+      "tool": "shell",
+      "match": "^\\s*aidlc\\s+engine\\s",
+      "message": "AWS AI-DLC engine command."
+    },
+    {
+      "id": "QZ-AL-DATE",
+      "tool": "shell",
+      "match": "^\\s*date\\s+-u"
+    },
+    {
+      "id": "QZ-CI-ACTION",
+      "tool": "any",
+      "match": "(?!)",
+      "note": "Applied in code (guard.ci_mode) only when QZ_CI=github-action and GITHUB_ACTIONS=true: the GitHub action's own comment, inline-comment, file-commit and CI tools, and a plain `git push origin claude/<branch>` to the action's own branch. Merges, protected branches and every deny still apply; any other ask has no person to answer it and stays refused.",
+      "message": "The Studio's GitHub agent: the action's own tools on its own branch."
+    }
+  ],
+  "deny": [
+    {
+      "id": "QZ-SH-GIT-PUSH",
+      "tool": "shell",
+      "match": "\\bgit(?:\\.exe)?['\"]?(?:\\s+(?:-[cC]\\s*(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s;&|]+)|--(?:git-dir|work-tree|namespace|exec-path|config-env|super-prefix)(?:=\\S*|\\s+\\S+)|--?[\\w-]+(?:=\\S*)?))*\\s+push\\b[^\\n|;&]*(\\s['\"]?(master|main|develop|development)['\"]?(?=[\\s;&|)'\"]|$)|\\s(--force|--force-with-lease|--force-if-includes|--delete|--mirror|--prune)\\b|\\s-[a-zA-Z]*[fd][a-zA-Z]*(?=\\s|$)|\\s\\+\\S|\\s:\\S|\\s[^\\s]+:(master|main|develop|development)(?=[\\s;&|)'\"]|$))",
+      "message": "Protected branches change only through an approved merge request; force pushes and branch deletions are never made by an agent."
+    },
+    {
+      "id": "QZ-SH-GIT-MERGE",
+      "tool": "shell",
+      "match": "\\bgit(?:\\.exe)?['\"]?(?:\\s+(?:-[cC]\\s*(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s;&|]+)|--(?:git-dir|work-tree|namespace|exec-path|config-env|super-prefix)(?:=\\S*|\\s+\\S+)|--?[\\w-]+(?:=\\S*)?))*\\s+(merge|rebase)(?![\\w-])|\\bglab\\s+mr\\s+(merge|approve)\\b|\\bgh\\s+pr\\s+(merge|review\\s+--approve)\\b",
+      "flags": "i",
+      "message": "Merging and approving are human decisions."
+    },
+    {
+      "id": "QZ-SH-GIT-DESTROY",
+      "tool": "shell",
+      "match": "\\bgit(?:\\.exe)?['\"]?(?:\\s+(?:-[cC]\\s*(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s;&|]+)|--(?:git-dir|work-tree|namespace|exec-path|config-env|super-prefix)(?:=\\S*|\\s+\\S+)|--?[\\w-]+(?:=\\S*)?))*\\s+(reset\\s+--hard|clean\\s+-[a-z]*f|checkout\\s+--\\s+\\.|branch\\s+-D|push\\s+--force)",
+      "message": "Destructive git command."
+    },
+    {
+      "id": "QZ-SH-RM-RF",
+      "tool": "shell",
+      "match": "\\brm\\s+-[a-z]*r[a-z]*f?\\s+(/|~|\\*|\\.\\s*$|\\$HOME)|\\bsudo\\b|\\bchmod\\s+-R?\\s*777\\b",
+      "message": "Destructive or privileged command."
+    },
+    {
+      "id": "QZ-SH-WIN-DESTROY",
+      "tool": "shell",
+      "match": "\\bRemove-Item\\b[^\\n]*-Recurse[^\\n]*(\\s[A-Za-z]:[\\\\/]?\\s*$|\\s~|\\$HOME|\\$env:USERPROFILE|\\s\\*)|\\b(rd|rmdir)\\s+/s\\b|\\bdel\\s+/[sq]\\b|Set-ExecutionPolicy\\s+(Unrestricted|Bypass)",
+      "flags": "i",
+      "message": "Destructive or privileged command."
+    },
+    {
+      "id": "QZ-SH-PIPE-SH",
+      "tool": "shell",
+      "match": "(curl|wget)[^\\n]*\\|\\s*(ba|z)?sh\\b|\\b(iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\\b[^\\n]*\\|\\s*(iex|Invoke-Expression)\\b",
+      "flags": "i",
+      "message": "Remote script execution."
+    },
+    {
+      "id": "QZ-SH-MCP-CONFIG",
+      "tool": "shell",
+      "match": "\\.mcp\\.json|\\.claude[\\\\/]settings(\\.local)?\\.json|\\bclaude\\s+mcp\\s+add\\b",
+      "flags": "i",
+      "message": "MCP servers are added by the platform team through the managed plugin, not by an agent."
+    },
+    {
+      "id": "QZ-SH-TRUST-ALL",
+      "tool": "shell",
+      "match": "--trust-all-tools|--dangerously|capability:\\s*all",
+      "message": "Blanket trust is not permitted."
+    },
+    {
+      "id": "QZ-SH-AWS-WRITE",
+      "tool": "shell",
+      "match": "\\baws\\s+\\S+\\s+(create|delete|put|update|terminate|modify|run-instances|invoke|start|stop|attach|detach|tag|untag)[\\w-]*",
+      "flags": "i",
+      "message": "Agents do not change AWS resources. Changes go through the pipeline."
+    },
+    {
+      "id": "QZ-SH-TF-APPLY",
+      "tool": "shell",
+      "match": "\\b(terraform|tofu)\\s+(apply|destroy|import|state\\s+(rm|mv|push))\\b|\\bmake\\s+(apply|deploy|destroy)\\b",
+      "message": "Infrastructure changes go through the existing pipeline, not an agent."
+    },
+    {
+      "id": "QZ-SH-JIRA-WRITE",
+      "tool": "shell",
+      "match": "\\bjira\\s+(issue|epic|sprint)\\s+(create|edit|move|assign|comment|delete|link|clone|transition)\\b",
+      "message": "Jira writes from an agent session go only through the Atlassian connector, where each write waits for the person's yes. Other Jira command-line clients are not used."
+    },
+    {
+      "id": "QZ-SH-JIRA-RAW-WRITE",
+      "tool": "shell",
+      "match": "^(?=[^\\n]*(\\b(curl|wget|Invoke-RestMethod|irm|Invoke-WebRequest|iwr|xh|http)\\s|\\bfetch\\s*\\(|\\b(requests|axios)\\.\\w+\\s*\\())(?=[^\\n]*/rest/api/)(?=[^\\n]*(\\s-X\\s*['\"]?(POST|PUT|DELETE|PATCH)\\b|--request[ =]['\"]?(POST|PUT|DELETE|PATCH)\\b|-Method\\s+['\"]?(POST|PUT|DELETE|PATCH)\\b|method\\s*[:=]\\s*['\"](POST|PUT|DELETE|PATCH)['\"]|\\s(-d|--data(-raw|-binary|-urlencode)?|--json|-F|--form)[\\s=]|\\b(https?|xh)\\s+(POST|PUT|DELETE|PATCH)\\s|\\b(requests|axios)\\.(post|put|delete|patch)\\s*\\())",
+      "flags": "im",
+      "message": "Raw writes to the Jira REST API are blocked. A status move, comment or new issue goes through the Atlassian connector, where the person says yes to each write."
+    },
+    {
+      "id": "QZ-SH-SCM-RAW-WRITE",
+      "tool": "shell",
+      "match": "^(?=[^\\n]*(\\b(curl|wget|Invoke-RestMethod|irm|Invoke-WebRequest|iwr|xh|http)\\s|\\bfetch\\s*\\(|\\b(requests|axios)\\.\\w+\\s*\\())(?=[^\\n]*(/api/v4/|api\\.github\\.com|/api/v3/))(?=[^\\n]*(\\s-X\\s*['\"]?(POST|PUT|DELETE|PATCH)\\b|--request[ =]['\"]?(POST|PUT|DELETE|PATCH)\\b|-Method\\s+['\"]?(POST|PUT|DELETE|PATCH)\\b|method\\s*[:=]\\s*['\"](POST|PUT|DELETE|PATCH)['\"]|\\s(-d|--data(-raw|-binary|-urlencode)?|--json|-F|--form)[\\s=]|\\b(https?|xh)\\s+(POST|PUT|DELETE|PATCH)\\s|\\b(requests|axios)\\.(post|put|delete|patch)\\s*\\())",
+      "flags": "im",
+      "message": "Raw writes to the GitHub or GitLab API are blocked. Pull requests and pushes go through the GitHub connector or a git push the person confirms."
+    },
+    {
+      "id": "QZ-SH-SCM-CLI-WRITE",
+      "tool": "shell",
+      "match": "\\b(gh|glab)\\s+api\\b[^\\n]*(\\s(-X|--method)[\\s=]*['\"]?(POST|PUT|PATCH|DELETE)\\b|\\s(-f|-F|--field|--raw-field|--input)[\\s=])|\\bgh\\s+pr\\s+(create|edit|close|reopen|ready|comment)\\b|\\bglab\\s+mr\\s+(create|update|close|reopen|note)\\b",
+      "flags": "i",
+      "message": "Writes through the gh or glab command line are blocked. A pull request goes through the GitHub connector, which asks the person first; approving and merging stay with a person."
+    },
+    {
+      "id": "QZ-SH-SETTINGS-OVERRIDE",
+      "tool": "shell",
+      "match": "(?:^|[\\s;&|(:])(?:GITLAB_URL|JIRA_BASE_URL|GITHUB_URL|QZ_ENV_FILE|QZ_REPOS_FILE|QZ_POLICY|QZ_AUDIT_FILE|QZ_PLATFORM_CONFIG|QZ_RETRY_BASE_MS|AIDLC_INTERNAL_\\w+|AIDLC_UNATTENDED)\\s*\\+?=",
+      "message": "Where a token goes, and which policy, audit chain or settings a tool reads, are not set from an agent session. Tokens live in the plugin's secure settings (/plugin > qz-aidlc > Configure)."
+    },
+    {
+      "id": "QZ-SH-HOOK-RUN",
+      "tool": "shell",
+      "flags": "i",
+      "match": "(?:\\b(?:bun|bunx|node|nodejs|deno|tsx|ts-node|sh|bash|dash|zsh|ksh|pwsh|powershell)(?:\\.exe)?\\b[^\\n;&|]*?[\\s'\"(=]|(?:^|[;&|]\\s*)(?:env\\s[^\\n;&|]*?\\s)?(?:\\.?[\\\\/])?)\\.claude[\\\\/]+hooks[\\\\/]+[\\w.-]+\\.(?:ts|js|mjs|cjs|sh|ps1)\\b",
+      "message": "Claude Code runs hooks around a session and its tool calls; an agent does not run a hook script. Running a hook directly can forge what a hook asserts, such as a human turn a gate then spends."
+    },
+    {
+      "id": "QZ-SH-DECODE-RUN",
+      "tool": "shell",
+      "flags": "i",
+      "match": "(?:base64\\s+(?:-d|-D|--decode)|base32\\s+-d|xxd\\s+-r|openssl\\s+(?:base64|enc)[^\\n|]*\\s-(?:d|a\\s*-d|base64\\s*-d)|\\batob\\s*\\()[^\\n]*\\|\\s*(?:sh|bash|dash|zsh|ksh|python[0-9.]*|node|nodejs|bun|deno|perl|ruby|php|pwsh|powershell)\\b|\\beval\\b\\s*[\\\"']?(?:\\$\\(|`|\\$\\{?[A-Za-z_])",
+      "message": "Running decoded or substituted text as a command is blocked (eval of $(...)/`...`/$VAR, or a base64/xxd/openssl decode piped into a shell or interpreter): it hides what actually runs from the guard. Write the command out plainly."
+    },
+    {
+      "id": "QZ-SH-DECODE-RUN",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\b(?:sh|bash|dash|zsh|ksh|ash)(?:\\.exe)?\\b[^\\n|;&]*?\\s-c\\s+[\"']?\\s*(?:\\$\\(|`)|(?:^|[;&|(]\\s*)(?:source|\\.)\\s+<\\(",
+      "message": "Running decoded or substituted text as a command is blocked (sh -c \"$(…)\", bash -c \"$(…)\", or source/. <(…)): it hides what actually runs from the guard. Write the command out plainly."
+    },
+    {
+      "id": "QZ-SH-DECODE-RUN",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\bpython[0-9.]*\\b(?=[^\\n]*\\s-c\\b)(?=[^\\n]*(?:\\bexec\\b|\\beval\\b|os\\.system|os\\.popen|subprocess|check_output|commands\\.getoutput))(?=[^\\n]*b(?:ase)?64)|\\bperl\\b(?=[^\\n]*\\s-[A-Za-z]*e\\b)(?=[^\\n]*\\beval\\b)(?=[^\\n]*decode_base64)",
+      "message": "An interpreter one-liner that decodes text and runs it is blocked (python -c with exec and a base64 decode, or perl -e with eval and decode_base64): it hides what actually runs from the guard. Write the command out plainly."
+    },
+    {
+      "id": "QZ-SH-DECODE-RUN",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\b(?:node|nodejs|bun|deno|tsx)(?:\\.exe)?\\b(?=[^\\n]*\\s(?:-e|--eval)\\b)(?=[^\\n]*(?:\\beval\\b|\\bFunction\\b|execSync|\\bexec\\b|spawnSync|child_process))(?=[^\\n]*(?:atob\\s*\\(|Buffer\\.from\\s*\\([^)]*['\"]base64))",
+      "message": "An interpreter one-liner that decodes text and runs it is blocked (node/bun -e with eval or execSync and atob or Buffer.from(…,'base64')): it hides what actually runs from the guard. Write the command out plainly."
+    },
+    {
+      "id": "QZ-SH-LINK-SENSITIVE",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\bln\\b(?:\\s+-[A-Za-z]+)*\\s+['\\\"]?(?:~|\\$HOME|\\$\\{HOME\\}|\\$env:USERPROFILE|%USERPROFILE%|(?:/[^\\s'\\\"]*)?/(?:home|Users)/[^\\s'\\\"/]+)[\\\\/]\\.(?:ssh|qz-env|qz|aws)(?:[\\\\/'\\\"]|\\s|$)|\\bNew-Item\\b[^\\n]*-ItemType\\s+SymbolicLink[^\\n]*(?:-Target|-Value)[^\\n]*[\\\\/]\\.(?:ssh|qz-env|qz|aws)\\b",
+      "message": "Creating a link whose target is ~/.ssh, ~/.qz-env, ~/.qz or ~/.aws is blocked: a link into a credentials location lets a later read reach it under an innocent name."
+    },
+    {
+      "id": "QZ-SH-EXFIL",
+      "tool": "shell",
+      "match": "\\b(curl|wget)\\b[^\\n]*(\\s-d\\s*@|--data(-binary|-raw|-urlencode)?[ =]@|\\s-F\\s*['\"]?\\w+=@|\\s-T\\s|--upload-file)|\\b(nc|ncat|netcat|socat)\\b[^\\n]*[<|]|/dev/(tcp|udp)/",
+      "flags": "i",
+      "message": "Uploading local files to a remote host is blocked."
+    },
+    {
+      "id": "QZ-SH-IMDS",
+      "tool": "shell",
+      "match": "169\\.254\\.169\\.254|fd00:ec2::254",
+      "flags": "i",
+      "message": "Instance metadata access is blocked."
+    },
+    {
+      "id": "QZ-SH-ENV-CREDS",
+      "tool": "shell",
+      "match": "(^|[;&|]\\s*)(printenv|env|export\\s+-p)(\\s*($|[;&|])|\\s*\\|\\s*grep)|\\b(cat|less|more|head|tail|base64|cp|scp|type|Get-Content|gc|grep|awk|sed|source|open|readFileSync|readFile|read_text|\\.)\\b[^\\n]*(\\.aws[\\\\/]|\\.ssh[\\\\/]|\\.netrc|\\.git-credentials|\\.npmrc|\\.qz-env)|\\$\\{?(env:)?(SNYK_TOKEN|JIRA_API_TOKEN|GITLAB_TOKEN|GITHUB_TOKEN|GH_TOKEN|QZ_GIT_SECRET)\\b|%(SNYK_TOKEN|JIRA_API_TOKEN|GITLAB_TOKEN|GITHUB_TOKEN|GH_TOKEN|QZ_GIT_SECRET)%|\\bgh\\s+auth\\s+token\\b|\\b(gh|glab)\\s+auth\\s+status\\b[^\\n]*--show-token|(?:(?:^|[\\s;&|(`/\\\\])(?:cat|tac|nl|less|more|head|tail|type|Get-Content|gc|Select-String|sls|grep|egrep|fgrep|zgrep|rg|sed|awk|gawk|base64|xxd|od|hexdump|strings|bat|source)|(?:^|[;&|(`\\n]\\s*)\\.)(?=\\s)[^\\n]*?(?:^|[\\s'\"=/\\\\:<(])\\.env(?:\\.(?!example(?:$|[\\s'\"`;|&)>]))[\\w.-]+)?(?=$|[\\s'\"`;|&)>])|(?:^|[\\s;&|(`/\\\\])(?:cp|mv|copy|move|Copy-Item|Move-Item|cpi|mi|scp|rsync|ren|rename|Rename-Item)(?=\\s)[^\\n]*?(?:^|[\\s'\"=/\\\\:<(])\\.env(?:\\.(?!example(?:$|[\\s'\"`;|&)>]))[\\w.-]+)?['\"]?\\s+[^\\s;&|]|(?:^|[^<])<(?!<)\\s*['\"]?(?:[^\\s'\"<>|;&]*[/\\\\])?\\.env(?:\\.(?!example(?:$|[\\s'\"`;|&)>]))[\\w.-]+)?(?=$|[\\s'\"`;|&)>])",
+      "flags": "i",
+      "message": "Reading credentials or the whole environment is blocked: token variables, ~/.qz-env, .env and .env.<name>. .env.example (no values, by convention) stays readable.",
+      "portNote": "variable-width look-behind removed for Python; rule is now slightly broader"
+    },
+    {
+      "id": "QZ-SH-ENV-CREDS",
+      "tool": "shell",
+      "match": "(?:^|[\\s;&|(`/\\\\])(?:sort|uniq|cut|paste|join|comm|cmp|diff|sdiff|diff3|colordiff|jq|yq|vi|vim|nvim|gvim|view|ex|ed|nano|emacs|tr|fold|fmt|rev|column|pr|expand|unexpand|look|split|csplit|iconv|zcat|zless|zmore|bzcat|xzcat|gzip|gunzip|bzip2|xz|zip|tar|openssl|xargs|dd|git(?:\\.exe)?(?:\\s+-[cC]\\s*\\S+|\\s+--?[\\w-]+(?:=\\S*)?)*\\s+(?:diff|show|cat-file|grep|blame|log|archive|hash-object))(?=\\s)[^\\n]*?(?:^|[\\s'\"=/\\\\:<(])\\.env(?:\\.(?!example(?:$|[\\s'\"`;|&)>]))[\\w.-]+)?(?=$|[\\s'\"`;|&)>])|(?:^|[\\s'\"=/\\\\:<(])\\.env(?:\\.(?!example(?:$|[\\s'\"`;|&)>]))[\\w.-]+)?(?=$|[\\s'\"`;|&)>])[^\\n]*\\|\\s*(?:xargs|parallel)\\b",
+      "flags": "i",
+      "note": "the readers the first QZ-SH-ENV-CREDS rule does not list (sort, cut, diff, dd if=, jq, vi/vim -es, git diff --no-index, git show …) and a .env name piped into xargs; a glob that can expand to .env… is caught by the guard itself",
+      "message": "Reading credentials or the whole environment is blocked: token variables, ~/.qz-env, .env and .env.<name>. .env.example (no values, by convention) stays readable.",
+      "portNote": "variable-width look-behind removed for Python; rule is now slightly broader"
+    },
+    {
+      "id": "QZ-SH-KEYCHAIN-READ",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\bsecurity(?:\\.exe)?['\\\"]?\\s+\\S|\\bfind-(?:generic|internet)-password\\b|\\bsecurity(?:\\.exe)?['\\\"]?\\s+(?:-\\S+\\s+)*(?:dump-keychain|export|import|unlock-keychain)\\b|\\bsecurity(?:\\.exe)?['\\\"]?\\s+-[A-Za-z]*i\\b|\\bsecret-tool\\s+(?:lookup|search)\\b|\\bkeyring\\s+get\\b|\\bkeyring\\.get_password\\b|\\bget_password\\s*\\(|org\\.freedesktop\\.(?:secrets|Secret)\\b|\\bcmdkey(?:\\.exe)?\\s+/l(?:ist)?\\b|\\bvaultcmd(?:\\.exe)?\\s+/list|\\bkwallet-query\\b|PtrToString(?:BSTR|Auto|Uni)|SecureStringToBSTR|SecureStringToGlobalAllocUnicode|GetNetworkCredential\\s*\\(\\s*\\)\\s*\\.\\s*Password|\\bNetworkCredential\\b|\\bGet-StoredCredential\\b|\\bCredRead\\b|\\bGet-Credential\\b|\\bPromptForCredential\\b|ConvertFrom-SecureString|-AsPlainText|\\.qz[\\\\/]+secrets\\b|\\bzenity\\b[^\\n]*--password|\\bkdialog\\b[^\\n]*--password|\\bosascript\\b[^\\n]*(?:do\\s+shell\\s+script|hidden\\s+answer)|\\.dpapi\\b|\\b(?:tar|zip|7z|gpg|rsync|scp)\\b[^\\n;&|]*\\.qz(?:[\\\\/]|\\b)",
+      "message": "Reading a stored secret, or popping a credential prompt, is blocked. Tokens live in the operating system's secure storage and are read only by the tools, which never print them."
+    },
+    {
+      "id": "QZ-STATE-WRITE",
+      "tool": "shell",
+      "flags": "i",
+      "match": "(?:>>?|\\btee\\b(?:\\s+-a)?|\\bcp\\b|\\bmv\\b|\\binstall\\b|\\bdd\\b[^\\n]*\\bof=)\\s*['\\\"]?[^\\n'\\\"|;&]*\\.qz[\\\\/]+(?:repos\\.json|secrets)|\\bcd\\b\\s+[^\\n;&|]*\\.qz\\b[^\\n]*(?:>>?|\\btee\\b|\\bcp\\b|\\bmv\\b)\\s*[^\\n|;&]*\\b(?:repos\\.json|secrets)\\b",
+      "message": "~/.qz/repos.json and ~/.qz/secrets are written only by the QualiZeal tools. An agent does not write them from a shell."
+    },
+    {
+      "id": "QZ-SH-SNYK-WRITE",
+      "tool": "shell",
+      "match": "\\bsnyk\\s+(monitor|auth|config|container\\s+monitor|iac\\s+capture)\\b|\\bsnyk\\b[^\\n|;&]*\\s--(print-token|token)\\b",
+      "flags": "i",
+      "message": "Only read-only Snyk scans run from here (snyk test, snyk code test). Registering a project or changing Snyk settings is a person's step."
+    },
+    {
+      "id": "QZ-WR-OUTPUTS",
+      "tool": "write",
+      "flags": "i",
+      "match": "(^|/)\\.qz/outputs/",
+      "message": ".qz/outputs/ holds approved outputs as they were saved, sealed on the audit chain. Agents do not write, edit or remove anything there; a change is a new approval."
+    },
+    {
+      "id": "QZ-SH-OUTPUTS-WRITE",
+      "tool": "shell",
+      "flags": "i",
+      "match": "(?:>{1,2}\\|?\\s*['\"]?(?:[^\\s'\"]*/)?outputs/)|^\\s*(?:sudo\\s+)?(?:\\S*/)?(?:tee|mv|rm|ln|truncate|chmod|chown|touch|mkdir|rmdir|unlink|shred|set-content|add-content|out-file|remove-item|move-item|new-item|rename-item|del|erase|ren|rename|move|rd|md)(?:\\.exe)?\\b[^\\n;&|]*(?:^|[\\s'\"=:(/])outputs/|^\\s*(?:sudo\\s+)?(?:\\S*/)?(?:cp|rsync|install|copy|copy-item|robocopy|xcopy)(?:\\.exe)?\\b[^\\n;&|]*\\s['\"]?(?:[^\\s'\"]*/)?outputs/[^\\s;&|]*['\"]?\\s*$|^\\s*(?:\\S*/)?(?:sed|perl)\\b[^\\n;&|]*\\s-[a-z]*i[^\\n;&|]*(?:^|[\\s'\"=:(/])outputs/|^\\s*(?:\\S*/)?dd\\b[^\\n;&|]*\\bof=['\"]?(?:[^\\s'\"]*/)?outputs/|\\bfind\\b[^\\n;&|]*(?:^|[\\s'\"=:(/])outputs\\b[^\\n;&|]*\\s-(?:delete|exec|execdir|ok|fprint\\w*)\\b|(?:write\\w*file\\w*|append\\w*file\\w*|copy_?file(?:sync)?|\\bcp(?:sync)?\\s*\\(|rename(?:sync)?\\s*\\(|unlink(?:sync)?\\s*\\(|\\brm(?:sync)?\\s*\\(|create_?write_?stream|write_text|write_bytes|writealltext|writeallbytes|bun\\.write|file_put_contents|shutil\\.(?:copy\\w*|move|rmtree)|os\\.(?:rename|replace|remove|unlink)|\\[io\\.file\\]::write\\w*|\\bopen(?:sync)?\\s*\\()[^\\n]*(?:^|[\\s'\"=:(/])outputs/|(?:^|[\\s'\"=:(/])outputs/[^\\n]*(?:write\\w*file\\w*|append\\w*file\\w*|bun\\.write|write_text|write_bytes|create_?write_?stream|rm(?:sync)?\\s*\\(|unlink(?:sync)?\\s*\\(|rename(?:sync)?\\s*\\()",
+      "message": ".qz/outputs/ holds approved outputs as they were saved, sealed on the audit chain. Agents do not write, edit or remove anything there; a change is a new approval."
+    },
+    {
+      "id": "QZ-SH-PIPE-SHELL",
+      "tool": "shell",
+      "match": "(?!)",
+      "note": "Detection is in code (lib/qz/shellscan.py, feeds_shell): the line is read command by command with quotes, escapes, substitutions, groups and loops respected. A shell (sh, bash, zsh, dash, ksh, fish, csh, PowerShell, iex) reading its program from a pipe, a here-string or a process substitution, any shell run by xargs on a pipe, and an interpreter (python, node, perl, ruby, php, deno, lua) reading its program from a pipe are denied. The never-matching regex keeps the generic deny loop from firing it; the guard emits it from code and uses this message.",
+      "message": "Output piped into a shell is blocked (… | sh, | bash, | zsh, | sudo sh, | xargs sh, | iex), and so is an interpreter that reads its program from a pipe (| python3, | node, | perl, | pwsh -Command -) and a shell fed by a here-string or a process substitution (bash <(…), sh <<< …): what runs is the text the left side prints, which the guard never sees (printf '\\x73\\x68' | sh runs sh). Write the command out plainly, or save the script to a file a person reads first."
+    },
+    {
+      "id": "QZ-SH-LIGHTPANDA-AGENT",
+      "tool": "shell",
+      "match": "\\blightpanda(\\.exe)?\\b[^\\n;&|]*?\\s(agent|mcp)(?=$|[\\s;&|)])",
+      "flags": "i",
+      "message": "Lightpanda's agent and MCP modes are not used from an agent session; use it as a plain headless browser from a test script."
+    },
+    {
+      "id": "QZ-RECORDS-WRITE",
+      "tool": "shell",
+      "match": "(>{1,2}|\\btee\\b|\\b(rm|mv|cp|truncate|sed\\s+-i)\\b)[^\\n;&|]*\\.qz[\\\\/](audit|runs|outputs)[\\\\/]",
+      "message": "The audit chain, run ledgers and approved outputs under .qz/ are written only by the QualiZeal tools."
+    },
+    {
+      "id": "QZ-RATECARD-READ",
+      "tool": "shell",
+      "match": "\\b(cat|head|tail|less|more|strings|unzip|7z|xxd|od|python[0-9.]*\\s+-c|openpyxl|pandas)\\b[^\\n]*Pricing[_ ]?Work[_ ]?Sheet[^\\n]*\\.xls[xm]?",
+      "message": "The pricing workbook holds cost and pay rates. Only /qz-aidlc:qz-price reads it, and it never prints cost, pay rate or margin into the conversation."
+    },
+    {
+      "id": "QZ-AWS-S3-WRITE",
+      "tool": "shell",
+      "match": "\\baws\\s+s3\\s+(rm|rb|mv|sync\\b[^\\n]*--delete|cp\\b[^\\n]*\\s's?3?:?//?|cp\\b[^\\n]*\\ss3://)|\\baws\\s+s3api\\s+(delete|put|create|copy|restore|abort|complete|upload)[\\w-]*",
+      "message": "Agents do not change AWS resources, S3 included. Changes go through the pipeline."
+    },
+    {
+      "id": "QZ-INTERNAL-READ",
+      "tool": "shell",
+      "match": "\\b(cat|head|tail|less|more|type|Get-Content|gc|grep|awk|sed|jq|strings|cp|scp|base64|xxd|od|unzip|python[0-9.]*|node|bun|perl|ruby)\\b[^\\n]*\\.qz[\\\\/]internal[\\\\/]",
+      "message": "Files under .qz/internal/ hold cost, pay rates and margins for the person's eyes only; they are not read into the conversation."
+    },
+    {
+      "id": "QZ-WR-REFERENCE",
+      "tool": "any",
+      "match": "(?!)",
+      "note": "Emitted from code (guard.boundary): a write (file tool, or a redirection or write verb on a Bash line) inside a folder named under references in .qz/config.json.",
+      "message": "This writes inside a read-only reference folder (references in .qz/config.json). Reference code is read for ideas, never changed or run; copy what you need into the project in your own words."
+    },
+    {
+      "id": "QZ-PS-ENCODED",
+      "tool": "powershell",
+      "match": "\\b(?:pwsh|powershell)(?:\\.exe)?['\\\"]?\\s(?:[^\\n;|]*\\s)?[-/](?:e|ec|en|enc|enco|encod|encode|encoded\\w*)(?=[\\s:]|$)",
+      "flags": "i",
+      "message": "Running an encoded PowerShell command is blocked: the text it would run cannot be read first. Write the command out."
+    },
+    {
+      "id": "QZ-PS-DOWNLOAD-RUN",
+      "tool": "powershell",
+      "match": "\\b(?:iex|Invoke-Expression)\\b[^\\n]*\\b(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod|DownloadString|DownloadData|Net\\.WebClient|Start-BitsTransfer)\\b|\\b(?:DownloadString|DownloadData)\\s*\\([^\\n]*\\)\\s*\\|\\s*(?:iex|Invoke-Expression)\\b|\\[scriptblock\\]::Create\\s*\\([^\\n]*\\b(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod|DownloadString)\\b",
+      "flags": "i",
+      "message": "Running a script straight from the internet is blocked. Download it, read it, then run it as a file a person has checked."
+    },
+    {
+      "id": "QZ-PS-ELEVATE",
+      "tool": "powershell",
+      "match": "\\bStart-Process\\b[^\\n]*-Verb\\s+['\\\"]?RunAs\\b|\\brunas(?:\\.exe)?\\s+/(?:user|savecred)",
+      "flags": "i",
+      "message": "Running as administrator is blocked. An agent works with the person's own rights; anything that needs an administrator is a person's step."
+    },
+    {
+      "id": "QZ-PS-SECURITY-OFF",
+      "tool": "powershell",
+      "match": "\\b(?:Set|Add|Remove)-MpPreference\\b|\\bSet-NetFirewallProfile\\b[^\\n]*-Enabled\\s+['\\\"]?(?:False|0)|\\bnetsh(?:\\.exe)?\\s+advfirewall\\s+set\\b[^\\n]*\\boff\\b|\\bUnblock-File\\b|\\bSet-ExecutionPolicy\\b[^\\n]*-Scope\\s+['\\\"]?(?:LocalMachine|MachinePolicy|UserPolicy)",
+      "flags": "i",
+      "message": "Changing the machine's security settings (Defender, the firewall, downloaded-file marks, machine-wide script policy) is blocked."
+    },
+    {
+      "id": "QZ-PS-DISK",
+      "tool": "powershell",
+      "match": "\\b(?:Format-Volume|Clear-Disk|Initialize-Disk|Remove-Partition|Stop-Computer|Restart-Computer|Remove-Computer|Clear-RecycleBin)\\b|\\b(?:bcdedit|diskpart)(?:\\.exe)?\\b|\\bvssadmin(?:\\.exe)?\\s+delete\\b|\\bwbadmin(?:\\.exe)?\\s+delete\\b|\\bcipher(?:\\.exe)?\\s+/w\\b|(?:^|[;&|]\\s*)format(?:\\.com)?\\s+[A-Za-z]:",
+      "flags": "i",
+      "message": "Destructive or privileged command."
+    },
+    {
+      "id": "QZ-PS-CREDS",
+      "tool": "powershell",
+      "match": "\\bcmdkey(?:\\.exe)?\\s+/list\\b|\\bvaultcmd\\b|\\bGet-StoredCredential\\b|\\bGet-Secret\\b|\\bConvertFrom-SecureString\\b|\\bExport-Clixml\\b[^\\n]*\\bCredential|\\[(?:System\\.)?Net\\.NetworkCredential\\]|GetNetworkCredential\\s*\\(|(?:Get-ChildItem|gci|dir|ls)\\s+(?:-Path\\s+)?['\\\"]?Cert:",
+      "flags": "i",
+      "message": "Reading stored credentials or certificates is blocked. Tools read their own tokens from secure storage."
+    },
+    {
+      "id": "QZ-PS-ENV-DUMP",
+      "tool": "powershell",
+      "match": "(?:^|[;&|(]\\s*)(?:Get-ChildItem|gci|dir|ls|Get-Item|gi)\\s+(?:-Path\\s+)?['\\\"]?env:[\\\\/]?['\\\"]?\\s*(?:$|[;&|)])|\\[(?:System\\.)?Environment\\]::GetEnvironmentVariables\\s*\\(|\\$env:\\w*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL)\\w*",
+      "flags": "i",
+      "message": "Reading the whole environment, or a token variable, is blocked: it holds secrets. Tools read their own tokens."
+    }
+  ],
+  "ask": [
+    {
+      "id": "QZ-ASK-GIT-PUSH",
+      "tool": "shell",
+      "match": "\\bgit(?:\\.exe)?['\"]?(?:\\s+(?:-[cC]\\s*(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s;&|]+)|--(?:git-dir|work-tree|namespace|exec-path|config-env|super-prefix)(?:=\\S*|\\s+\\S+)|--?[\\w-]+(?:=\\S*)?))*\\s+push\\b",
+      "message": "Pushing a branch is a person's step (human-in-the-loop gate): confirm the branch name and the commit messages, then re-run. The delivery tool records who confirmed."
+    },
+    {
+      "id": "QZ-ASK-REPO-CREATE",
+      "tool": "shell",
+      "match": "\\bgh(?:\\.exe)?\\s+repo\\s+(create|fork|rename|edit|archive)\\b",
+      "message": "Creating or changing a repository is a person's decision: confirm the owner, the name and that it is private, then re-run."
+    },
+    {
+      "id": "QZ-ASK-GIT-IDENTITY",
+      "tool": "shell",
+      "match": "\\bgit(?:\\.exe)?['\"]?(?:\\s+(?:-[cC]\\s*(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s;&|]+)|--(?:git-dir|work-tree|namespace|exec-path|config-env|super-prefix)(?:=\\S*|\\s+\\S+)|--?[\\w-]+(?:=\\S*)?))*\\s+config\\b(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?(?:user\\.(?:name|email)|include\\.path|includeif\\.[^\\s=]+)['\"]?\\s+(?![-;&|])\\S|(?:>{1,2}\\|?|\\btee\\b(?:\\s+-a)?)\\s*['\"]?[^\\s'\"<>|;&]*\\.git[\\\\/](?:worktrees[\\\\/][^\\\\/\\s'\"]+[\\\\/])?config(?:\\.worktree)?(?![\\w.-])|\\b(?:cp|mv|install|ln|rsync|dd|copy|move|Copy-Item|Move-Item|Set-Content|Add-Content|Out-File|New-Item)\\b[^\\n;&|]*\\.git[\\\\/](?:worktrees[\\\\/][^\\\\/\\s'\"]+[\\\\/])?config(?:\\.worktree)?(?![\\w.-])|\\b(?:sed|perl)\\b[^\\n;&|]*\\s(?:-[a-z]*i|--in-place)\\b[^\\n;&|]*\\.git[\\\\/](?:worktrees[\\\\/][^\\\\/\\s'\"]+[\\\\/])?config(?:\\.worktree)?(?![\\w.-])|(?=[^\\n]*\\.git[\\\\/](?:worktrees[\\\\/][^\\\\/\\s'\"]+[\\\\/])?config(?:\\.worktree)?(?![\\w.-]))[^\\n]*(?:write\\w*file\\w*|append\\w*file\\w*|bun\\.write|write_text|write_bytes|create_?write_?stream|file\\.write|file_put_contents|set-content|add-content|out-file|\\[io\\.file\\]::write|\\bopen(?:sync)?\\s*\\([^)]*['\"](?:[wax]b?\\+?|\\+?>{1,2}|\\+<)['\"]|\\bopen\\s*\\(?\\s*[\\w$]+\\s*,\\s*['\"](?:>|>>|\\+<|\\+>))|(?:^|[\\s;&|(:])GIT_CONFIG\\w*\\s*\\+?=",
+      "flags": "i",
+      "message": "This changes who Git says you are: user.name or user.email (git config, git config set), an include.path, a hand edit of .git/config, or a GIT_CONFIG_* variable. Every QualiZeal confirmation is recorded with that name (merging in the team's test project is decided by your GitLab token's user, not by Git). Confirm that it is your own name and e-mail address."
+    },
+    {
+      "id": "QZ-ASK-GIT-CONFIG",
+      "tool": "shell",
+      "match": "\\bgit(?:\\.exe)?['\"]?(?:\\s+(?:-[cC]\\s*(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s;&|]+)|--(?:git-dir|work-tree|namespace|exec-path|config-env|super-prefix)(?:=\\S*|\\s+\\S+)|--?[\\w-]+(?:=\\S*)?))*\\s+config\\b(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?(?:url\\.\\S*\\.(?:insteadof|pushinsteadof)|core\\.(?:hookspath|sshcommand|askpass|fsmonitor|gitproxy|editor|pager)|credential\\.\\S*|http\\.\\S*(?:proxy|sslverify|sslcainfo|sslcapath|extraheader)|gpg\\.\\S*program|push\\.gpgsign|alias\\.\\S+|extensions\\.\\S+)['\"]?\\s+(?![-;&|])\\S|\\bgit(?:\\.exe)?['\"]?(?:\\s+(?:-[cC]\\s*(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s;&|]+)|--(?:git-dir|work-tree|namespace|exec-path|config-env|super-prefix)(?:=\\S*|\\s+\\S+)|--?[\\w-]+(?:=\\S*)?))*\\s+config\\b(?=(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?--worktree(?![\\w-]))(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?[a-z][\\w-]*\\.[^\\s'\"=]+['\"]?\\s+(?![-;&|])\\S",
+      "flags": "i",
+      "message": "This git setting reroutes pushes or runs a program inside git (url.*.insteadOf, core.hooksPath, core.sshCommand, credential.*, an http proxy or certificate, gpg.program, an alias). The QualiZeal delivery tools refuse a repository that rewrites URLs and never run its hooks, but your own git commands would use it. Confirm it is yours. So does a setting in a worktree's own config file (git config --worktree, extensions.worktreeConfig): git reads it for every push from that worktree."
+    },
+    {
+      "id": "QZ-ASK-ENV-OVERRIDE",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "(?:^|[\\s;&|(:])(?:PATH|Path|path|HOME|XDG_CONFIG_HOME|USERPROFILE|BUN_OPTIONS|NODE_OPTIONS|NODE_TLS_REJECT_UNAUTHORIZED|NODE_EXTRA_CA_CERTS|SSL_CERT_FILE|SSL_CERT_DIR|CURL_CA_BUNDLE|(?:HTTPS?|ALL|https?|all)_(?:PROXY|proxy)|AIDLC_PROJECT_DIR|AIDLC_HARNESS_DIR|GIT_(?!CONFIG)\\w+)\\s*\\+?=",
+      "message": "This sets part of the environment the framework's tools and git trust: PATH, HOME, a proxy or certificate setting, BUN_OPTIONS or NODE_OPTIONS, a GIT_* variable, or the workspace folders (AIDLC_PROJECT_DIR, AIDLC_HARNESS_DIR). The guard cannot see what it changes. Confirm it is yours."
+    },
+    {
+      "id": "QZ-ASK-BUN-PRELOAD",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "\\bbunx?(?:\\.exe)?['\"]?(?:\\s+[^\\s;&|]+)*?\\s(?:--preload|--require|--import|-r)(?=[=\\s])|(?:>{1,2}\\|?|\\btee\\b(?:\\s+-a)?)\\s*['\"]?[^\\s'\"<>|;&]*\\.?bunfig\\.toml(?![\\w.-])|\\b(?:cp|mv|install|ln|rsync|dd|copy|move|Copy-Item|Move-Item|Set-Content|Add-Content|Out-File|New-Item)\\b[^\\n;&|]*\\.?bunfig\\.toml(?![\\w.-])",
+      "message": "Code loaded into a bun process before its own (bun --preload / --require / --import, or a bunfig.toml) runs inside the framework's tools and could change what they check. Confirm it is yours."
+    },
+    {
+      "id": "QZ-ASK-BUN-PRELOAD",
+      "tool": "write",
+      "match": "(^|/)\\.?bunfig\\.toml$",
+      "flags": "i",
+      "message": "A bunfig.toml can load code into every bun process started in its folder (preload), the framework's tools included. Confirm the change is yours."
+    },
+    {
+      "id": "QZ-ASK-GIT-CONFIG",
+      "tool": "write",
+      "match": "(^|/)\\.git/hooks/",
+      "flags": "i",
+      "message": "A git hook runs on the next commit or push, with everything in that process's environment. Confirm the hook is yours."
+    },
+    {
+      "id": "QZ-ASK-GIT-IDENTITY",
+      "tool": "write",
+      "match": "(^|/)\\.git/(worktrees/[^/]+/)?config(\\.worktree)?$",
+      "flags": "i",
+      "message": "A hand edit of a repository's .git/config can change who Git says you are (user.name, user.email, include.path) and where its pushes go. Confirm the change is yours."
+    },
+    {
+      "id": "QZ-ASK-NPM-INSTALL",
+      "tool": "shell",
+      "match": "\\b(npm|pnpm|yarn|bun)\\s+(install|add|i)\\b(?![^\\n]*--save-dev)",
+      "message": "Adding a runtime dependency needs a person to confirm the licence and source."
+    },
+    {
+      "id": "QZ-ASK-UNRESOLVED-WRITE",
+      "tool": "shell",
+      "match": "(?!)",
+      "note": "Detection is in code (lib/qz/shellscan.py, unresolved_write): a write (redirection, write verb, sed -i, perl -i, an interpreter write) whose target is not written out, a write verb run by xargs or find -exec, find -delete, or any write on a line that also changes to a folder that is not written out (cd \"$d\", cd -, env -C \"$d\"). Writes to /dev/null and descriptor copies (2>&1) are not writes. The never-matching regex keeps the generic ask loop from firing it; the guard emits it from code and uses this message.",
+      "message": "This writes a file (a write verb, a redirection, an in-place sed/perl, or an interpreter write) while the command also contains something the guard cannot resolve before it runs — a shell variable or substitution ($VAR, $(…) or a backtick), a subshell, env -C, find -exec, xargs, a for/while loop, eval, or a cd to a non-literal path. The guard cannot tell what path the write lands on, so a person confirms. Write the target out as a plain literal path (no variables or substitution), or confirm."
+    },
+    {
+      "id": "QZ-ASK-VAR-COMMAND",
+      "tool": "shell",
+      "match": "(?!)",
+      "note": "Detection is in code (lib/qz/shellscan.py, dynamic): the program word of each command, after NAME=value, reserved words and wrappers (sudo, env, exec, command, time, nohup, nice, timeout, stdbuf, xargs, busybox, watch, find -exec), is a $-expansion, ${...}, $(...), a backtick or $'...' with an escape; eval, sh -c, python -c, node -e and PowerShell -Command run text that is not written out; pwsh -EncodedCommand; xargs naming the script. $HOME, $USERPROFILE, $CLAUDE_PROJECT_DIR and $CLAUDE_PLUGIN_ROOT at the start of a path are known folders unless the line assigns them. The never-matching regex keeps the generic ask loop from firing it; the guard emits it from code and uses this message.",
+      "message": "The program this runs is named by a variable or a substitution ($x, \"$CMD\", ${X}, $(…), a backtick, $'\\x..', or PowerShell's & $x): the guard cannot tell which program it is, so none of its rules can apply to it (x=$(…); $x runs whatever x holds). Write the program's name out plainly, or confirm. A variable used as an argument (cd \"$d\", node -e … \"$HOME\") and a $HOME/… or $env:USERPROFILE\\… path are not affected."
+    },
+    {
+      "id": "QZ-ASK-UNREADABLE",
+      "tool": "shell",
+      "match": "(?!)",
+      "note": "Emitted from code when lib/qz/shellscan.py cannot read the line (an unclosed quote, bracket or substitution, or nesting deeper than it follows). The whole-line rules still run first and any deny stands.",
+      "message": "The guard could not read this command line the way the shell will, so it cannot check each command on it. Close the open quote or bracket, or split it into simpler steps, or confirm."
+    },
+    {
+      "id": "QZ-ASK-HARNESS-DRIFT-ACCEPT",
+      "tool": "shell",
+      "match": "\\bqz-drift(?:\\.ts)?['\"]?(?=\\s)(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?(?:accept)['\"]?(?![\\w-])",
+      "beforeAllow": true,
+      "message": "Accepting spec drift re-anchors the spec: a person confirms what the spec now says, and it is recorded as you (your Git identity)."
+    },
+    {
+      "id": "QZ-ASK-HARNESS-GIT-HOOK",
+      "tool": "shell",
+      "match": "\\bqz-drift(?:\\.ts)?['\"]?(?=\\s)(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?hook['\"]?(?=\\s)(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?(?:install|remove)['\"]?(?![\\w-])",
+      "beforeAllow": true,
+      "message": "Installing or removing a git hook in a team repository is a person's choice."
+    },
+    {
+      "id": "QZ-ASK-HARNESS-PROMOTE",
+      "tool": "shell",
+      "match": "\\bqz-harness(?:\\.ts)?['\"]?(?=\\s)(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?(?:promote)['\"]?(?![\\w-])",
+      "beforeAllow": true,
+      "message": "Promoting a takeover into a check says the gap is closed: a person confirms the rule or test that now catches it, and it is recorded as you (your Git identity)."
+    },
+    {
+      "id": "QZ-ASK-HARNESS-TAKEOVER",
+      "tool": "shell",
+      "match": "\\bqz-harness(?:\\.ts)?['\"]?(?=\\s)(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?(?:takeover)['\"]?(?![\\w-])",
+      "beforeAllow": true,
+      "message": "Recording a takeover says a person stepped in at a stage, and why; it counts in the metrics and is recorded as you (your Git identity). Confirm you are that person."
+    },
+    {
+      "id": "QZ-ASK-HARNESS-RECORD-REDIRECT",
+      "tool": "shell",
+      "match": "(>{1,2}|\\btee\\b(\\s+-a)?)\\s*['\"]?[^\\s'\"|;&]*aidlc[\\\\/]spaces[\\\\/][^\\\\/\\s]+[\\\\/]harness[\\\\/]((runs|anchors|verify|handoff)[\\\\/]|(cost-ledger\\.json|drift-log\\.jsonl|takeovers\\.jsonl|promotions\\.jsonl|recovery\\.jsonl)\\b)",
+      "beforeAllow": true,
+      "message": "A tool's output redirected into a harness record would replace what the harness wrote: a person confirms (the tools write their own records)."
+    },
+    {
+      "id": "QZ-ASK-HARNESS-RUN-DECIDE",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "\\bqz-harness(?:-run)?(?:\\.ts)?['\"]?(?=\\s)(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?(?:approve|reject)['\"]?(?![\\w-])",
+      "message": "Approving or rejecting a human node of a run plan is the person's own decision, recorded as you (your Git identity: nobody types a name): read harness/approvals/<plan>-<step>.json first. It is recorded on the audit chain and the run continues on it. Confirm you are that person."
+    },
+    {
+      "id": "QZ-ASK-HARNESS-AUDIT-APPEND",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "\\bqz-platform-audit(?:\\.ts)?['\"]?(?=\\s)(?:[^\\n;&|'\"]|'[^'\\n]*'|\"[^\"\\n]*\")*?\\s['\"]?(?:append)['\"]?(?![\\w-])",
+      "message": "A hand-written audit record could stand in for a person's decision (an approval, an acknowledgement); the tools write their own records. Confirm a person wants this one."
+    },
+    {
+      "id": "QZ-ASK-LIGHTPANDA-PATH",
+      "tool": "shell",
+      "match": "(^|[\\s;&|(\"'])(\\.{1,2}[\\\\/]|[\\\\/]|~[\\\\/]|\\$\\{?\\w+\\}?[\\\\/]|\\$env:\\w+[\\\\/]|[A-Za-z]:[\\\\/])(?:[^\\s;&|(\"']*[\\\\/])?lightpanda(\\.exe)?(?=$|[\\s;&|)\"'])",
+      "flags": "i",
+      "message": "A lightpanda binary that is not the one on the PATH (a download, a copy, another build): confirm where it came from before it runs."
+    },
+    {
+      "id": "QZ-ASK-CONFIG",
+      "tool": "write",
+      "match": "(^|/)\\.qz/config\\.json$",
+      "flags": "i",
+      "message": ".qz/config.json decides what the tools may reach: the hosts a browser may click through (ui_hosts) and the variables a scenario may read (ui_env). A person confirms each change."
+    },
+    {
+      "id": "QZ-ASK-CONFIG",
+      "tool": "shell",
+      "flags": "i",
+      "match": "(?:>{1,2}\\|?\\s*['\"]?[^\\s'\"|;&]*\\.qz[\\\\/]config\\.json)|\\b(?:tee|mv|cp|rm|truncate|install|ln|sed|perl|python3?|node|jq|dd)\\b[^\\n;&|]*\\.qz[\\\\/]config\\.json|\\.qz[\\\\/]config\\.json[^\\n]*(?:write_text|writefile|json\\.dump|\\bopen\\s*\\()|(?:write_text|writefile|json\\.dump|\\bopen\\s*\\()[^\\n]*\\.qz[\\\\/]config\\.json",
+      "message": ".qz/config.json decides what the tools may reach: the hosts a browser may click through (ui_hosts) and the variables a scenario may read (ui_env). A person confirms each change."
+    },
+    {
+      "id": "QZ-ASK-SETTINGS",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "\\bsetup\\s+statusline\\b[^\\n]*--yes",
+      "message": "This sets Claude Code's status line in your own settings file (a backup is kept). Confirm, then re-run."
+    },
+    {
+      "id": "QZ-ASK-OUTSIDE",
+      "tool": "any",
+      "match": "(?!)",
+      "note": "Emitted from code (guard.boundary): a write by a file tool, or by a redirection or write verb on a Bash line, that lands outside the project folder, the system temp folders, Claude Code's plans and memory folders and boundary.extra_dirs in .qz/config.json. Relative targets are read against the working folder and every folder a cd on the line names.",
+      "message": "This writes outside the project folder. The run's records, snapshots and undo cover the project folder only, so a person confirms writes anywhere else. Write inside the project, or confirm."
+    },
+    {
+      "id": "QZ-ASK-LOOP",
+      "tool": "any",
+      "match": "(?!)",
+      "note": "Emitted from code (hooks.pre_tool): the same tool with the same input three times in a row, counted per agent so parallel reviewers reading one file do not count. Approving it clears the count for that call.",
+      "message": "This is the same call (same tool, same input) for the third time in a row. Repeating it rarely gives a new result: change the approach, or confirm to run it again."
+    },
+    {
+      "id": "QZ-ASK-STEPS",
+      "tool": "any",
+      "match": "(?!)",
+      "note": "Emitted from code (hooks.pre_tool): the stage has made more tool calls than its step cap (steps.per_stage in .qz/config.json, default 150). Approving raises the cap for the stage by half.",
+      "message": "This stage has made more tool calls than its step cap. Long stages drift from the goal: confirm to carry on, or stop and review what is done."
+    },
+    {
+      "id": "QZ-ASK-SCOPE",
+      "tool": "any",
+      "match": "(?!)",
+      "note": "Emitted from code (spec.boundary): a spec is in its design stages and the write is not a spec or review file, or an approved spec's file boundary is active and the write is outside it.",
+      "message": "This write is outside the file boundary of the spec in progress. While a spec is being written and reviewed, only the spec and its review files change; after it is approved, only the files in its 'Target Scope & File Boundary' list do. Confirm, or update the spec first."
+    },
+    {
+      "id": "QZ-ASK-UNDO",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "\\bqz(?:\\.py)?['\\\"]?\\s+(?:undo|redo|hillclimb\\s+revert|build\\s+stage)\\b[^\\n;&|]*\\s--yes\\b",
+      "message": "Undo, redo, a hillclimb revert and a build checkpoint put files back as a snapshot or the tested reference recorded them, and can overwrite later work. Read the plan the same command prints without --yes, then confirm."
+    },
+    {
+      "id": "QZ-ASK-GOAL",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "\\bqz(?:\\.py)?['\\\"]?\\s+goal\\s+set\\b",
+      "message": "A goal's check runs by itself every time Claude stops, until it passes. Confirm the objective and the exact check command."
+    },
+    {
+      "id": "QZ-ASK-HILLCLIMB",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "\\bqz(?:\\.py)?['\\\"]?\\s+hillclimb\\s+start\\b",
+      "message": "A hillclimb runs its metric and gate commands again after every change and keeps a change only when the number improves. Confirm the metric command, the direction, the target and the gate."
+    },
+    {
+      "id": "QZ-ASK-SPEC",
+      "tool": "shell",
+      "beforeAllow": true,
+      "match": "\\bqz(?:\\.py)?['\\\"]?\\s+spec\\s+(?:approve|done)\\b",
+      "message": "Approving a spec is the person's decision, and ending one lifts its file boundary. Confirm the spec, its resolution and its boundary list."
+    },
+    {
+      "id": "QZ-ASK-PS-RUN-TEXT",
+      "tool": "powershell",
+      "match": "\\b(?:iex|Invoke-Expression|Invoke-Command|icm|Start-Job|Start-ThreadJob|Add-Type|New-PSSession|Enter-PSSession)\\b|\\[scriptblock\\]::Create",
+      "flags": "i",
+      "message": "This runs text as a command (Invoke-Expression, a script block, a remote session or compiled code), so the guard cannot read it first. Run the command itself, or confirm."
+    },
+    {
+      "id": "QZ-ASK-PS-REGISTRY",
+      "tool": "powershell",
+      "match": "\\b(?:New|Set|Remove|Rename|Clear)-Item(?:Property)?\\b[^\\n]*\\b(?:HKLM|HKCU|HKCR|HKU|HKCC)(?::|\\\\)|Registry::|\\breg(?:\\.exe)?\\s+(?:add|delete|import|copy|restore|load|unload)\\b",
+      "flags": "i",
+      "message": "This changes the Windows registry. Confirm the key and the value, then re-run."
+    },
+    {
+      "id": "QZ-ASK-PS-POLICY",
+      "tool": "powershell",
+      "match": "\\bSet-ExecutionPolicy\\b",
+      "flags": "i",
+      "message": "This changes PowerShell's script policy for this user. Confirm, or leave it as it is: the Studio does not need it."
+    },
+    {
+      "id": "QZ-ASK-PS-SERVICE",
+      "tool": "powershell",
+      "match": "\\b(?:New-Service|Set-Service|Stop-Service|Remove-Service|Restart-Service|Register-ScheduledTask|Unregister-ScheduledTask|Set-ScheduledTask)\\b|\\bschtasks(?:\\.exe)?\\s+/(?:create|delete|change)\\b|\\bsc(?:\\.exe)?\\s+(?:create|delete|config|stop)\\b",
+      "flags": "i",
+      "message": "This changes a Windows service or a scheduled task. Confirm what it changes, then re-run."
+    },
+    {
+      "id": "QZ-ASK-PS-INSTALL",
+      "tool": "powershell",
+      "match": "\\b(?:Install-Module|Install-Package|Install-Script|Register-PSRepository|Install-PSResource)\\b|\\bwinget(?:\\.exe)?\\s+(?:install|upgrade|uninstall)\\b|\\bchoco(?:latey)?(?:\\.exe)?\\s+(?:install|upgrade|uninstall)\\b|\\bscoop\\s+(?:install|uninstall)\\b|\\bmsiexec(?:\\.exe)?\\b",
+      "flags": "i",
+      "message": "Installing or removing software asks first. Confirm the package and where it comes from, then re-run."
+    },
+    {
+      "id": "QZ-ASK-PS-PROFILE",
+      "tool": "powershell",
+      "match": "\\$PROFILE\\b",
+      "flags": "i",
+      "message": "This touches the PowerShell profile, which runs in every new window. Confirm, then re-run."
+    }
+  ],
+  "write": {
+    "denyPaths": [
+      "(^|/)\\.env(\\.[\\w.-]+)?$",
+      "(^|/)\\.qz-env$",
+      "(^|/)\\.npmrc$",
+      "(^|/)\\.netrc$",
+      "(^|/)\\.(aws|ssh)/",
+      "(^|/)\\.claude/settings/mcp\\.json$",
+      "(^|/)\\.qz/(secrets/|secrets\\.json$|repos\\.json$)",
+      "(^|/)\\.qz/(audit|runs|outputs)/",
+      "(?i)Pricing[_ ]?Work[_ ]?Sheet.*\\.xls[xm]?$"
+    ],
+    "secretPatterns": [
+      {
+        "id": "QZ-SEC-AWS-KEY",
+        "match": "\\b(AKIA|ASIA)[0-9A-Z]{16}\\b"
+      },
+      {
+        "id": "QZ-SEC-ANTHROPIC-KEY",
+        "match": "\\bsk-ant-[A-Za-z0-9_\\-]{20,}"
+      },
+      {
+        "id": "QZ-SEC-OPENAI-KEY",
+        "match": "\\bsk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_\\-]{32,}"
+      },
+      {
+        "id": "QZ-SEC-GOOGLE-KEY",
+        "match": "\\bAIza[0-9A-Za-z_\\-]{35}\\b"
+      },
+      {
+        "id": "QZ-SEC-HF-TOKEN",
+        "match": "\\bhf_[A-Za-z0-9]{30,}\\b"
+      },
+      {
+        "id": "QZ-SEC-BEDROCK-KEY",
+        "match": "\\bABSK[A-Za-z0-9+/=]{40,}"
+      },
+      {
+        "id": "QZ-SEC-STRIPE-KEY",
+        "match": "\\b[sr]k_live_[0-9A-Za-z]{20,}\\b"
+      },
+      {
+        "id": "QZ-SEC-PRIVATE-KEY",
+        "match": "-----BEGIN (RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY-----"
+      },
+      {
+        "id": "QZ-SEC-GITLAB-PAT",
+        "match": "\\bglpat-[0-9A-Za-z_\\-]{20,}\\b"
+      },
+      {
+        "id": "QZ-SEC-GITHUB-PAT",
+        "match": "\\bgh[pousr]_[0-9A-Za-z]{30,}\\b"
+      },
+      {
+        "id": "QZ-SEC-GITHUB-FINE",
+        "match": "\\bgithub_pat_[0-9A-Za-z_]{40,}\\b"
+      },
+      {
+        "id": "QZ-SEC-ATLASSIAN-TOKEN",
+        "match": "\\b(?:ATATT|ATBB)[0-9A-Za-z_\\-=]{16,}"
+      },
+      {
+        "id": "QZ-SEC-SLACK",
+        "match": "\\bxox[abprs]-[0-9A-Za-z\\-]{10,}\\b"
+      },
+      {
+        "id": "QZ-SEC-JWT",
+        "match": "\\beyJ[0-9A-Za-z_\\-]{10,}\\.eyJ[0-9A-Za-z_\\-]{10,}\\.[0-9A-Za-z_\\-]{10,}\\b"
+      },
+      {
+        "id": "QZ-SEC-URL-CREDS",
+        "match": "[a-z][a-z0-9+\\-.]*://[^/\\s:@]{2,}:[^/\\s@]{3,}@[^\\s]+",
+        "flags": "i",
+        "placeholderSafe": true
+      },
+      {
+        "id": "QZ-SEC-ASSIGNMENT",
+        "match": "\\b(password|passwd|pwd|secret|api[_-]?key|client[_-]?secret|access[_-]?token|auth[_-]?token)\\b\\s*[:=]\\s*['\"]([^'\"\\s]{8,})['\"]",
+        "flags": "i",
+        "placeholderSafe": true
+      }
+    ],
+    "placeholder": "(\\$\\{|\\{\\{|<[a-z_\\-]+>|changeme|example|dummy|placeholder|test|fake|mock|sample|redacted|xxxx|\\*\\*\\*|process\\.env|os\\.environ|getenv|secretsmanager|vault)",
+    "piiPatterns": [
+      {
+        "id": "QZ-PII-SSN",
+        "match": "\\b(?!000|666|9\\d\\d)\\d{3}-(?!00)\\d{2}-(?!0000)\\d{4}\\b"
+      },
+      {
+        "id": "QZ-PII-CARD",
+        "match": "\\b[3456]\\d{3}(?:[ \\-]?\\d{4}){2}[ \\-]?\\d{3,4}\\b",
+        "luhn": true
+      }
+    ]
+  },
+  "read": {
+    "denyPaths": [
+      "(^|[\\\\/])(\\.aws[\\\\/]|\\.ssh[\\\\/]|\\.netrc$|\\.git-credentials$|\\.npmrc$|\\.env(?!\\.example$)(\\.[\\w.-]+)?$|\\.qz-env$|\\.qz[\\\\/]secrets([\\\\/]|\\.json$))",
+      "(?i)(^|[\\\\/])Pricing[_ ]?Work[_ ]?Sheet[^\\\\/]*\\.xls[xm]?$",
+      "(^|[\\\\/])\\.qz[\\\\/]internal[\\\\/]"
+    ]
+  },
+  "mcp": {
+    "writeVerbs": "(create|edit|update|add|delete|remove|transition|assign|move|publish|upload|post|put|merge|comment|approve|manage|watch|convert|replace|generate|use|send|write|destructive|push|fork)",
+    "denyTools": [
+      {
+        "id": "QZ-MCP-SCM-MERGE",
+        "match": "(github|gitlab|bitbucket|gitkraken).*(merge_pull_request|merge_merge_request|merge$)",
+        "message": "Agents do not merge. A person merges the pull request after reviewing it."
+      },
+      {
+        "id": "QZ-MCP-SCM-DELETE-REPO",
+        "match": "(github|gitlab|bitbucket).*(delete_repository|delete_project)",
+        "message": "Deleting a repository is never an agent's step."
+      },
+      {
+        "id": "QZ-MCP-ATLASSIAN-DESTRUCTIVE",
+        "match": "(jira|confluence|atlassian|rovo).*executeDestructive",
+        "message": "Deleting or irreversibly changing Jira or Confluence content is a person's step, done in Atlassian."
+      }
+    ],
+    "askTools": [
+      {
+        "id": "QZ-MCP-EXEC",
+        "match": "qz__eval_run$",
+        "message": "Running the gold set executes this project's adapter command. Confirm the project is yours to run."
+      },
+      {
+        "id": "QZ-MCP-ATLASSIAN-WRITE",
+        "match": "(jira|confluence|atlassian|rovo)",
+        "writeVerbs": true,
+        "message": "Writing to Jira or Confluence is a person's step: confirm the target, the text and that it goes out under your name."
+      },
+      {
+        "id": "QZ-MCP-SCM-WRITE",
+        "match": "(github|gitlab|bitbucket)",
+        "writeVerbs": true,
+        "message": "A write to source control (branch, pull request, comment) is a person's step: confirm the repository, the branch and the description."
+      },
+      {
+        "id": "QZ-MCP-FIGMA-WRITE",
+        "match": "figma",
+        "writeVerbs": true,
+        "message": "Writing to Figma is a person's step."
+      }
+    ],
+    "readOnlyServers": [
+      {
+        "id": "QZ-MCP-ATLASSIAN-READ",
+        "server": "(atlassian|rovo)",
+        "allow": [
+          "getConfluencePage",
+          "getConfluenceContent",
+          "searchConfluenceUsingCql",
+          "searchConfluence",
+          "getConfluenceSpaces",
+          "listConfluenceSpaces",
+          "getConfluenceSpace",
+          "getPagesInConfluenceSpace",
+          "listConfluenceContent",
+          "getConfluencePageDescendants",
+          "listConfluenceContentVersions",
+          "getConfluenceContentVersion",
+          "diffConfluenceContentVersions",
+          "getAccessibleAtlassianResources",
+          "atlassianUserInfo",
+          "getContentFormatGuide",
+          "getJiraIssue",
+          "searchJiraIssuesUsingJql",
+          "getVisibleJiraProjects",
+          "getJiraProjectIssueTypesMetadata",
+          "getJiraIssueTypeMetaWithFields",
+          "getTransitionsForJiraIssue",
+          "lookupJiraAccountId",
+          "search",
+          "fetch",
+          "getConfluencePageFooterComments",
+          "getConfluencePageInlineComments",
+          "getConfluenceCommentChildren",
+          "getIssueLinkTypes",
+          "getJiraIssueRemoteIssueLinks",
+          "getCompassComponent",
+          "getCompassComponents",
+          "getCompassCustomFieldDefinitions",
+          "getTeamworkGraphContext",
+          "getTeamworkGraphObject",
+          "executeRead",
+          "discover",
+          "atlassianHome",
+          "getCollaborators",
+          "getGraphContext",
+          "getGraphObject",
+          "getLoomObjectsContent",
+          "getPeopleInfo",
+          "getWorkActivity",
+          "getWorkPortfolio",
+          "listJiraIssueComments"
+        ]
+      }
+    ]
+  },
+  "network": {
+    "allowedHosts": [
+      "github.com",
+      "api.github.com",
+      "*.githubusercontent.com",
+      "aicoe-genq.atlassian.net",
+      "api.atlassian.com",
+      "mcp.atlassian.com",
+      "registry.npmjs.org",
+      "pypi.org",
+      "files.pythonhosted.org",
+      "repo.maven.apache.org",
+      "localhost",
+      "127.0.0.1"
+    ],
+    "deniedHostPatterns": [
+      "*.prod.*",
+      "*-prod.*",
+      "*prd*"
+    ],
+    "envVarNames": [
+      "NODE_ENV",
+      "TEST_ENV",
+      "ENV",
+      "ENVIRONMENT",
+      "SPRING_PROFILES_ACTIVE"
+    ],
+    "allowedEnvironments": [
+      "local",
+      "dev",
+      "qa",
+      "qa1",
+      "qa2",
+      "itest",
+      "itest1",
+      "itest2"
+    ],
+    "deniedEnvTokens": [
+      "prod",
+      "prd",
+      "production",
+      "dr",
+      "live"
+    ]
+  },
+  "injection": [
+    "ignore (all |any )?(previous|prior|above) (instructions|rules)",
+    "disregard (your|the) (rules|guardrails|instructions|system prompt)",
+    "(disable|bypass|turn off|skip) (the )?(guard|guardrail|hook|approval|gate)s?",
+    "you are now (in )?(developer|dan|unrestricted|jailbreak)",
+    "reveal (your|the) (system prompt|hidden instructions)",
+    "(send|post|upload|email) (the |this |your )?(api key|token|password|secret|credentials)",
+    "<\\s*/?\\s*(system|assistant)\\s*>",
+    "(new|updated) (system )?instructions?:"
+  ]
+}

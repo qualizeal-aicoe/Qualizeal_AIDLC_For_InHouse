@@ -1,0 +1,45 @@
+# Settings for the vectorless RAG assistant. Every value has a default in vrag/config.py.
+
+[corpus]
+path = "corpus"
+manifest = "corpus/manifest.json"   # every document: owner, version, status and who may read it
+
+[index]
+path = ".vrag/index.db"             # rebuilt in full by `uv run -m vrag ingest`
+
+[search]
+k = 5
+weights = [4.0, 2.0, 1.0]           # BM25 weight for section title, heading path, body text
+synonyms = "corpus/synonyms.json"   # stage 6: expands question words (kept after the hillclimb)
+include_superseded = false          # answer only from current versions
+
+[answer]
+strategy = "tree"                   # stage 6: a model navigates the outline; BM25 shortlists
+min_coverage = 0.6                  # share of the question's words the best sections must contain, or refuse
+max_sentences = 3
+
+[guard]
+redact = ["phone", "card"]          # personal data removed from answers (stage 4)
+
+[llm]
+provider = "stub"                   # stub (offline, scripted) or anthropic (needs ANTHROPIC_API_KEY)
+navigate_model = "claude-haiku-5-5"
+answer_model = "claude-sonnet-5-5"
+max_tokens = 700
+timeout_s = 30
+
+# Demo identities. In production the groups come from single sign-on, never from the request.
+[users]
+employee = ["all"]
+manager = ["all", "managers"]
+hr = ["all", "hr", "managers"]
+finance = ["all", "finance"]
+
+[audit]
+path = ".vrag/audit.jsonl"
+store_question = true
+
+[eval]
+golden = "evals/golden.jsonl"
+thresholds = "evals/thresholds.json"
+results = "evals/results"

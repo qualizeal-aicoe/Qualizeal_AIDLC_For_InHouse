@@ -1,0 +1,101 @@
+# QualiZeal AI-DLC Studio - the GitHub agent.
+# Write "/qz <what you need>" in a comment on an issue or pull request (you need write access to the repository).
+# Claude works on it with the Studio's lanes and guard, commits to a branch of its own and opens a pull request.
+# It never merges: a person reviews and merges. Setup from the GitHub website only: docs/GITHUB-AGENT.md in the
+# Studio repository. Concept from opencode's GitHub agent (MIT); built on anthropics/claude-code-action.
+name: qz-agent
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "What the agent should do, for example: /qz-aidlc:qz spec drift"
+        required: true
+
+concurrency:
+  group: qz-agent-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+env:
+  QZ_CI: github-action        # the guard allows the action's own comment and commit tools; everything else it asks stays refused
+  QZ_SNAPSHOTS: "off"
+  QZ_STUDIO_REPO: qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse
+
+jobs:
+  agent:
+    if: >-
+      github.event_name != 'workflow_dispatch' && (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/qz')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '/qz')) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '/qz') || contains(github.event.issue.title, '/qz'))))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get the Studio (read-only token)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.QZ_STUDIO_REPO }}
+          token: ${{ secrets.QZ_STUDIO_TOKEN }}
+          path: .qz-studio
+      - name: Keep the Studio out of commits
+        run: echo ".qz-studio/" >> .git/info/exclude
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          trigger_phrase: "/qz"
+          claude_args: >-
+            --plugin-dir .qz-studio/plugins/qz-aidlc
+            --max-turns 40
+            --model sonnet
+            --disallowedTools "Bash(gh pr merge:*)" "Bash(git merge:*)"
+
+  manual:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get the Studio (read-only token)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.QZ_STUDIO_REPO }}
+          token: ${{ secrets.QZ_STUDIO_TOKEN }}
+          path: .qz-studio
+      - name: Keep the Studio out of commits
+        run: echo ".qz-studio/" >> .git/info/exclude
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: ${{ inputs.task }}
+          claude_args: >-
+            --plugin-dir .qz-studio/plugins/qz-aidlc
+            --max-turns 40
+            --model sonnet
+            --allowedTools "Read,Glob,Grep,Edit,Write,Bash"
+            --disallowedTools "Bash(gh pr merge:*)" "Bash(git merge:*)"

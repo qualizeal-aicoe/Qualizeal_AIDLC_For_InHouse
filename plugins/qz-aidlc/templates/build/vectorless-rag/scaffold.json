@@ -1,0 +1,19 @@
+{
+  "title": "Vectorless RAG knowledge assistant (Python)",
+  "summary": "Cited answers over a document set with no vector database: a heading tree and SQLite FTS5 BM25, refusals, access control in SQL, guardrails against planted instructions, and a gate on 40 golden questions. A model is an optional switch.",
+  "verified": "RUN: the 50 tests and the 40 golden questions ran here on Python 3.13 and 3.11 with the offline stub model: BM25 alone 35 of 40, with synonyms 39 of 40, tree navigation with synonyms 40 of 40, 0 safety violations. NOT RUN: the anthropic provider against the live API (no route to it from here); its request is tested with a fake transport.",
+  "stack_line": "A vectorless retrieval-augmented assistant in Python 3.11+ (standard library; pypdf for PDF).",
+  "policy": "vrag.toml",
+  "agent_dir": "vrag/",
+  "test_cmd": "uv run -m pytest -q tests",
+  "run_cmd": "uv run -m vrag ask \"How many days of annual leave do I get?\"",
+  "common": false,
+  "own_readme": true,
+  "kit": false,
+  "stages": 7,
+  "next": [
+    "Build stage by stage from stories/stories.json, to docs/contracts.md; each stage's tests already exist.",
+    "Run /verify-rag before calling a story done.",
+    "Replace corpus/ and evals/golden.jsonl with your own documents and questions."
+  ]
+}

@@ -1,0 +1,26 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+__SETUP_STEPS__
+      - name: Unit tests
+        run: __TEST_CMD__
+      - name: Gold set against the offline stub (no key, no spend)
+        run: python3 .claude/qz/scripts/qz.py eval run --label ci
+      - name: Agentic project audit
+        run: python3 .claude/qz/scripts/qz.py audit-project scan
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qz-reports
+          path: |
+            evals/results/report.html
+            .qz/outputs/project-audit/audit.html

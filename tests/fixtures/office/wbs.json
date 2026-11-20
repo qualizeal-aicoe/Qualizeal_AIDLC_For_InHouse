@@ -1,0 +1,9 @@
+{"project": "Refund automation", "start": "2026-12-07",
+ "items": [
+  {"id": "W1", "name": "Discovery and design", "role": "architect", "o": 4, "m": 6, "p": 10},
+  {"id": "W2", "name": "Refund API", "role": "fullstack", "o": 10, "m": 15, "p": 25, "after": ["W1"]},
+  {"id": "W3", "name": "Refund screens", "role": "fullstack", "o": 8, "m": 12, "p": 20, "after": ["W1"]},
+  {"id": "W4", "name": "Payment gateway integration", "role": "fullstack", "o": 8, "m": 14, "p": 30, "after": ["W2"]},
+  {"id": "W5", "name": "Test design and automation", "role": "qa", "o": 10, "m": 15, "p": 22, "after": ["W1"]},
+  {"id": "W6", "name": "UAT support and release", "role": "fullstack", "o": 4, "m": 6, "p": 10, "after": ["W3", "W4"]}
+ ]}

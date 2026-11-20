@@ -1,0 +1,215 @@
+{
+  "description": "QualiZeal AI-DLC harness: guard, audit chain, run ledger, gates, budgets, handoff. Runs through uv with no shell, so it works the same on Windows, macOS and Linux; the guard blocks when it cannot run.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--no-project",
+              "--python",
+              ">=3.11,<3.14",
+              "python",
+              "-I",
+              "-B",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/qz_hook.py",
+              "SessionStart"
+            ],
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--no-project",
+              "--no-python-downloads",
+              "--python",
+              ">=3.11,<3.14",
+              "python",
+              "-I",
+              "-B",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/qz_hook.py",
+              "UserPromptSubmit"
+            ],
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--no-project",
+              "--no-python-downloads",
+              "--python",
+              ">=3.11,<3.14",
+              "python",
+              "-I",
+              "-B",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/qz_hook.py",
+              "PreToolUse"
+            ],
+            "timeout": 30,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--no-project",
+              "--no-python-downloads",
+              "--python",
+              ">=3.11,<3.14",
+              "python",
+              "-I",
+              "-B",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/qz_hook.py",
+              "PostToolUse"
+            ],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--no-project",
+              "--no-python-downloads",
+              "--python",
+              ">=3.11,<3.14",
+              "python",
+              "-I",
+              "-B",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/qz_hook.py",
+              "Stop"
+            ],
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--no-project",
+              "--no-python-downloads",
+              "--python",
+              ">=3.11,<3.14",
+              "python",
+              "-I",
+              "-B",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/qz_hook.py",
+              "SubagentStop"
+            ],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--no-project",
+              "--no-python-downloads",
+              "--python",
+              ">=3.11,<3.14",
+              "python",
+              "-I",
+              "-B",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/qz_hook.py",
+              "PreCompact"
+            ],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "--quiet",
+              "--no-project",
+              "--no-python-downloads",
+              "--python",
+              ">=3.11,<3.14",
+              "python",
+              "-I",
+              "-B",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/scripts/qz_hook.py",
+              "SessionEnd"
+            ],
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+flowchart TB
+  subgraph g_S1["Entry · trust boundary: untrusted input: ticket text"]
+    n_hook["Webhook receiver<br/>verifies the helpdesk signature"]
+    n_queue["Work queue<br/>one message per ticket, retried once"]
+  end
+  subgraph g_S2["Triage service"]
+    n_worker["Triage worker<br/>orchestrates lookup, classification and write-back"]
+    n_guard["Input and tool guard<br/>pins the customer id, screens injected instructions"]
+    n_lookup["Shipment lookup<br/>order API client with a timeout"]
+  end
+  subgraph g_S3["Model plane"]
+    n_classifier["Classifier call<br/>one structured call returning queue, reason, confidence"]
+    n_budget["Token budget<br/>caps tokens per ticket"]
+  end
+  subgraph g_S4["State and evidence"]
+    n_store[("Decision store<br/>queue, reason, confidence per ticket")]
+    n_traces[("Trace store<br/>every call, 90 days")]
+    n_ledger["Cost ledger<br/>tokens and cost per ticket"]
+  end
+  n_hook -->|"verified ticket id"| n_queue
+  n_queue -->|"ticket to triage"| n_worker
+  n_worker ==>|"ticket text and customer id"| n_guard
+  n_guard -->|"customer id from the record"| n_lookup
+  n_guard -->|"screened text"| n_classifier
+  n_budget -->|"token cap"| n_classifier
+  n_classifier -->|"queue, reason, confidence"| n_worker
+  n_worker -->|"decision"| n_store
+  n_worker -->|"spans"| n_traces
+  n_classifier -->|"token usage"| n_ledger
+  classDef qzguard fill:#E8F1FB,stroke:#0A2540,stroke-width:2px,color:#0A2540;
+  class n_guard,n_budget qzguard;

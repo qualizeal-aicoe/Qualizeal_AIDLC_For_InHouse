@@ -1,0 +1,25 @@
+{
+  "budgets": {
+    "default": 600000,
+    "requirements-analysis": 400000,
+    "code-generation": 900000,
+    "build-and-test": 700000
+  },
+  "baseline_hours": {
+    "deliver": 16,
+    "demo": 24,
+    "bid": 20,
+    "label": "ASSUMED: effort for the same output without AI-DLC; set per team"
+  },
+  "staffing": {
+    "default_location": "Offshore",
+    "onshore_max_fte": 1.0,
+    "onshore_role_types": [
+      "Managerial Roles"
+    ],
+    "onshore_name_words": [
+      "manager",
+      "pmo"
+    ]
+  }
+}

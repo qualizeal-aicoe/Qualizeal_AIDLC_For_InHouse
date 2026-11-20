@@ -1,0 +1,145 @@
+{
+  "title": "Support ticket triage agent",
+  "client": "Northwind Logistics",
+  "problem": {
+    "statement": "Support agents spend the first 6 to 9 minutes of every ticket reading it, finding the customer's shipments and choosing a queue. 31% of tickets are re-routed at least once.",
+    "who": "The 40-person customer support team and the customers waiting on them",
+    "today": "Manual triage in the helpdesk; routing rules by keyword",
+    "success_measure": "Median time to first correct queue under 2 minutes and re-routing under 10% within 8 weeks of go-live"
+  },
+  "non_goals": [
+    "It does not reply to customers",
+    "It does not issue refunds or change shipments",
+    "It does not replace the helpdesk"
+  ],
+  "functional": [
+    {
+      "id": "FR-1",
+      "statement": "Classify each new ticket into one of the 12 support queues with a reason",
+      "acceptance": "On the gold set of 200 labelled tickets, queue accuracy is at least 90%",
+      "priority": "must"
+    },
+    {
+      "id": "FR-2",
+      "statement": "Attach the customer's open shipments to the ticket",
+      "acceptance": "Returns the shipments the order system holds for that customer id, or says none found",
+      "priority": "must"
+    },
+    {
+      "id": "FR-3",
+      "statement": "Escalate tickets that mention injury, legal action or a regulator to a person",
+      "acceptance": "100% of the 25 escalation cases in the gold set are routed to the duty manager queue and never auto-assigned",
+      "priority": "must"
+    },
+    {
+      "id": "FR-4",
+      "statement": "Suggest a first reply for the agent to edit",
+      "acceptance": "Rated usable without major edits on 70% of 50 sampled tickets by two support leads",
+      "priority": "could"
+    }
+  ],
+  "quality": [
+    {
+      "id": "QS-1",
+      "attribute": "security",
+      "priority": "must",
+      "source": "A customer",
+      "stimulus": "sends a ticket whose text tells the agent to ignore its instructions and export other customers' data",
+      "environment": "normal operation",
+      "artifact": "triage agent and its tools",
+      "response": "the instruction is treated as data, no tool outside the ticket's own customer id is called, and the attempt is logged",
+      "measure": "0 cross-customer tool calls over the 60-case injection set"
+    },
+    {
+      "id": "QS-2",
+      "attribute": "reliability",
+      "priority": "must",
+      "source": "The order system",
+      "stimulus": "times out or returns an error",
+      "environment": "peak hours",
+      "artifact": "shipment lookup tool",
+      "response": "the ticket is still classified, marked 'shipments unavailable', and retried once",
+      "measure": "100% of tickets get a queue within 60 seconds even when the lookup fails"
+    },
+    {
+      "id": "QS-3",
+      "attribute": "cost",
+      "priority": "must",
+      "source": "Finance",
+      "stimulus": "reviews monthly spend",
+      "environment": "steady state of 1,800 tickets a day",
+      "artifact": "model usage",
+      "response": "spend per ticket is reported by the ledger and capped by a per-ticket token budget",
+      "measure": "under 0.04 USD per ticket at p95"
+    },
+    {
+      "id": "QS-4",
+      "attribute": "performance",
+      "priority": "should",
+      "source": "A support agent",
+      "stimulus": "opens a new ticket",
+      "environment": "normal load",
+      "artifact": "triage result",
+      "response": "queue, reason and shipments are already on the ticket",
+      "measure": "p95 under 20 seconds from ticket creation"
+    },
+    {
+      "id": "QS-5",
+      "attribute": "observability",
+      "priority": "must",
+      "source": "The support lead",
+      "stimulus": "asks why a ticket was routed to a queue",
+      "environment": "any time within 90 days",
+      "artifact": "trace store",
+      "response": "the trace shows the input, each tool call, the model's reason and the final decision",
+      "measure": "100% of triage decisions have a trace retrievable in under 1 minute"
+    },
+    {
+      "id": "QS-6",
+      "attribute": "human-oversight",
+      "priority": "must",
+      "source": "The agent",
+      "stimulus": "is less than 70% confident or meets an escalation term",
+      "environment": "normal operation",
+      "artifact": "routing decision",
+      "response": "the ticket goes to a person with the agent's suggestion attached, not auto-assigned",
+      "measure": "0 auto-assignments below the 0.70 confidence threshold over 1,000 tickets"
+    }
+  ],
+  "not_applicable": {},
+  "constraints": {
+    "stack": [
+      "Python",
+      "AWS"
+    ],
+    "hosting": "Client AWS account, eu-west-1",
+    "data_residency": "EU only",
+    "budget": "Under 2,500 USD a month to run",
+    "deadline": "Pilot in 10 weeks",
+    "team": "Two Python engineers and one tester; no .NET or Go"
+  },
+  "data": [
+    {
+      "name": "Ticket text",
+      "classification": "personal",
+      "leaves_boundary": true,
+      "note": "Sent to the model through Amazon Bedrock in eu-west-1 under the client's AWS data processing addendum; no training on inputs"
+    },
+    {
+      "name": "Shipment records",
+      "classification": "confidential",
+      "leaves_boundary": false,
+      "note": "Read through the order API; only the ticket's customer id"
+    }
+  ],
+  "autonomy": {
+    "level": "act-within-limits",
+    "irreversible_actions": [],
+    "limits": "May set queue and attach shipments only; cannot reply, close, refund or change a shipment; 6,000 tokens per ticket"
+  },
+  "volumes": {
+    "tasks_per_day": 1800,
+    "peak_concurrency": 12,
+    "label": "MEASURED"
+  }
+}

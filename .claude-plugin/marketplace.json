@@ -1,0 +1,19 @@
+{
+  "name": "qualizeal",
+  "owner": {
+    "name": "QualiZeal AI Center of Excellence"
+  },
+  "description": "QualiZeal's Claude Code plugins for the AI CoE: the AI-DLC Studio and its console.",
+  "plugins": [
+    {
+      "name": "qz-aidlc",
+      "source": "./plugins/qz-aidlc",
+      "description": "QualiZeal AI-DLC Studio: governed lanes for agentic AI work - architect, spec with fresh-eyes review, build, a vectorless RAG kit built live by stage, evaluate, test, audit, deliver, demo, bid, office decks, workbooks and mail for each reader, a full-stack developer agent and the Knowledge Fabric - with routing that fits the model and effort to the task and to what is left, a guard that reads every command on a line, per-turn undo, goal mode, a GitHub agent, publishing that saves locally first, an audit chain, run ledger and report cards."
+    },
+    {
+      "name": "qz-console",
+      "source": "./plugins/qz-console",
+      "description": "QualiZeal console: a live map beside the chat of the AI-DLC harness at work, with the run's lane, stage, token budget and which stations filled the context. Runs in Claude Code (terminal and the desktop Code tab)."
+    }
+  ]
+}

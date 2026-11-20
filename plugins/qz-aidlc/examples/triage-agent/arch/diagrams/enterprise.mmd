@@ -1,0 +1,23 @@
+flowchart TB
+  subgraph g_E1["People"]
+    n_cust(["Customers<br/>raise tickets by e-mail and portal"])
+    n_agents(["Support agents<br/>work tickets from their queue"])
+    n_duty(["Duty manager<br/>handles escalations and low-confidence tickets"])
+  end
+  subgraph g_E2["Client systems"]
+    n_helpdesk[/"Helpdesk<br/>system of record for tickets and queues"/]
+    n_triage["Ticket triage<br/>the system being designed"]
+    n_orders[/"Order system<br/>shipments by customer"/]
+  end
+  subgraph g_E3["Platform"]
+    n_bedrock[/"Amazon Bedrock (EU)<br/>hosted models inside the client's AWS account"/]
+    n_obs["Observability<br/>traces, cost and accuracy dashboards"]
+  end
+  n_cust -->|"new ticket"| n_helpdesk
+  n_helpdesk -->|"ticket created event"| n_triage
+  n_triage -->|"shipments for this customer"| n_orders
+  n_triage -->|"ticket text for classification"| n_bedrock
+  n_triage -->|"queue, reason, shipments"| n_helpdesk
+  n_helpdesk -->|"ticket in the right queue"| n_agents
+  n_triage -.->|"escalation or low confidence"| n_duty
+  n_triage -->|"trace and cost per ticket"| n_obs

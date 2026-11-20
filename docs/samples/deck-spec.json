@@ -1,0 +1,536 @@
+{
+ "title": "Northwind AI-DLC pilot proposal",
+ "client": "Northwind Logistics",
+ "context": {
+  "audience": "Northwind's VP Engineering and the two product-team engineering managers",
+  "decision": "Approve a sixteen-week pilot of the AI-DLC across two product teams",
+  "minutes": 30
+ },
+ "footer": "Northwind Logistics · AI-DLC pilot",
+ "cover": {
+  "eyebrow": "Northwind Logistics · AI-DLC · Proposal",
+  "title": "A governed AI-DLC for Northwind's product teams",
+  "subtitle": "An AI Development Life Cycle (AI-DLC) from Jira story to reviewed pull request in four months, with a person approving every decision and a report card for every story.",
+  "highlights": [
+   {
+    "text": "Harness on every tool call",
+    "icon": "shield-check"
+   },
+   {
+    "text": "Your Jira, Confluence, GitHub",
+    "icon": "plug"
+   },
+   {
+    "text": "Knowledge you can trust",
+    "icon": "network"
+   },
+   {
+    "text": "Measured on every run",
+    "icon": "gauge"
+   }
+  ],
+  "notes": "Open with the outcome: two product teams shipping stories through a governed agentic lifecycle, measured from day one."
+ },
+ "slides": [
+  {
+   "kind": "stages",
+   "eyebrow": "What the pilot covers",
+   "title": "Six steps from your repositories to a working AI-DLC",
+   "subtitle": "Built from Northwind's codebase outward, proven on real stories before anything is handed over",
+   "items": [
+    {
+     "title": "Discovery",
+     "icon": "search",
+     "text": "Stack, conventions, continuous integration (CI), test layers and secret hygiene across both teams' repositories"
+    },
+    {
+     "title": "Target design",
+     "icon": "target",
+     "text": "AI-DLC stages, human gates, agent roles and what each may touch"
+    },
+    {
+     "title": "Harness",
+     "icon": "shield-check",
+     "text": "Policy guard, audit chain, token budgets and report cards wired into Claude Code"
+    },
+    {
+     "title": "Knowledge",
+     "icon": "network",
+     "text": "Confluence standards and repository docs ingested with trust scores and citations"
+    },
+    {
+     "title": "Prove",
+     "icon": "flask-conical",
+     "text": "Six to eight production stories taken from Jira to reviewed pull request"
+    },
+    {
+     "title": "Hand over",
+     "icon": "graduation-cap",
+     "text": "Second team on-boarded, run-book, and Northwind engineers running it"
+    }
+   ],
+   "stats": [
+    [
+     "2",
+     "product teams"
+    ],
+    [
+     "4",
+     "specialist agents"
+    ],
+    [
+     "3",
+     "human gates per story"
+    ],
+    [
+     "16",
+     "weeks end to end"
+    ],
+    [
+     "0",
+     "merges without a person"
+    ]
+   ],
+   "notes": "Walk left to right. The point is that we build from their code, not from a template."
+  },
+  {
+   "kind": "flow",
+   "eyebrow": "How a story moves",
+   "title": "Agents work between gates; a named person opens each",
+   "steps": [
+    {
+     "title": "Requirements",
+     "bullets": [
+      "Reads the Jira story",
+      "Asks when context is missing",
+      "Writes requirements"
+     ],
+     "gate": "Gate 1 · scope approved",
+     "then": "Stories back to Jira"
+    },
+    {
+     "title": "Design",
+     "bullets": [
+      "Design against your standards",
+      "Cites the pages it used"
+     ],
+     "gate": "Gate 2 · design approved",
+     "then": "Code may start"
+    },
+    {
+     "title": "Build",
+     "highlight": true,
+     "bullets": [
+      "Code and tests on a branch",
+      "Every tool call guarded"
+     ]
+    },
+    {
+     "title": "Verify",
+     "bullets": [
+      "Unit, contract, performance checks",
+      "Fixes its own failures"
+     ],
+     "gate": "Gate 3 · test evidence",
+     "then": "Pull request opened"
+    },
+    {
+     "title": "Review",
+     "bullets": [
+      "Reviewer agent writes findings",
+      "Report card on the pull request"
+     ],
+     "gate": "Merge by a person",
+     "then": "Run closed"
+    }
+   ],
+   "callout": "\"Looks good\" is not an approval. A gate opens only on an explicit approve from its named person.",
+   "notes": "Walk one story left to right. Stress that gates are enforced by the harness, not by convention: until the named person approves, the guard blocks the next stage's writes."
+  },
+  {
+   "kind": "agents",
+   "eyebrow": "Least privilege",
+   "title": "Four agents, each with a defined job and limits",
+   "subtitle": "Each agent reads a schema-checked input and writes a defined output; nothing else",
+   "items": [
+    {
+     "name": "Requirements agent",
+     "icon": "list-checks",
+     "in": "Jira story, linked Confluence pages, Knowledge Fabric",
+     "out": "requirements.md, user stories, open questions",
+     "limits": "Writes only to the stories folder and the Jira comment it was asked for"
+    },
+    {
+     "name": "Developer agent",
+     "icon": "code",
+     "in": "Approved design and stories",
+     "out": "Code and unit tests on a feature branch",
+     "limits": "Only the repositories in the approved plan; never reads .env or key stores"
+    },
+    {
+     "name": "Test agent",
+     "icon": "flask-conical",
+     "in": "Approved design, code under test",
+     "out": "Unit, contract and performance tests with results",
+     "limits": "Runs in the dev environment only; no production data"
+    },
+    {
+     "name": "Reviewer agent",
+     "icon": "scan-search",
+     "in": "Branch, diff, test evidence, standards",
+     "out": "review.md with findings and verdict",
+     "limits": "Read-only on source; cannot merge or push"
+    }
+   ],
+   "notes": "Limits are enforced by the policy guard, which the next slide shows."
+  },
+  {
+   "kind": "ladder",
+   "eyebrow": "Governance in code",
+   "title": "What happens on every tool call",
+   "subtitle": "Hard controls checked cheapest first; the first failure blocks the call",
+   "checks": [
+    "Hook input readable? (fails closed)",
+    "Kill switch engaged?",
+    "Protected path? (.env, key stores, agent config)",
+    "Secret or personal data in the content?",
+    "Approved plan covers this file?",
+    "Session budget exceeded?",
+    "Command or host outside the allow-list?"
+   ],
+   "blocked": {
+    "title": "Blocked",
+    "text": "Reason returned to the agent and written to the audit chain. No retry around the block."
+   },
+   "pass": [
+    "All clear: the tool runs",
+    "After the tool: redact secrets, flag injected instructions, count tokens"
+   ],
+   "notes": "Every one of these is tested by a red-team suite of 53 cases before each release."
+  },
+  {
+   "kind": "layers",
+   "eyebrow": "Architecture",
+   "title": "What sits around the agents",
+   "subtitle": "Five layers; the dashed boxes are what we add to Northwind's estate",
+   "layers": [
+    {
+     "name": "Surfaces",
+     "items": [
+      "Claude Code",
+      "Jira",
+      "GitHub pull requests",
+      {
+       "name": "QualiZeal console",
+       "added": true
+      }
+     ]
+    },
+    {
+     "name": "Work plane",
+     "items": [
+      "Conductor",
+      "Specialist agents",
+      {
+       "name": "Human gates",
+       "added": true
+      }
+     ]
+    },
+    {
+     "name": "Harness",
+     "highlight": true,
+     "items": [
+      "Policy guard",
+      "Audit chain",
+      "Run ledger",
+      {
+       "name": "Token budgets",
+       "added": true
+      }
+     ]
+    },
+    {
+     "name": "Knowledge",
+     "items": [
+      "Knowledge Fabric",
+      "Confluence",
+      "Repositories"
+     ]
+    },
+    {
+     "name": "Model plane",
+     "items": [
+      "Claude models",
+      {
+       "name": "Egress allow-list",
+       "added": true
+      }
+     ]
+    }
+   ],
+   "rail": {
+    "title": "Observability & cost",
+    "items": [
+     "Report card per run",
+     "Five AI-DLC measures",
+     "Guard and gate counts",
+     "Token cost by stage",
+     "Red-team pass rate"
+    ]
+   },
+   "notes": "The harness layer is the product. Everything else is Northwind's existing estate."
+  },
+  {
+   "kind": "pillars",
+   "eyebrow": "Built in, not bolted on",
+   "title": "Governance, safety and observability are built in",
+   "subtitle": "Enforced by the framework rather than by prompt wording",
+   "items": [
+    {
+     "title": "Governance",
+     "icon": "scale",
+     "bullets": [
+      "People approve scope, design and merge",
+      "Agents cannot edit their own policy or config",
+      "Every decision hash-chained in the audit log"
+     ]
+    },
+    {
+     "title": "Safety",
+     "icon": "shield-alert",
+     "bullets": [
+      "Secrets and personal data redacted before the model sees them",
+      "Prompt-injection phrases in fetched content flagged",
+      "Only allow-listed hosts reachable"
+     ]
+    },
+    {
+     "title": "Observability",
+     "icon": "activity",
+     "bullets": [
+      "Tokens, time and gates per stage",
+      "Five AI-DLC measures on every run",
+      "Guard blocks and asks counted and explained"
+     ]
+    }
+   ],
+   "notes": "Each bullet maps to a control we demonstrate in week 2."
+  },
+  {
+   "kind": "stats",
+   "eyebrow": "What we measure",
+   "title": "Every story closes with a report card",
+   "subtitle": "Targets are agreed in discovery; the numbers come from Northwind's own runs",
+   "items": [
+    {
+     "value": "100%",
+     "label": "Gated decisions",
+     "note": "No scope, design or merge without a named person",
+     "tone": "coral"
+    },
+    {
+     "value": "≤ 1",
+     "label": "Spec edits after build",
+     "note": "Spec stability: requirements settle before code starts"
+    },
+    {
+     "value": "≥ 80%",
+     "label": "First-pass acceptance",
+     "note": "Gates approved without rework",
+     "tone": "green"
+    },
+    {
+     "value": "0",
+     "label": "Secrets leaked",
+     "note": "Redacted before the model sees them; blocked on write",
+     "tone": "violet"
+    },
+    {
+     "value": "Per stage",
+     "label": "Time and tokens",
+     "note": "Where effort and cost go, story by story"
+    },
+    {
+     "value": "Weekly",
+     "label": "Results review",
+     "note": "Report cards rolled up for the steering group",
+     "tone": "cyan"
+    }
+   ],
+   "notes": "Numbers on this slide are targets, labelled as such.",
+   "source": "Targets agreed in discovery, then MEASURED on Northwind's own runs and shown on every report card"
+  },
+  {
+   "kind": "plan",
+   "eyebrow": "Delivery plan",
+   "title": "Sixteen weeks, a working demo every two to three weeks",
+   "subtitle": "One repository live by week 4; the second team joins in week 11",
+   "weeks": 16,
+   "phases": [
+    {
+     "name": "Discover",
+     "weeks": "1-2",
+     "deliverable": "Current state and target set-up",
+     "demo": true
+    },
+    {
+     "name": "Build",
+     "weeks": "3-6",
+     "deliverable": "Harness and connectors on one repo",
+     "demo": true
+    },
+    {
+     "name": "Prove",
+     "weeks": "5-12",
+     "deliverable": "Stories to reviewed PRs, with report cards",
+     "demo": true
+    },
+    {
+     "name": "Second team",
+     "weeks": "11-14",
+     "deliverable": "On-boarding and enablement"
+    },
+    {
+     "name": "Hand over",
+     "weeks": "15-16",
+     "deliverable": "Run-book and results review",
+     "milestone": true
+    }
+   ],
+   "takeaway": "Every demo uses a real Northwind story, never a scripted sample.",
+   "notes": "Diamonds are demos. The first is at the end of week 2."
+  },
+  {
+   "kind": "table",
+   "eyebrow": "Team and commercials",
+   "title": "Offshore team delivers; one manager stays onshore",
+   "subtitle": "Time and materials, invoiced monthly; the engagement manager is onshore because Northwind asked for a local contact",
+   "columns": [
+    "Role",
+    "Location",
+    "Rate (USD/hour)",
+    "Person-months",
+    "Total (USD)"
+   ],
+   "widths": [
+    3,
+    1.6,
+    1.6,
+    1.6,
+    1.6
+   ],
+   "rows": [
+    [
+     "AI Architect",
+     "Offshore",
+     "42.00",
+     "4.5",
+     "33,737"
+    ],
+    [
+     "AI Quality Engineer",
+     "Offshore",
+     "35.00",
+     "4.0",
+     "24,990"
+    ],
+    [
+     "Agent Engineer (2)",
+     "Offshore",
+     "33.25",
+     "6.0",
+     "35,611"
+    ],
+    [
+     "Engagement Manager",
+     "Onshore",
+     "120.00",
+     "2.0",
+     "38,400"
+    ],
+    [
+     "Total before the 2% volume discount",
+     "",
+     "",
+     "16.5",
+     "132,737"
+    ],
+    [
+     "Total contract value",
+     "",
+     "",
+     "",
+     "130,083"
+    ]
+   ],
+   "notes": "Only the roles in this plan carry a rate. Licences for Claude, GitHub and Atlassian are Northwind's."
+  },
+  {
+   "kind": "evidence",
+   "eyebrow": "Honest status",
+   "title": "What is proven today and what we confirm with you",
+   "subtitle": "Tested in our environment; the rest is checked on Northwind's set-up in week 1",
+   "left_title": "Tested",
+   "tested": [
+    [
+     "53",
+     "red-team cases for the policy guard, all passing"
+    ],
+    [
+     "8",
+     "pricing buckets reconciled to the workbook to the cent"
+    ],
+    [
+     "5",
+     "AI-DLC measures produced from a run ledger"
+    ],
+    [
+     "0",
+     "secrets reaching the model in the redaction tests"
+    ]
+   ],
+   "right_title": "To confirm on Northwind's estate",
+   "confirm": [
+    "Claude seats and the managed settings your admins allow",
+    "Jira and Confluence scopes for the agents' service account",
+    "Which repositories are in scope for the first team",
+    "Where report cards are published for the steering group",
+    "Rotation of any credentials found in the discovery scan"
+   ],
+   "notes": "This slide is what makes the proposal credible. Do not skip it."
+  },
+  {
+   "kind": "closing",
+   "title": "Why QualiZeal, and what happens next",
+   "points": [
+    "We build the AI-DLC, the harness and the knowledge layer for you, inside your tools",
+    "Every claim on these slides is checked on your code in the first two weeks"
+   ],
+   "steps": [
+    {
+     "title": "Discovery workshop",
+     "text": "Two hours with both team leads",
+     "icon": "calendar"
+    },
+    {
+     "title": "Access and baseline",
+     "text": "Repos, Jira, Confluence; current cycle time",
+     "icon": "key-round"
+    },
+    {
+     "title": "First story in week 3",
+     "text": "A real story through every gate",
+     "icon": "rocket"
+    },
+    {
+     "title": "Results review",
+     "text": "Report cards against agreed targets",
+     "icon": "chart-column"
+    }
+   ],
+   "callout": "Prerequisite: rotate any credentials the discovery scan finds before agents work in those repositories.",
+   "notes": "Close on the ask: approval for the sixteen-week pilot, and a date for the discovery workshop. Name who owns each next step before leaving the room. If they hesitate, offer the two-week discovery on its own as the first commitment."
+  }
+ ]
+}

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Refund approvals for Northwind support</title>
+<meta name="description" content="How Northwind support approves refunds: one queue, one named approver and a record of every decision.">
+<style>
+  :root { --ink: #14213d; --soft: #4a5672; --line: #d5dbe7; --accent: #0b5cad; --surface: #f6f8fb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: var(--ink); background: #fff; line-height: 1.55; font-size: 18px; }
+  ::selection { background: var(--accent); color: #fff; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  header, main, footer { max-width: 720px; margin: 0 auto; padding: 24px; }
+  nav a { display: inline-block; padding: 12px 16px 12px 0; color: var(--accent); font-family: Verdana, sans-serif; font-size: 16px; }
+  h1 { font-size: 40px; line-height: 1.15; margin: 32px 0 16px; text-wrap: balance; }
+  h2 { font-size: 26px; margin: 48px 0 12px; }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  .lede { color: var(--soft); font-size: 20px; }
+  form { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 24px; margin: 24px 0; }
+  label { display: block; font-family: Verdana, sans-serif; font-size: 15px; margin-bottom: 8px; }
+  input { font: inherit; padding: 12px; border: 1px solid #7a869e; border-radius: 6px; width: 100%; max-width: 320px; }
+  button { font: 600 16px Verdana, sans-serif; margin-top: 16px; padding: 14px 24px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; transition: background-color 150ms ease-out; }
+  button:hover { background: #084a8c; }
+  #result { margin-top: 16px; font-family: Verdana, sans-serif; font-size: 16px; }
+  footer { color: var(--soft); font-size: 15px; border-top: 1px solid var(--line); margin-top: 48px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header><nav aria-label="Sections"><a href="#how">How it works</a><a href="#try">Try it</a></nav></header>
+<main>
+  <h1>Every refund waits for a named person</h1>
+  <p class="lede">The assistant can look up an order and prepare a refund. It cannot issue one. A support lead sees the order, the amount and the reason, and decides.</p>
+  <h2 id="how">How it works</h2>
+  <p>A customer asks for a refund and the assistant finds the order. It drafts the refund with the amount taken from the order record, never from the message, and places it in the approval queue. Nothing moves until the lead approves, and a declined refund is reported back to the customer rather than retried.</p>
+  <p>Each decision is kept with who made it and when, so a question three weeks later has an answer.</p>
+  <h2 id="try">Try it</h2>
+  <form id="f" novalidate>
+    <label for="order">Order number</label>
+    <input id="order" name="order" type="text" autocomplete="off" placeholder="ORD-1002">
+    <button type="submit">Request refund</button>
+    <p id="result" role="status" aria-live="polite"></p>
+  </form>
+</main>
+<footer><p>Sample page for automated checks.</p></footer>
+<script>
+  document.getElementById('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('order').value.trim().toUpperCase(), out = document.getElementById('result');
+    if (!/^ORD-\d{4}$/.test(v)) { out.textContent = 'Enter an order number such as ORD-1002.'; return; }
+    out.textContent = 'Refund for ' + v + ' is waiting for approval.';
+  });
+</script>
+</body>
+</html>

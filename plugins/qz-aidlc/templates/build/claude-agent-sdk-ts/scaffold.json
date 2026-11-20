@@ -1,0 +1,38 @@
+{
+  "title": "Claude Agent SDK (TypeScript)",
+  "summary": "query() with in-process MCP tools (zod schemas), canUseTool as the approval gate, no built-in tools, turn and budget limits.",
+  "verified": "RUN: type-checked with tsc 7.0.2 against @anthropic-ai/claude-agent-sdk 0.3.322, and tests plus gold set ran here against the offline stub (same tools, same permission callback). The live query() path is type-checked only: no live model call was made here.",
+  "stack_line": "A Claude Agent SDK agent in TypeScript (@anthropic-ai/claude-agent-sdk 0.3).",
+  "policy": "src/policy.ts",
+  "agent_dir": "src/",
+  "adapter": [
+    "npx",
+    "tsx",
+    "evals/adapter.ts"
+  ],
+  "pass_env": [
+    "ANTHROPIC_API_KEY",
+    "AGENT_MODEL",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "AWS_REGION",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN"
+  ],
+  "secret_env": [
+    "ANTHROPIC_API_KEY"
+  ],
+  "test_cmd": "npm test",
+  "run_cmd": "npm start -- \"Where is my order ORD-1001?\"",
+  "setup_steps": [
+    "- uses: actions/setup-node@v4\n        with:\n          node-version: '22'\n          cache: npm",
+    "- run: npm ci",
+    "- run: npm run typecheck"
+  ],
+  "live": "Set ANTHROPIC_API_KEY (or the Bedrock variables) and AGENT_MODE=live.",
+  "next": [
+    "Replace the tool bodies in src/tools.ts with calls to your systems.",
+    "Route the approval in makeGate() to a real person instead of the approve argument.",
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+  ]
+}

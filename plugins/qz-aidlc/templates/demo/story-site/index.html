@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="story">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knowledge Fabric</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_ds/qz-ds.css">
+<style>
+  .hero { position: relative; z-index: 1; min-height: calc(100vh - var(--nav-h)); display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); gap: 36px; align-items: center; padding: 40px 0 56px; }
+  .hero .display { margin: 14px 0 22px; }
+  .ask { display: flex; gap: 8px; padding: 8px; margin-top: 26px; border-radius: 16px; background: rgba(10, 24, 54, .6); border: 1px solid var(--border-strong); box-shadow: 0 0 0 1px rgba(244, 61, 89, .18), var(--shadow); }
+  .ask input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; font-size: 17px; padding: 0 14px; }
+  .ask:focus-within { outline: 2px solid #7CC4FF; outline-offset: 2px; }
+  .ask input::placeholder { color: var(--mute); }
+  .ask .btn { height: 46px; padding: 0 20px; border-radius: 12px; font-size: 15px; }
+  .suggest { display: grid; gap: 9px; margin-top: 18px; justify-items: start; }
+  .suggest button { padding: 9px 15px; border-radius: 12px; border: 1px solid var(--border-strong); background: rgba(14, 32, 73, .55); font-size: 14px; color: var(--text); text-align: left; transition: all .2s var(--ease); }
+  .suggest button:hover { border-color: var(--accent); transform: translateX(3px); }
+  .galaxy { position: relative; height: min(680px, calc(100vh - 140px)); min-height: 460px; border-radius: 22px; overflow: hidden;
+    background: radial-gradient(ellipse at 40% 40%, rgba(123, 91, 255, .16), transparent 60%), rgba(9, 20, 48, .55); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .galaxy canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+  .galaxy .legend { position: absolute; top: 14px; left: 14px; display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: rgba(8, 18, 42, .75); border: 1px solid var(--border-soft); font-size: 12px; }
+  .galaxy .legend i { width: 8px; height: 8px; border-radius: 50%; }
+  .galaxy .statusbar { position: absolute; left: 14px; bottom: 14px; }
+  .galaxy .hint { position: absolute; right: 16px; top: 18px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; color: var(--mute); text-transform: uppercase; }
+  .tip { position: absolute; pointer-events: none; padding: 8px 10px; border-radius: 8px; background: rgba(8, 18, 42, .92); border: 1px solid var(--border-strong); font-size: 12px; max-width: 260px; display: none; z-index: 3; }
+  .qcard { padding: 18px 22px; background: linear-gradient(135deg, rgba(244, 61, 89, .12), rgba(123, 91, 255, .12)); }
+  .qcard .q { font-family: var(--font-serif); font-size: 26px; line-height: 1.2; margin-top: 6px; }
+  .answer { padding: 24px 26px; }
+  .answer .lead { font-weight: 650; font-size: 17px; margin: 8px 0 12px; }
+  .answer p.body { font-size: 15.5px; line-height: 1.8; color: var(--text); }
+  .answer p.body .join { font-style: italic; color: var(--dim); }
+  .answer .assure { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-size: 13px; color: var(--dim); }
+  .answer .assure::before { content: ""; flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--ok); }
+  .scorebar { display: flex; flex-wrap: wrap; gap: 26px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-soft); font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; color: var(--mute); text-transform: uppercase; }
+  .scorebar b { font-family: var(--font-serif); font-size: 26px; letter-spacing: 0; text-transform: none; color: var(--text); font-weight: 400; margin-left: 8px; vertical-align: -3px; }
+  .scorebar .meter { width: 90px; display: inline-block; vertical-align: middle; margin-left: 8px; }
+  .checks { display: grid; gap: 16px; }
+  .check .row { justify-content: space-between; }
+  .check .why { font-size: 13px; color: var(--dim); margin: 2px 0 6px; }
+  details summary { cursor: pointer; font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); margin-top: 6px; }
+  details p { font-size: 13px; color: var(--dim); margin-top: 6px; }
+  .abstain { padding: 26px; }
+  .lineage .src-item { border-left: 2px solid var(--border-strong); padding: 4px 0 14px 18px; margin-left: 6px; position: relative; }
+  .lineage .src-item::before { content: ""; position: absolute; left: -6px; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 10px var(--brand); }
+  .lineage .crumb { font-family: var(--font-mono); font-size: 12px; color: var(--dim); margin: 3px 0 8px; }
+  .excerpt { font-size: 13px; color: var(--dim); border-left: 2px solid var(--brand); padding: 4px 0 4px 12px; }
+  .pillar { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px; border-radius: 12px; background: rgba(14, 32, 73, .5); border: 1px solid var(--border-soft); }
+  .pillar .n { font-family: var(--font-serif); font-size: 30px; color: var(--brand); line-height: 1; }
+  .gap { padding: 18px 20px; border-left: 3px solid var(--brand); }
+  .gap .n { font-family: var(--font-serif); font-size: 40px; line-height: 1; }
+  .gap.warn { border-left-color: var(--warn); } .gap.bad { border-left-color: var(--bad); } .gap.ok { border-left-color: var(--ok); }
+  .cta-band { padding: 64px 0; text-align: center; display: grid; gap: 16px; justify-items: center; }
+  .doc-modal h3 { font-family: var(--font-serif); font-weight: 400; font-size: 28px; }
+  .doc-modal .pass { padding: 12px 14px; border-radius: 10px; margin-top: 10px; background: var(--bg-2); font-size: 14px; }
+  .doc-modal .pass.on { box-shadow: inset 0 0 0 1px var(--warn); background: var(--warn-soft); }
+  @media (max-width: 1100px) { .hero { grid-template-columns: minmax(0, 1fr); } .galaxy { height: 460px; } }
+  @media (max-width: 760px) { .galaxy .hint { font-size: 12px; } .topbar .cta { display: none; } .ask .btn { padding: 0 14px; } .galaxy { height: 380px; min-height: 0; } .scorebar { gap: 14px; } }
+</style>
+</head>
+<body>
+<div class="backdrop"></div><div class="texture"></div>
+<header class="topbar">
+  <div class="client" data-brand-logo="clientLogo"><span data-brand="client">Client</span></div>
+  <div class="divider"></div>
+  <div class="product"><b data-brand="product">Knowledge Fabric</b><span>Demonstration by QualiZeal</span><span>AI Center of Excellence</span></div>
+  <nav><a href="#hero">Galaxy</a><a href="#answer">Answer</a><a href="#explain">Why</a><a href="#health">Health</a><a href="#insights">Insights</a></nav>
+  <a class="btn accent cta" id="cta" href="#contact" data-brand="cta">Talk to our experts</a>
+</header>
+<nav class="dotnav" id="dotnav" aria-label="Sections"><a href="#hero" aria-label="Galaxy"></a><a href="#answer" aria-label="Answer"></a><a href="#explain" aria-label="Why"></a><a href="#health" aria-label="Health"></a><a href="#insights" aria-label="Insights"></a></nav>
+
+<main>
+  <div class="wrap">
+    <section class="hero" id="hero">
+      <div>
+        <div class="eyebrow" id="h-eyebrow"></div>
+        <h1 class="display" id="h-headline"></h1>
+        <p class="lede" id="h-lede"></p>
+        <form class="ask" id="ask"><input id="q" autocomplete="off" aria-label="Question"><button class="btn grad" type="submit">Ask →</button></form>
+        <div class="suggest" id="suggest"></div>
+      </div>
+      <div class="galaxy" id="galaxy">
+        <canvas id="cv"></canvas>
+        <div class="legend"><div class="row"><i style="background:var(--qz-coral)"></i>cited in this answer</div><div class="row"><i style="background:var(--qz-blue)"></i>directly connected</div><div class="row"><i style="background:#3B4E86"></i>rest of the corpus</div></div>
+        <div class="statusbar" id="status"><span class="live" id="status-t">indexing…</span><span class="chip info mono">hybrid · bm25 + tf-idf</span></div>
+        <div class="hint">drag to pan · click a document</div>
+        <div class="tip" id="tip"></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="section" id="answer"><div class="wrap">
+    <div class="section-head reveal"><div class="eyebrow" data-s="answer.eyebrow"></div><h2 class="h1" data-s="answer.title"></h2><p class="lede" data-s="answer.lede"></p></div>
+    <div class="stack lg" id="answer-out"><div class="panel pad dim">Ask a question above, or pick one of the suggestions.</div></div>
+  </div></section>
+
+  <section class="section" id="explain"><div class="wrap">
+    <div class="section-head reveal"><div class="eyebrow" data-s="explain.eyebrow"></div><h2 class="h1" data-s="explain.title"></h2><p class="lede" data-s="explain.lede"></p></div>
+    <div class="split">
+      <div class="panel pad lineage reveal"><div class="eyebrow" style="color:var(--warn)">Source lineage</div><div id="lineage" class="stack" style="margin-top:14px"><p class="dim small">The lineage of the current answer appears here.</p></div></div>
+      <div class="panel pad reveal"><div class="eyebrow" style="color:var(--brand)">Trust pillars</div><div id="pillars" class="stack" style="margin-top:14px"></div></div>
+    </div>
+  </div></section>
+
+  <section class="section" id="health"><div class="wrap">
+    <div class="section-head reveal"><div class="eyebrow" data-s="health.eyebrow"></div><h2 class="h1" data-s="health.title"></h2><p class="lede" data-s="health.lede"></p></div>
+    <div class="callout reveal" id="health-verdict" style="max-width:720px;margin-bottom:22px"></div>
+    <div class="grid" style="grid-template-columns:minmax(0,.9fr) minmax(0,2fr)">
+      <div class="panel pad reveal" style="display:grid;gap:16px;justify-items:center"><div class="eyebrow">Overall readiness</div><div class="ring" id="ring"></div><div id="dims" class="stack" style="width:100%"></div></div>
+      <div class="grid g2" id="gaps"></div>
+    </div>
+  </div></section>
+
+  <section class="section" id="insights"><div class="wrap">
+    <div class="section-head reveal"><div class="eyebrow" data-s="insights.eyebrow"></div><h2 class="h1" data-s="insights.title"></h2><p class="lede" data-s="insights.lede"></p></div>
+    <div class="grid g5 reveal" id="tiles" style="margin-bottom:18px"></div>
+    <div class="panel pad reveal">
+      <div class="tabs" id="ins-tabs"><button class="on" data-tab="heat">Heatmap</button><button data-tab="concepts">Concepts</button><button data-tab="time">Timeline</button></div>
+      <p class="small dim" id="ins-cap" style="margin:16px 0 10px"></p>
+      <div id="ins-body"></div>
+    </div>
+  </div></section>
+
+  <section class="section" id="contact"><div class="wrap cta-band reveal">
+    <div class="eyebrow">Next step</div>
+    <h2 class="h1">Run this on <em>your</em> documents.</h2>
+    <p class="lede" style="text-align:center">A two-week pilot on one document set, with a gold set of your own questions to measure it against.</p>
+    <span class="chip mono" id="contact-line"></span>
+  </div></section>
+</main>
+<footer class="foot"><div class="wrap"><span id="foot-l"></span><span>© <span id="yr"></span> QualiZeal. Prepared for evaluation purposes.</span></div></footer>
+
+<div class="modal" id="modal"><div class="panel pad doc-modal" id="modal-body"></div></div>
+<script src="../_ds/qz-ds.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

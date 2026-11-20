@@ -1,0 +1,50 @@
+{
+ "title": "Bad deck",
+ "footer": "Fixture",
+ "cover": {
+  "title": "Overview"
+ },
+ "slides": [
+  {
+   "kind": "bullets",
+   "title": "Agenda",
+   "bullets": [
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven"
+   ]
+  },
+  {
+   "kind": "stats",
+   "title": "Results",
+   "items": [
+    {
+     "value": "45%",
+     "label": "Faster"
+    },
+    {
+     "value": "3x",
+     "label": "Cheaper"
+    }
+   ]
+  },
+  {
+   "kind": "bullets",
+   "title": "Our Approach",
+   "bullets": [
+    "We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators We leverage best-in-class accelerators "
+   ]
+  },
+  {
+   "kind": "bullets",
+   "title": "Our Approach",
+   "bullets": [
+    "Same title again"
+   ]
+  }
+ ]
+}

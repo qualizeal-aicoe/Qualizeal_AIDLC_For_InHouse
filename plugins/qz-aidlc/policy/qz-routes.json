@@ -1,0 +1,485 @@
+{
+ "version": 1,
+ "about": "Rules for the QZ prompt router. A prompt is matched against each route's words (regular expressions, case-insensitive unless case is true); the route with most weighted hits wins. Words in 'up' raise the tier one step, words in 'down' lower it one step; a route's floor is the lowest tier it may fall to. Tiers map to a model and effort. No model is called to decide.",
+ "tiers": {
+  "light": {
+   "model": "haiku",
+   "effort": "low",
+   "for": "look-ups, e-mails, minutes, formatting, status updates"
+  },
+  "standard": {
+   "model": "sonnet",
+   "effort": "medium",
+   "for": "decks, plans, documents, tests, routine code"
+  },
+  "heavy": {
+   "model": "opus",
+   "effort": "medium",
+   "for": "features across files, debugging, refactors"
+  },
+  "deep": {
+   "model": "opus",
+   "effort": "high",
+   "for": "architecture, security, reviews, bids, production bugs"
+  }
+ },
+ "ladder": [
+  "light",
+  "standard",
+  "heavy",
+  "deep"
+ ],
+ "up": [
+  "\\bproduction\\b|\\bprod\\b|\\blive (system|site|users)\\b",
+  "\\bsecurity|vulnerab|auth(entication|orization)\\b",
+  "\\bmigrat\\w*|data loss|corrupt\\w*",
+  "\\bintermittent|race condition|deadlock|memory leak|flaky\\b",
+  "\\b(whole|entire|all) (repo|codebase|system|services)\\b",
+  "\\b(client-facing|for the client|ceo|cxo|board)\\b"
+ ],
+ "down": [
+  "\\b(quick(ly)?|just|small|tiny|minor|typo|rename|reword|shorten|one-line|simple)\\b"
+ ],
+ "audiences": {
+  "cxo": "\\b(cxo|ceo|cto|cio|cfo|coo|chief|c-suite|leadership|board)\\b",
+  "director": "\\bdirector\\b|\\bvp\\b|vice president",
+  "delivery-head": "\\bdelivery (head|lead|manager)\\b|\\bhead of delivery\\b|\\bdm\\b",
+  "pmo": "\\bpmo\\b|\\bprogram(me)? (manager|office)\\b|\\bproject manager\\b|\\bpm\\b",
+  "architect": "\\barchitects?\\b",
+  "lead": "\\b(tech(nical)? )?lead\\b|\\bteam lead\\b|\\bscrum master\\b",
+  "client": "\\bclient\\b|\\bcustomer\\b|\\bprospect\\b"
+ },
+ "routes": [
+  {
+   "id": "deck-arch-tech",
+   "tier": "standard",
+   "words": [
+    "\\b(technical|detailed|solution|system)\\b.{0,40}\\barchitecture\\b.{0,30}\\b(deck|ppt|pptx|power ?point|slides?|presentation)",
+    "\\barchitecture\\b.{0,20}\\b(deck|ppt|pptx|power ?point|slides?|presentation).{0,40}\\b(technical|detailed|deep)\\b",
+    "\\b(hld|lld|c4)\\b.{0,30}\\b(deck|ppt|pptx|power ?point|slides?|presentation)"
+   ],
+   "use": "office [deck, new, arch-tech]",
+   "agent": "qz-deck-writer",
+   "skill": "qz-office",
+   "why": "technical architecture deck"
+  },
+  {
+   "id": "deck-arch-estimate",
+   "tier": "standard",
+   "words": [
+    "\\b(estimate|estimation|effort|timeline|resourc\\w*|staffing|team size|sizing)\\b.{0,60}\\b(deck|ppt|pptx|power ?point|slides?|presentation)",
+    "\\b(deck|ppt|pptx|power ?point|slides?|presentation)\\b.{0,60}\\b(estimate|estimation|timeline|resourc\\w*|staffing)\\b"
+   ],
+   "use": "office [estimate, <wbs.json>] then office [deck, new, arch-estimate]",
+   "agent": "qz-deck-writer",
+   "skill": "qz-office",
+   "why": "architecture and estimate deck",
+   "weight": 2
+  },
+  {
+   "id": "deck-demo",
+   "tier": "standard",
+   "words": [
+    "\\bdemo\\b.{0,20}\\b(deck|ppt|pptx|power ?point|slides?|presentation)",
+    "\\b(deck|ppt|pptx|power ?point|slides?|presentation)\\b.{0,30}\\b(for|of) (a |the |our )?demo\\b"
+   ],
+   "use": "office [deck, new, demo]",
+   "agent": "qz-deck-writer",
+   "skill": "qz-office",
+   "why": "demo deck"
+  },
+  {
+   "id": "deck-pitch",
+   "tier": "standard",
+   "words": [
+    "\\b(pitch|prospect|proposal|sales|new business|client)\\b.{0,30}\\b(deck|ppt|pptx|power ?point|slides?|presentation)",
+    "\\b(deck|ppt|pptx|power ?point|slides?|presentation)\\b.{0,30}\\b(pitch|prospect|proposal)\\b",
+    "\\bpitch deck\\b"
+   ],
+   "use": "office [deck, new, pitch]",
+   "agent": "qz-deck-writer",
+   "skill": "qz-office",
+   "why": "pitch deck for a prospect"
+  },
+  {
+   "id": "deck-status",
+   "tier": "standard",
+   "words": [
+    "\\b(status|progress|steerco|steering|qbr|monthly|weekly|review)\\b.{0,30}\\b(deck|ppt|pptx|power ?point|slides?|presentation)",
+    "\\b(deck|ppt|pptx|power ?point|slides?|presentation)\\b.{0,30}\\b(status|progress|steerco)\\b"
+   ],
+   "use": "office [deck, new, status]",
+   "agent": "qz-deck-writer",
+   "skill": "qz-office",
+   "why": "status deck"
+  },
+  {
+   "id": "plan-workbook",
+   "tier": "standard",
+   "words": [
+    "\\b(project )?plan(ning)?\\b.{0,30}\\b(sheet|workbook|excel|xlsx|tracker)\\b",
+    "\\b(gantt|wbs|work breakdown|raid log|resource plan|capacity plan)\\b"
+   ],
+   "use": "office [plan, new, <plan.json>]",
+   "agent": "qz-deck-writer",
+   "skill": "qz-office",
+   "why": "planning workbook"
+  },
+  {
+   "id": "plan-status",
+   "tier": "light",
+   "words": [
+    "\\b(update|refresh)\\b.{0,30}\\b(plan|tracker|status sheet|workbook)\\b",
+    "\\bstatus\\b.{0,20}\\b(sheet|tracker|excel|xlsx|workbook)\\b"
+   ],
+   "use": "office [plan, status, <plan.xlsx>]",
+   "skill": "qz-office",
+   "why": "status update in the plan workbook"
+  },
+  {
+   "id": "estimate",
+   "tier": "standard",
+   "words": [
+    "\\b(estimate|estimation|how long will|how many (people|engineers|developers)|t-?shirt siz|effort for|sizing)\\b"
+   ],
+   "use": "office [estimate, <wbs.json>]",
+   "skill": "qz-office",
+   "why": "estimate (3 months and 6 people at most)"
+  },
+  {
+   "id": "email-mom",
+   "tier": "light",
+   "words": [
+    "\\bmo?ms?\\b",
+    "\\bminutes of (the )?meeting\\b",
+    "\\bmeeting (minutes|notes|summary)\\b"
+   ],
+   "use": "office [email, mom, --audience, {audience}]",
+   "agent": "qz-comms-writer",
+   "skill": "qz-office",
+   "why": "minutes of meeting",
+   "weight": 2
+  },
+  {
+   "id": "email-detailed",
+   "tier": "standard",
+   "words": [
+    "\\bdetailed (project )?status\\b",
+    "\\b(project|status|weekly|monthly) report\\b"
+   ],
+   "use": "office [email, detailed, --audience, {audience}]",
+   "agent": "qz-comms-writer",
+   "skill": "qz-office",
+   "why": "detailed status report"
+  },
+  {
+   "id": "email-status",
+   "tier": "light",
+   "words": [
+    "\\b(status|progress|weekly|daily|quick) (update )?(e-?mail|mail|note|message)\\b",
+    "\\b(e-?mail|mail|note|message)\\b.{0,40}\\b(status|update|progress)\\b",
+    "\\bstatus update\\b"
+   ],
+   "use": "office [email, status, --audience, {audience}]",
+   "agent": "qz-comms-writer",
+   "skill": "qz-office",
+   "why": "status e-mail"
+  },
+  {
+   "id": "rag",
+   "tier": "standard",
+   "words": [
+    "\\bvectorless\\b",
+    "\\b(rag|retrieval[- ]augmented)\\b.{0,60}\\b(chat ?bots?|assistants?|documents?|docs|polic(y|ies)|handbooks?|manuals?|pdfs?|demo|kit|lane|live|build)\\b",
+    "\\b(knowledge|document|policy|handbook|faq)[- ](retrieval |q&a |qa )?(chat ?bots?|assistants?|bots?)\\b",
+    "\\bchat ?bots?\\b.{0,50}\\b(answers?|questions?)\\b.{0,40}\\b(documents?|docs|polic(y|ies)|handbooks?|manuals?|pdfs?)\\b"
+   ],
+   "use": "the RAG lane: qz build new vectorless-rag <folder> --stage 0, then one story per stage to docs/contracts.md",
+   "skill": "qz-rag",
+   "why": "a knowledge assistant over documents",
+   "weight": 3
+  },
+  {
+   "id": "fullstack-build",
+   "tier": "heavy",
+   "floor": "standard",
+   "words": [
+    "\\b(build|create|implement|develop|add|make)\\b.{0,50}\\b(app|application|feature|api|endpoint|screen|page|form|ui|frontend|front-end|backend|back-end|full[- ]?stack|crud|service|dashboard|login|signup)\\b"
+   ],
+   "use": "the qz-fullstack-developer agent",
+   "agent": "qz-fullstack-developer",
+   "skill": "qz-fullstack",
+   "why": "full-stack build"
+  },
+  {
+   "id": "bugfix",
+   "tier": "heavy",
+   "floor": "standard",
+   "words": [
+    "\\b(bug|error|exception|stack ?trace|traceback|failing|fails|broken|crash\\w*|regression|doesn'?t work|not working)\\b"
+   ],
+   "use": "the diagnosis loop (qz-engineering-loops), then ship_check",
+   "agent": "qz-fullstack-developer",
+   "skill": "qz-engineering-loops",
+   "why": "bug"
+  },
+  {
+   "id": "refactor",
+   "tier": "heavy",
+   "floor": "standard",
+   "words": [
+    "\\b(refactor\\w*|clean ?up|restructure|tech(nical)? debt|simplify the code)\\b"
+   ],
+   "use": "the safe-refactor loop (qz-engineering-loops)",
+   "agent": "qz-fullstack-developer",
+   "skill": "qz-engineering-loops",
+   "why": "refactor"
+  },
+  {
+   "id": "ship",
+   "tier": "standard",
+   "words": [
+    "\\b(ready to (ship|merge|release)|definition of done|run (all )?(the )?checks|before (i |we )?(merge|ship|release))\\b"
+   ],
+   "use": "ship_check",
+   "skill": "qz-fullstack",
+   "why": "definition-of-done check"
+  },
+  {
+   "id": "code-find",
+   "tier": "light",
+   "words": [
+    "\\b(where|which file|find)\\b.{0,40}\\b(defined|implemented|handled|called|lives|code|function|class|module|component|calculated|computed|stored|configured|validated|set)\\b",
+    "\\bhow does\\b.{0,40}\\bwork\\b",
+    "\\bwhere (is|are|do|does)\\b.{0,30}\\b(the )?(logic|code|config|endpoint|route|handler)\\b"
+   ],
+   "use": "code_explore, or the qz-scout agent",
+   "agent": "qz-scout",
+   "why": "finding code"
+  },
+  {
+   "id": "review",
+   "tier": "deep",
+   "words": [
+    "\\breview\\b.{0,30}\\b(pr|pull request|diff|change|changes|code|branch)\\b",
+    "\\bcode review\\b"
+   ],
+   "use": "code_graph [pr, --base, origin/<default>, --fail-on, high]",
+   "agent": "qz-reviewer",
+   "why": "code review",
+   "weight": 2
+  },
+  {
+   "id": "tests",
+   "tier": "standard",
+   "words": [
+    "\\b(write|add|design|generate|create)\\b.{0,30}\\b(unit |integration |e2e |end-to-end |api )?tests?\\b",
+    "\\b(test cases|test plan|test suite|xray)\\b"
+   ],
+   "use": "test_design, then the repository's own test runner",
+   "skill": "qz-test",
+   "why": "tests"
+  },
+  {
+   "id": "ui-test",
+   "tier": "standard",
+   "words": [
+    "\\b(ui test|e2e|end-to-end|playwright|click through|walk through the (app|ui)|screenshot)\\b"
+   ],
+   "use": "ui_run or ui_probe",
+   "skill": "qz-ui-testing",
+   "why": "UI test"
+  },
+  {
+   "id": "security",
+   "tier": "deep",
+   "words": [
+    "\\b(security|vulnerab\\w*|owasp|pentest|threat model|prompt injection|secrets? scan)\\b"
+   ],
+   "use": "the audit lane: audit_project and redteam",
+   "agent": "qz-auditor",
+   "why": "security"
+  },
+  {
+   "id": "architecture",
+   "tier": "deep",
+   "words": [
+    "\\b(architect\\w*|solution design|system design|design the system|tech(nology)? stack|which (database|framework|cloud)|scalab\\w*|adr)\\b"
+   ],
+   "use": "the architect lane (arch)",
+   "agent": "qz-solution-architect",
+   "skill": "qz-agentic-engineering",
+   "why": "architecture"
+  },
+  {
+   "id": "motion",
+   "tier": "standard",
+   "words": [
+    "\\barchitecture\\b.{0,20}\\b(gif|animation|animated|video|motion)\\b",
+    "\\banimated diagram\\b"
+   ],
+   "use": "arch [motion, SPEC.json, --out DIR]",
+   "agent": "qz-arch-illustrator",
+   "skill": "qz-arch-motion",
+   "why": "motion architecture",
+   "weight": 2
+  },
+  {
+   "id": "data",
+   "tier": "standard",
+   "words": [
+    "\\b(sql|query|database|table|csv)\\b.{0,40}\\b(how many|count|sum|average|total|join|trend|top)\\b",
+    "\\bask the (data|database)\\b",
+    "\\b(how many|count of|sum of|average|total|trend|top \\d+)\\b.{0,60}\\b(sql|database|db|table|csv|dataset)\\b"
+   ],
+   "use": "data [scan], then data [check] and data [run]",
+   "why": "question about data"
+  },
+  {
+   "id": "knowledge",
+   "tier": "light",
+   "words": [
+    "\\b(according to|what does) (our|the)\\b.{0,40}\\b(docs?|confluence|wiki|policy|handbook|kb)\\b",
+    "\\bsearch (the )?(kb|knowledge|confluence|docs|wiki)\\b",
+    "\\b(our|the) (policy|process|standard) (on|for)\\b"
+   ],
+   "use": "kf_search (purpose inform, or decide for decisions)",
+   "agent": "qz-kf-curator",
+   "why": "question for the knowledge layer"
+  },
+  {
+   "id": "ingest",
+   "tier": "standard",
+   "words": [
+    "\\b(ingest|index|add)\\b.{0,30}\\b(docs|documents|confluence|repo|wiki|pdfs?)\\b.{0,30}\\b(kf|knowledge|fabric|kb)?"
+   ],
+   "use": "kf_add",
+   "why": "adding knowledge"
+  },
+  {
+   "id": "story",
+   "tier": "heavy",
+   "words": [
+    "\\b[A-Z][A-Z0-9]{1,9}-\\d{1,6}\\b.{0,60}\\b(implement|build|deliver|work on|pick up|start)\\b",
+    "\\b(implement|build|deliver|work on|pick up|start)\\b.{0,40}\\b[A-Z][A-Z0-9]{1,9}-\\d{1,6}\\b"
+   ],
+   "use": "the deliver lane: /qz-aidlc:qz deliver <KEY>",
+   "skill": "qz",
+   "why": "Jira story",
+   "case": true
+  },
+  {
+   "id": "bid",
+   "tier": "deep",
+   "words": [
+    "\\b(rfp|rfi|rfq|sow|statement of work|bid|pricing|commercials)\\b"
+   ],
+   "use": "the bid lane (sow_build, price_run); prices stay internal",
+   "agent": "qz-bid-writer",
+   "why": "bid or SOW"
+  },
+  {
+   "id": "demo-app",
+   "tier": "standard",
+   "words": [
+    "\\b(demo (app|site|page|prototype)|prototype|clickable)\\b"
+   ],
+   "use": "the demo lane (demo_new, demo_check)",
+   "agent": "qz-demo-builder",
+   "why": "demo app",
+   "weight": 2
+  },
+  {
+   "id": "publish",
+   "tier": "light",
+   "words": [
+    "\\b(push|publish|upload)\\b.{0,30}\\b(github|repo|repository|branch|remote)\\b",
+    "\\bcreate (a )?(new )?(github )?repo(sitory)?\\b",
+    "\\bopen a (pr|pull request)\\b",
+    "\\bcommit and push\\b"
+   ],
+   "use": "the publish tool, action plan (the local copy first; every push and pull request waits for a yes)",
+   "why": "publishing to GitHub",
+   "skill": "qz-publish"
+  },
+  {
+   "id": "setup",
+   "tier": "light",
+   "words": [
+    "\\b(set ?up|install|configure|onboard\\w*|doctor)\\b.{0,30}\\b(qz|studio|plugin|aidlc|ai-dlc|claude)\\b"
+   ],
+   "use": "/qz-aidlc:qz-setup easy",
+   "why": "setup"
+  },
+  {
+   "id": "budget",
+   "tier": "light",
+   "words": [
+    "\\b(usage|limit|limits|budget|tokens?|quota)\\b.{0,30}\\b(left|remaining|in hand|available|used)\\b",
+    "\\bwhich model\\b",
+    "\\bwhat (model|effort)\\b"
+   ],
+   "use": "route [budget]",
+   "why": "what is in hand"
+  },
+  {
+   "id": "spec-review",
+   "tier": "standard",
+   "weight": 2,
+   "words": [
+    "\\b(review|check|critique|stress[- ]?test|poke holes in|tear apart)\\b.{0,40}\\b(design doc\\w*|design document|spec|specs|specification|rfc|prd|implementation plan|tech(nical)? design)\\b",
+    "\\b(goldfish|fresh[- ]eyes|elephant)\\b",
+    "\\bis (this|the|my) (spec|design doc|design|plan) (ready|good enough|clear)\\b"
+   ],
+   "use": "the spec lane, Review: qz spec split, context and terms, one qz-goldfish per stage, then qz spec merge",
+   "agent": "qz-goldfish",
+   "skill": "qz-spec",
+   "why": "fresh-eyes review of a spec",
+   "hand": "the reviewers are"
+  },
+  {
+   "id": "spec-draft",
+   "tier": "heavy",
+   "words": [
+    "\\b(write|draft|create|prepare|start)\\b.{0,30}\\b(design doc\\w*|design document|spec|specification|rfc|technical design)\\b"
+   ],
+   "use": "the spec lane from Draft: qz spec new <name>, then section by section in the file",
+   "skill": "qz-spec",
+   "why": "drafting a spec",
+   "weight": 3
+  },
+  {
+   "id": "spec-drift",
+   "tier": "standard",
+   "weight": 3,
+   "words": [
+    "\\bdrift\\b",
+    "\\b(docs?|documentation|specs?|design docs?|readme)\\b.{0,40}\\b(match|out of date|stale|in sync|still true|outdated)\\b"
+   ],
+   "use": "qz spec drift, then qz-goldfish mode drift on its report",
+   "agent": "qz-goldfish",
+   "skill": "qz-spec",
+   "why": "docs against code",
+   "hand": "the reviewers are"
+  },
+  {
+   "id": "undo",
+   "tier": "light",
+   "words": [
+    "\\bundo\\b.{0,40}\\b(last|that|those|changes?|turn|edits?|what you)\\b",
+    "\\b(revert|roll ?back|put back)\\b.{0,30}\\b(last|your|what you)\\b.{0,25}\\b(changes?|edits?|did|turn)\\b"
+   ],
+   "use": "qz undo (shows what the last turn changed; --yes after the person agrees, and the guard asks)",
+   "why": "undo a turn's file changes"
+  },
+  {
+   "id": "goal",
+   "tier": "standard",
+   "words": [
+    "\\b(keep (going|working|at it)|don'?t stop|carry on|loop)\\b.{0,50}\\b(until|till)\\b.{0,40}\\b(tests?|build|check|lint|it)\\b.{0,20}\\b(pass(es)?|green|works?|clean)\\b"
+   ],
+   "use": "qz goal set \"<objective>\" --check \"<test command>\" (the person confirms the check; the Stop hook runs it)",
+   "why": "work until a check passes"
+  }
+ ]
+}
