@@ -138,6 +138,8 @@ jobs:
           - { stack: agent-memory-py, os: windows-latest }
           - { stack: text-to-sql, os: ubuntu-latest }
           - { stack: text-to-sql, os: windows-latest }
+          - { stack: cli-harness-py, os: ubuntu-latest }
+          - { stack: cli-harness-py, os: windows-latest }
           - { stack: claude-agent-sdk-py, os: ubuntu-latest }
           - { stack: claude-agent-sdk-py, os: windows-latest }
           - { stack: strands-agentcore, os: ubuntu-latest }
@@ -161,12 +163,24 @@ jobs:
         if: matrix.stack == 'maf-dotnet'
         with:
           dotnet-version: "10.0.x"
+      - uses: actions/setup-java@v4
+        if: matrix.stack == 'cli-harness-py'
+        with:
+          distribution: temurin
+          java-version: "21"
       - name: Create the project from the starter
         shell: bash
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py build new ${{ matrix.stack }} "$RUNNER_TEMP/proj" --name "Order Support"
+      - name: The WireMock jar the command-line harness is tested against, checked against its SHA-256
+        if: matrix.stack == 'cli-harness-py'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv sync --locked --python 3.12 && uv run python scripts/fetch_wiremock.py
       - name: Install, build and test
         shell: bash
         working-directory: ${{ runner.temp }}/proj
+        env:
+          MOCKCTL_REQUIRE_WIREMOCK: ${{ matrix.stack == 'cli-harness-py' && '1' || '' }}
         run: |
           case "${{ matrix.stack }}" in
             claude-agent-sdk-ts) npm ci && npm run typecheck && npm test ;;
@@ -196,6 +210,11 @@ jobs:
         shell: bash
         working-directory: ${{ runner.temp }}/proj
         run: uv run -m sqlagent eval --gate
+      - name: The command-line harness standard and its skill file
+        if: matrix.stack == 'cli-harness-py'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv run python -m mockctl.standard && uv run mockctl skill --check
       - name: Gold set and audit through the vendored kit
         shell: bash
         working-directory: ${{ runner.temp }}/proj

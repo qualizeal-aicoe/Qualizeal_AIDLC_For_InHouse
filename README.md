@@ -66,6 +66,7 @@ of evaluation cases gates each change, and CI and a runbook come with it.
 | `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 55 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
 | `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 17 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
 | `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 38 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
+| `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 30 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
 | `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 5 tests and 10 gold cases; Linux |
 | `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 4 tests and 10 gold cases; Linux |
 | `go-anthropic` | Go on the Anthropic API | vet, tests and 10 gold cases; Linux |
@@ -122,6 +123,9 @@ The video (under a minute, no sound) is made from real output of the commands in
 - The text-to-SQL starter only reads, and only what the asker's role may read: the SQL is checked as a parsed tree,
   then runs on a read-only connection whose authorizer refuses any write, pragma or restricted column inside SQLite
   itself. Text in the data that reads like instructions to an AI is withheld before the answer is written.
+- The command-line harness runs a destructive command only with `--yes`, which an agent adds after the person agreed
+  to its dry run, and Claude Code asks before each one. No command takes a credential; their values are scrubbed from
+  every answer and record, and it talks only to listed hosts.
 - The RAG kits' crawler fetches only hosts a person listed, over https, obeys robots.txt, and refuses private and
   cloud-metadata addresses on every redirect.
 - The RAG kits apply access control inside the search query, before anything is ranked, and never answer without a

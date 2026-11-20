@@ -107,9 +107,10 @@ def scan(root: Path) -> dict:
     tools = repo.grep(TOOLDEF)
     found = stacks(repo)
     agentic = bool(tools) or bool(found)
-    # A tool server (an MCP server with no model SDK) has no agent loop and spends no tokens: items about those do not apply.
-    server_only = bool(found) and set(found) <= {"MCP"} and not repo.grep(MODEL_ID)
-    NA = "Not applicable: no model runs in this project (a tool server). Score it in the agent that calls these tools."
+    # A tool for agents with no model of its own (an MCP server, or a command line agents drive) has no agent loop and
+    # spends no tokens: items about those do not apply. A project with tool definitions but no stack still counts as an agent.
+    server_only = not repo.grep(MODEL_ID) and set(found) <= {"MCP"} and (bool(found) or not tools)
+    NA = "Not applicable: no model runs in this project (a tool for agents, such as an MCP server or a command line). Score it in the agent that calls it."
     # ---- security
     sec = []
     for name, text in repo.files.items():

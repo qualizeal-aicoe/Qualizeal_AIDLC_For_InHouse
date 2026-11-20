@@ -34,6 +34,14 @@ way on every laptop and to be taught in a live session.
   hold are caught and fixed, ambiguous words get a question back, instructions found in the data are withheld,
   follow-ups work on a thread, and a model's answer is kept only if its numbers are in the rows. Measured by
   execution accuracy; Anthropic or any OpenAI-compatible API (OpenAI, Groq, vLLM, LiteLLM).
+- **A command-line harness starter, `cli-harness-py`**, after the CLI-Anything method (HKUDS): agents drive a team's
+  tool through its real API instead of its screen. Every command answers in JSON with one exit code per kind of
+  failure, declares whether it reads, writes or destroys, plans with `--dry-run`, and needs `--yes`, added only after a
+  person agreed, for anything destructive. Changes can be undone, and every change or refusal goes into a hash-chained
+  audit log. Credentials come only from the environment and are scrubbed from every answer, hosts are on an
+  allow-list, and the skill file Claude Code reads is written from the commands themselves. A ten-rule standard checks
+  all of it in CI. The sample, `mockctl`, drives WireMock and is tested against the real server; the build lane's
+  `references/cli-harness.md` shows how to wrap another tool the same way.
 - **Web pages for both RAG kits.** `crawl` fetches the pages listed in `web.toml` into the corpus with an owner and
   readers in the manifest: listed hosts only, https, robots.txt and its crawl delay obeyed, private and metadata
   addresses refused on every redirect, size and type limits, unchanged pages skipped, pages gone from the site
@@ -61,7 +69,8 @@ way on every laptop and to be taught in a live session.
   full-text search, the guard and the tool server, GitHub access without a prompt, the hosts the Studio needs,
   proxies, packages and disk space. It writes `doctor-report.json`, and when the network re-signs HTTPS it names
   `UV_SYSTEM_CERTS` for uv.
-- The readiness audit marks the agent-loop checks as not applicable to a tool server, instead of failing them.
+- The readiness audit marks the agent-loop and token checks as not applicable to a tool for agents with no model of
+  its own (an MCP server or a command line), instead of failing them.
 - The readiness audit counts every tool-path check the eval runner has (`tool_status`, `tool_not_called` and the
   rest), reads an autonomy heading in any letter case, and tells the OpenAI API apart from the OpenAI Agents SDK.
 - The README describes 1.0.0; the notes for earlier releases moved to `docs/HISTORY.md`. The quick guide lists the

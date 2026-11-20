@@ -257,7 +257,9 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
     servers = {k: m for k, m in every.items() if m.get("kit", True) and not m.get("common", True)}
     own_files = {"mcp-server-py": ("docs/adr/0001-mcp-server-shape.md", "tests/tool_pins.json"),     # a tool server: contract cases
                  "agent-memory-py": ("docs/adr/0001-memory-shape.md", "mem/policy.py", "mem/telemetry.py"),
-                 "text-to-sql": ("docs/adr/0001-text-to-sql-shape.md", "semantic.toml", "sqlagent/guard.py", "data/seed.sql")}
+                 "text-to-sql": ("docs/adr/0001-text-to-sql-shape.md", "semantic.toml", "sqlagent/guard.py", "data/seed.sql"),
+                 "cli-harness-py": ("docs/adr/0001-cli-harness-shape.md", "harness.toml", "mockctl/standard.py", ".claude/skills/mockctl/SKILL.md",
+                                    ".claude/settings.json", "scripts/fetch_wiremock.py")}
     assert set(servers) == set(own_files)
     for name, meta in servers.items():                    # their own README, CI and gold set; no agent gold set of ten
         dest = tmp_path / name
@@ -314,6 +316,22 @@ def test_audit_flags_a_careless_agent(tmp_path):
     (p / "requirements.txt").write_text("langgraph\n")
     r = scan.scan(p)
     assert r["verdict"] == "NOT READY" and {"SEC-1", "SEC-3", "SEC-4", "REL-1", "EVAL-1"} <= set(r["blockers"]) and "LangGraph / LangChain" in r["stacks"]
+
+
+def test_audit_scores_a_command_line_with_no_model_as_a_tool_for_agents(tmp_path):
+    from qz.auditkit import scan
+    p = tmp_path / "cli"
+    p.mkdir()
+    (p / "pyproject.toml").write_text('[project]\nname = "toolctl"\ndependencies = ["click==8.3.1"]\n')
+    (p / "cli.py").write_text("import click\n\n@click.command()\ndef status():\n    click.echo('up')\n")
+    by = {i["id"]: i for i in scan.scan(p)["items"]}
+    assert all(by[k].get("na") for k in ("REL-1", "REL-3", "COST-1", "COST-2", "EVAL-4")), {k: by[k] for k in ("COST-1", "REL-3")}
+    (p / "agent.py").write_text("MODEL = 'claude-sonnet-5-5'\n")                 # a model of its own: the cost items count again
+    by = {i["id"]: i for i in scan.scan(p)["items"]}
+    assert not by["COST-1"].get("na") and by["COST-1"]["score"] == 0
+    (p / "agent.py").write_text("tools = [lookup]\n")                            # tools of its own, no stack: still an agent
+    by = {i["id"]: i for i in scan.scan(p)["items"]}
+    assert not by["COST-2"].get("na") and by["SEC-3"]["score"] == 0
 
 
 def test_full_mirror_is_repository_native(tmp_path):

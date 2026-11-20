@@ -7,8 +7,10 @@ passed gate, build what it decided; if not, say that the stack is unconfirmed an
    Use the stack the decision record names. With no decision, ask one question. A knowledge assistant over documents
    is the `vectorless-rag` or `advanced-rag` stack, and a tool server is `mcp-server-py`: follow the RAG lane
    (`lanes/rag.md`) for the first two instead of the steps below. Long-term memory for an agent is `agent-memory-py`;
-   questions over a database are `text-to-sql`. Both carry their own README, gold set and CI: scaffold them, then
-   follow their CLAUDE.md (step 2's sample tools and 10-case gold set do not apply to them).
+   questions over a database are `text-to-sql`; a command line agents drive a team's tool through (a mock server,
+   Jenkins, an internal admin API) is `cli-harness-py`, built by `references/cli-harness.md`. All three carry their
+   own README, gold set and CI: scaffold them, then follow their CLAUDE.md (step 2's sample tools and 10-case gold
+   set do not apply to them).
 2. **Scaffold.** `agent_scaffold [new, <stack>, <dest>, --name NAME]`. It creates: one read tool, one side-effecting
    tool behind a human approval gate, limits in one policy file, tracing, an offline stub model, a 10-case gold set,
    CI, a runbook, rules for coding agents, and the vendored kit under `.claude/qz/` so CI needs nothing installed.

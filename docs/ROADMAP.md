@@ -1,17 +1,20 @@
 # Roadmap: what comes after 1.0.0
 
-1.0.0 covers the stacks our projects use today: LangGraph, the OpenAI Agents SDK, the Claude Agent SDK, MCP
-(Model Context Protocol) servers, two RAG (retrieval-augmented generation) kits with web pages, agent memory and
-text-to-SQL. This page says what 1.1 adds, why, and what "done" means for each. It is a plan, not a promise: each item
-ships only when its tests and gold set pass in CI on Windows and Linux, like everything in 1.0.0.
+1.0.0 covers the stacks our projects use today: LangGraph, the OpenAI Agents SDK, the Claude Agent SDK, MCP (Model
+Context Protocol) servers, two RAG (retrieval-augmented generation) kits with web pages, agent memory, text-to-SQL
+and a governed command line for agents to drive a team's tools. This page says what 1.1 adds, why, and what "done"
+means for each. It is a plan, not a promise: each item ships only when its tests and gold set pass in CI on Windows
+and Linux, like everything in 1.0.0.
 
 ## Why these
 
 In the chart of the twenty most-starred agent repositories we looked at in November 2026, the projects cluster in
 five groups: workflow builders (n8n, Dify, Langflow), agent frameworks (LangChain, LangGraph, CrewAI, AutoGPT, Agno,
 AgentScope, DSPy), data for agents (Firecrawl, Crawl4AI, RAGFlow, LlamaIndex), memory (Mem0, Hindsight), and the
-operations layer (LiteLLM, Langfuse, Browser Use, CopilotKit). 1.0.0 answers the data and memory groups. 1.1 answers
-the operations layer first, because every client project needs it, then the multi-agent frameworks our clients ask for.
+operations layer (LiteLLM, Langfuse, Browser Use, CopilotKit). 1.0.0 answers the data and memory groups, and gives
+agents a command line to drive tools through (after CLI-Anything) where Browser Use would drive their screens. 1.1
+answers the operations layer first, because every client project needs it, then the multi-agent frameworks our
+clients ask for.
 
 MCP and A2A (Agent2Agent) now sit together under the Agentic AI Foundation, and A2A is at version 1.2: an agent that
 speaks A2A can be called by other teams' agents without a custom integration. That is why A2A comes in 1.1 alongside

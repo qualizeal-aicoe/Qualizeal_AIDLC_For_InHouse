@@ -1,0 +1,16 @@
+# Settings for __NAME__. Every value has a default in mockctl/config.py; this file is where a team changes them.
+
+[target]
+base_url = "http://127.0.0.1:8080"          # the WireMock (or compatible) server; MOCKCTL_URL overrides it
+allowed_hosts = ["127.0.0.1", "localhost"]  # the only hosts this CLI talks to; add a shared mock server's host here
+timeout_s = 10
+# Credentials, when the server needs them, come from the environment only: MOCKCTL_TOKEN (a bearer token), or
+# MOCKCTL_USER and MOCKCTL_PASSWORD. No command takes a secret as an argument: arguments end up in shell history,
+# process lists and agent transcripts.
+
+[limits]
+max_items = 1000                            # the most stubs or requests one command returns
+max_turns = 200                             # commands in one `mockctl repl` session
+
+[store]
+dir = ".mockctl"                            # the undo journal and the audit log; MOCKCTL_HOME overrides it

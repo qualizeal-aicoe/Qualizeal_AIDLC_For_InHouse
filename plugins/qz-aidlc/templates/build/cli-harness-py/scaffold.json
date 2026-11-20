@@ -1,0 +1,31 @@
+{
+  "title": "Agent-native CLI harness (Python)",
+  "summary": "A governed command line that lets agents drive a team's real tools instead of their screens, after the CLI-Anything method: every command answers in JSON, declares whether it reads, writes or destroys, plans with --dry-run, needs --yes after a person's agreement for anything destructive, can be undone, and writes a hash-chained audit log; credentials only from the environment, hosts on an allow-list. The sample drives WireMock, the mock server QE teams use daily, and generates its own Claude Code skill.",
+  "verified": "RUN: the scaffold's 30 tests ran here on Python 3.13, 6 of them against the real WireMock 3.13.2 on Java 21 through the installed command: stubs added, served, changed, removed and put back with their own ids; a clear refused without --yes, dry-run, done and undone; a scenario moved, reset and restored; calls verified and the journal cleared. Against the stand-in: credentials absent from every answer and record, wrong credentials, a host off the allow-list, plain http to another machine, a redirect, an unreachable server, a crafted stub id, undo on another server, an edited, removed and cut audit record, an undo kept when the server's answer was lost, a record that cannot be written, four processes at once. Its 22 gold cases (10 safety) passed through the Studio's eval runner, each checking the admin calls the server received, and its 10-rule standard passes. The project audit scores it READY, 90.6%, tracing its one gap. Not run here: Windows (CI runs it), a shared server, WireMock over https with admin auth.",
+  "stack_line": "An agent-native command line for a real tool, in Python on Click, with WireMock as the sample.",
+  "policy": "harness.toml",
+  "agent_dir": "mockctl/",
+  "common": false,
+  "own_readme": true,
+  "adapter": [
+    "uv",
+    "run",
+    "--quiet",
+    "python",
+    "evals/adapter.py"
+  ],
+  "pass_env": [],
+  "secret_env": [],
+  "test_cmd": "uv run -m pytest -q",
+  "run_cmd": "uv run mockctl status",
+  "setup_steps": [
+    "- uses: astral-sh/setup-uv@v6",
+    "- run: uv sync --locked"
+  ],
+  "live": "No model and no key: the CLI drives a server. Start WireMock 3 (java -jar wiremock-standalone-3.13.2.jar --port 8080) or, without Java, the stand-in (uv run python -m mockctl.standin), then uv run mockctl status.",
+  "next": [
+    "Point [target] in harness.toml at the team's mock server and add its host to allowed_hosts; keep any token in MOCKCTL_TOKEN.",
+    "To wrap another tool (Jenkins, an internal admin API, a test-data service), follow docs/runbook.md: same contract, new backend, new commands, then `uv run mockctl skill`.",
+    "Before agents use it on a shared server, read docs/adr/0001-cli-harness-shape.md: who may say yes to a destructive command, and where the audit log is kept."
+  ]
+}
