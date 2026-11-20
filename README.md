@@ -149,7 +149,7 @@ Run on 20 November 2026:
   also lacks Chrome for one visual check); the guard's red-team, 140 of 140; the doctor, and the bootstrap in
   check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the handbook demo
   rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code
-  from its native installer. The numbers are from Actions run 44741845670, on the release branch; every pull request
+  from its native installer. The numbers are from Actions run 44760740981, on the release branch; every pull request
   and every push to main runs the same checks, and the Actions tab shows the latest.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
   ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety
