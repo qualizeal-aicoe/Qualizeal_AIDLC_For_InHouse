@@ -64,7 +64,7 @@ def test_every_guard_rule_id_starts_with_QZ():
     policy = json.loads((PLUG / "policy" / "qz-policy.json").read_text(encoding="utf-8"))
     ids = _ids(policy, [])
     assert len(ids) >= 79 and all(i.startswith("QZ-") for i in ids), [i for i in ids if not i.startswith("QZ-")]
-    assert len(set(ids)) == 103
+    assert len(set(ids)) == 104
     schema = (PLUG / "policy" / "qz-policy.schema.json").read_text(encoding="utf-8")
     assert schema.count('"pattern": "^QZ-[A-Z0-9-]+$"') == 4
     for mod in ("guard.py", "hooks.py"):

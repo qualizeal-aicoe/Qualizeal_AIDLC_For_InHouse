@@ -1,0 +1,29 @@
+# Settings for __NAME__. Every value has a default in sqlagent/config.py; this file is where a team changes them.
+
+[database]
+path = "data/northwind.db"     # built from the seed on first use; point it at a read replica or a copy, never production primary
+seed = "data/seed.sql"         # the invented Northwind Freight sample; empty to use an existing database as it is
+
+[agent]
+role = "analyst"               # who is asking: set by whoever starts the agent, never by the question (see semantic.toml [roles])
+provider = "scripted"          # scripted (offline; knows the sample questions) | anthropic | openai (any OpenAI-compatible API)
+model = "claude-haiku-5-5"
+base_url = ""                  # openai provider: https://api.openai.com/v1, https://api.groq.com/openai/v1, a LiteLLM proxy...
+api_key_env = ""               # the environment variable that holds the key; default ANTHROPIC_API_KEY or OPENAI_API_KEY
+allowed_hosts = ["api.anthropic.com", "api.openai.com", "api.groq.com"]   # the only hosts a key is sent to
+max_tokens = 800
+timeout_s = 30
+
+[limits]                       # hard stops, so one bad question cannot run away
+max_attempts = 3               # SQL attempts per question, the first included
+max_rows = 200                 # rows any query may return; a LIMIT is added or lowered to this
+query_timeout_ms = 2000        # a query running longer is stopped by the database
+max_question_chars = 1000
+recursion_limit = 25           # steps in one LangGraph run
+
+[retrieval]
+max_tables = 5                 # tables in the schema card the model sees
+
+[store]
+threads = ".sqlagent/threads.db"   # conversation state, so follow-up questions work (LangGraph checkpointer)
+audit = ".sqlagent/audit.jsonl"    # what was asked, the SQL with its values masked, the outcome; never result rows

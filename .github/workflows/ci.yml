@@ -134,6 +134,10 @@ jobs:
           - { stack: mcp-server-py, os: windows-latest }
           - { stack: advanced-rag, os: ubuntu-latest }
           - { stack: advanced-rag, os: windows-latest }
+          - { stack: agent-memory-py, os: ubuntu-latest }
+          - { stack: agent-memory-py, os: windows-latest }
+          - { stack: text-to-sql, os: ubuntu-latest }
+          - { stack: text-to-sql, os: windows-latest }
           - { stack: claude-agent-sdk-py, os: ubuntu-latest }
           - { stack: claude-agent-sdk-py, os: windows-latest }
           - { stack: strands-agentcore, os: ubuntu-latest }
@@ -182,6 +186,16 @@ jobs:
         shell: bash
         working-directory: ${{ runner.temp }}/proj
         run: uv run -m arag ingest && uv run -m arag eval --gate && uv run -m arag compare --gate
+      - name: The memory's gold set with its gate
+        if: matrix.stack == 'agent-memory-py'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv run -m mem eval --gate
+      - name: The text-to-SQL gold set with its gate (execution accuracy and safety)
+        if: matrix.stack == 'text-to-sql'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv run -m sqlagent eval --gate
       - name: Gold set and audit through the vendored kit
         shell: bash
         working-directory: ${{ runner.temp }}/proj

@@ -255,12 +255,15 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
     stacks = {k: m for k, m in every.items() if m.get("kit", True) and m.get("common", True)}
     assert set(stacks) == {"claude-agent-sdk-py", "claude-agent-sdk-ts", "langgraph", "openai-agents-py", "strands-agentcore", "maf-dotnet", "go-anthropic"}
     servers = {k: m for k, m in every.items() if m.get("kit", True) and not m.get("common", True)}
-    assert set(servers) == {"mcp-server-py"}
-    for name, meta in servers.items():                    # a tool server: its own contract cases, no agent gold set
+    own_files = {"mcp-server-py": ("docs/adr/0001-mcp-server-shape.md", "tests/tool_pins.json"),     # a tool server: contract cases
+                 "agent-memory-py": ("docs/adr/0001-memory-shape.md", "mem/policy.py", "mem/telemetry.py"),
+                 "text-to-sql": ("docs/adr/0001-text-to-sql-shape.md", "semantic.toml", "sqlagent/guard.py", "data/seed.sql")}
+    assert set(servers) == set(own_files)
+    for name, meta in servers.items():                    # their own README, CI and gold set; no agent gold set of ten
         dest = tmp_path / name
         qz(tmp_path, "build", "new", name, str(dest), "--name", "Order Support")
         assert meta["verified"].startswith("RUN:") and json.loads((dest / "evals" / "eval.json").read_text())["adapter"]["command"] == meta["adapter"]
-        for f in ("CLAUDE.md", "README.md", "docs/runbook.md", "docs/adr/0001-mcp-server-shape.md", ".github/workflows/ci.yml", "tests/tool_pins.json", ".claude/qz/scripts/qz.py"):
+        for f in ("CLAUDE.md", "README.md", "docs/runbook.md", ".github/workflows/ci.yml", ".claude/qz/scripts/qz.py", *own_files[name]):
             assert (dest / f).exists(), (name, f)
         assert not [p for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in str(p) and p.suffix in (".py", ".md", ".json", ".yml") and "__NAME__" in p.read_text(encoding="utf-8", errors="ignore")]
         assert qz(dest, "vendor", ".", "--check").stdout.startswith("Vendored kit: in sync")

@@ -1,0 +1,31 @@
+{
+  "title": "Agent memory (Python)",
+  "summary": "Governed long-term memory for the agents we build: kept per person with its history, recalled when it helps, erased on request after the person's yes, sensitive kinds only with consent, no instruction or personal number ever stored, every call in a hash-chained audit log and a trace. A library, a sample assistant, a command line and an MCP server.",
+  "verified": "RUN: the scaffold's 17 tests and its 18 gold cases (each checking the reply and the memory calls behind it) ran here offline with the stub extractor on Python 3.11 to 3.13: isolation between people, erasure checked in the database file, consent and its withdrawal, retention, the MCP server through a real MCP client in memory with and without the person's yes, the call and turn limits, the hash-chained audit log under three threads and two processes and after an edit, a removal and a cut, traces without the words, and the model extractor against a stand-in server with its host allow-list. The project audit scores it READY, 89.6%. Not run against a live model or a real client's confirmation screen.",
+  "stack_line": "Governed long-term memory for agents, in Python, on SQLite.",
+  "policy": "mem/policy.py",
+  "agent_dir": "mem/",
+  "common": false,
+  "own_readme": true,
+  "adapter": [
+    "uv",
+    "run",
+    "--quiet",
+    "python",
+    "evals/adapter.py"
+  ],
+  "pass_env": [],
+  "secret_env": [],
+  "test_cmd": "uv run -m pytest -q",
+  "run_cmd": "uv run -m mem chat <user>",
+  "setup_steps": [
+    "- uses: astral-sh/setup-uv@v6",
+    "- run: uv sync --locked"
+  ],
+  "live": "No key needed: the stub extractor runs offline. For free text, set ANTHROPIC_API_KEY and provider = \"anthropic\" in mem.toml.",
+  "next": [
+    "Point your agent at it: recall before it answers, retain after the person speaks (mem/agent.py shows the order).",
+    "Add the sentence shapes your users say to the gold set before you switch the extractor to a model.",
+    "Before many people use one store, read docs/adr/0001-memory-shape.md: Postgres with row-level security, encryption at rest, a retention job."
+  ]
+}

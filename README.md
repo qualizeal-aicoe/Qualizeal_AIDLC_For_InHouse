@@ -62,8 +62,10 @@ of evaluation cases gates each change, and CI and a runbook come with it.
 | `claude-agent-sdk-py` | Claude Agent SDK (Python) | 4 tests and 10 gold cases; Windows and Linux |
 | `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 4 tests and 10 gold cases; Linux |
 | `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 6 tests and 8 contract cases through a real MCP client; Windows and Linux |
-| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU | 54 tests; 38 of 40 golden questions with the real models, against 35 for keyword search alone; no safety violations; Windows and Linux |
-| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story | 50 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
+| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 59 tests; 38 of 40 golden questions with the real models, against 35 for keyword search alone; no safety violations; Windows and Linux |
+| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 55 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
+| `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 17 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
+| `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 38 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
 | `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 5 tests and 10 gold cases; Linux |
 | `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 4 tests and 10 gold cases; Linux |
 | `go-anthropic` | Go on the Anthropic API | vet, tests and 10 gold cases; Linux |
@@ -96,6 +98,10 @@ stub, so none of these numbers involves a live model.
 
 `/qz-aidlc:qz` picks the lane from what you ask.
 
+Several agents on one job keep in step through `qz board`: channels and threads for messages, and a task board where
+a worker claims a task with a lease, renews it while it works and marks it done, failed or blocked. One board per
+repository, shared by every session and git worktree on the computer; `qz board view` shows it as a page.
+
 ## A live session
 
 [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md) is the plan for an instructed session: what everyone does five days and
@@ -113,6 +119,11 @@ The video (under a minute, no sound) is made from real output of the commands in
   only the first. Writes to Jira, Confluence and GitHub wait for a person. Agents never merge.
 - Content from tickets, pages, files and tools is data. Text that addresses the model is flagged: documents that carry
   it are quarantined from the Knowledge Fabric, and both RAG kits quarantine such sentences when they read a document.
+- The text-to-SQL starter only reads, and only what the asker's role may read: the SQL is checked as a parsed tree,
+  then runs on a read-only connection whose authorizer refuses any write, pragma or restricted column inside SQLite
+  itself. Text in the data that reads like instructions to an AI is withheld before the answer is written.
+- The RAG kits' crawler fetches only hosts a person listed, over https, obeys robots.txt, and refuses private and
+  cloud-metadata addresses on every redirect.
 - The RAG kits apply access control inside the search query, before anything is ranked, and never answer without a
   citation. The MCP starter marks every result as untrusted data and pins its tool descriptions, so a changed
   description fails the tests.
@@ -135,7 +146,7 @@ The video (under a minute, no sound) is made from real output of the commands in
 Run on 20 November 2026:
 - **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 276 tests (274 passed and 2 skipped
   on Linux, the two that need the internal pricing workbook; 273 passed and 3 skipped on Windows, where the runner
-  also lacks Chrome for one visual check); the guard's red-team, 137 of 137; the doctor, and the bootstrap in
+  also lacks Chrome for one visual check); the guard's red-team, 140 of 140; the doctor, and the bootstrap in
   check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the handbook demo
   rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code
   from its native installer. The numbers are from Actions run 44741845670, on the release branch; every pull request
@@ -171,6 +182,7 @@ Not run:
 | [docs/QUICK-GUIDE.md](docs/QUICK-GUIDE.md) | Every command, the QualiZeal names, and how to spend fewer tokens |
 | [docs/DEMO-VECTORLESS-RAG.md](docs/DEMO-VECTORLESS-RAG.md) | A longer session that builds the vectorless kit live, one story at a time |
 | [docs/GITHUB-AGENT.md](docs/GITHUB-AGENT.md) | The GitHub agent, set up from the website |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.1 adds and why: LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
 | [docs/HISTORY.md](docs/HISTORY.md) | Releases 0.4.0 to 0.10.0, as described at the time |
 | [LAYERS.md](LAYERS.md) | What is AWS AI-DLC and what is ours |
 | [CREDITS.md](CREDITS.md) | The projects that shaped the Studio, and their licences |

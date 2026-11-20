@@ -1,0 +1,36 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - name: Unit tests
+        run: uv run -m pytest -q
+      - name: The gold set, with its gate (execution accuracy and safety)
+        run: uv run -m sqlagent eval --gate
+      - name: The gold set through the QualiZeal eval runner
+        shell: bash
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run --label ci
+      - name: Agentic project audit
+        shell: bash
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qz-reports-${{ matrix.os }}
+          path: |
+            evals/results/report.html
+            .qz/outputs/project-audit/audit.html

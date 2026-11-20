@@ -24,6 +24,10 @@ Nothing below was copied: no code, prompt, rubric or text. We read each project 
 | A local code graph behind one explore tool | CodeGraph (colbymchenry) | MIT |
 | Hybrid retrieval fused by reciprocal rank before reranking; the stage names of an answer's trace; knowledge cores that keep provenance and sources; counting what access control removed without saying so in the answer | TrustGraph (trustgraph-ai) | Apache-2.0 |
 | The context layer, forecasts, confirmed memory, the run map, risk-scored review, code search, budgeted knowledge selection, the terse voice | substrate, txtai, caveman, headroom, rtk, code-review-graph, semble, context-mode, ci, lot-map, auto-ontology-mcp, ragflow, SpectraFuse, exxperts, mattpocock/skills | Apache-2.0, MIT, Elastic 2.0, ci-proto: ideas only |
+| A board for agents: channels, threads, tasks with leases and fencing tokens, one board per repository across worktrees | vercel/board | Apache-2.0 |
+| Memory kept per person with its history; retaining and recalling as separate steps; memories judged before they are stored | Mem0 (mem0ai), Hindsight (vectorize-io) | Apache-2.0, MIT |
+| Text-to-SQL as a graph (generate, execute, retry, summarise), schema retrieval before generation, a parsed-SQL guard with a row limit | ChatSQL (SubhamParajuli/chat_sql) | no licence file: we took the shape only |
+| Web pages for RAG: robots.txt, the main content only, change detection between crawls | Firecrawl (mendableai), Crawl4AI (unclecode) | AGPL-3.0, Apache-2.0: ideas only |
 | Design, UI testing and deck practices | public skill collections, read but not copied | as published |
 
 ## Installed only when you ask
@@ -33,4 +37,8 @@ Nothing below was copied: no code, prompt, rubric or text. We read each project 
 FFmpeg program (LGPL or GPL, by build) that the Studio runs as a separate program. The starters' own packages are
 listed, with their licences, in each starter's `uv.lock`.
 
-The handbook in the RAG kits belongs to Northwind Freight, a fictional company.
+`render = "lightpanda"` in a RAG kit's `web.toml` runs the Lightpanda browser (AGPL-3.0) if you install it; the kits
+do not ship it and run it as a separate program.
+
+The handbook in the RAG kits and the database in the text-to-SQL starter belong to Northwind Freight, a fictional
+company.

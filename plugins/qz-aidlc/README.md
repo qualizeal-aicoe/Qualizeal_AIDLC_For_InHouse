@@ -2,7 +2,8 @@
 
 The QualiZeal AI Center of Excellence's governed way to do agentic AI work in Claude Code: tested starters for
 LangGraph, the OpenAI Agents SDK, the Claude Agent SDK (Python and TypeScript), an MCP (Model Context Protocol) server,
-AWS Strands, Microsoft Agent Framework and Go; two RAG (retrieval-augmented generation) kits, vectorless and hybrid;
+agent memory, read-only text-to-SQL, AWS Strands, Microsoft Agent Framework and Go; two RAG (retrieval-augmented
+generation) kits, vectorless and hybrid, that also take web pages; a board for several agents on one job;
 lanes that architect, spec, build, evaluate, test, audit, deliver, demo, bid and write office decks, workbooks and
 mail; the Knowledge Fabric; and a harness around all of it - a policy guard that reads every command on a line,
 per-turn undo, goal mode, routing that fits the model and effort to the task, an audit chain, a run ledger and report

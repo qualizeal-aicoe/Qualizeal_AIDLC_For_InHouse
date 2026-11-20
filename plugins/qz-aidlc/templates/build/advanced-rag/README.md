@@ -46,6 +46,7 @@ The first `ingest` downloads the two models (about 150 MB) into `~/.cache/qz-aid
 | Knowledge cores | `arag core export handbook.zip` packs the index, the source files and a manifest of hashes. `arag core load` checks every file before it replaces an index, and refuses a core built with another embedder |
 | A threshold you can defend | `arag calibrate` shows where the refusal threshold sits between answerable and unanswerable questions |
 | A gate in CI | `arag eval --gate` against `evals/thresholds.json`, and `arag compare --gate`: hybrid may never be worse than BM25 alone |
+| Web pages as documents | `arag crawl` fetches the pages listed in `web.toml` (allowed hosts only, https, robots.txt obeyed, no private or metadata addresses, size limits) into `corpus/web/`, enters each in the manifest with an owner and readers, and skips unchanged pages; `--prune` retires pages gone from the site. `render = "lightpanda"` runs a page's JavaScript first. Then `arag ingest`, which flags hidden text in a page like in any document |
 
 Settings are in `arag.toml`. Point `[corpus]` at your documents and `evals/golden.jsonl` at your questions.
 

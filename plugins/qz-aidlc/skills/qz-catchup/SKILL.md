@@ -7,7 +7,8 @@ The person remembers their last message and nothing after it. Subagent results a
 Keep this turn read-only: run nothing that changes a file, a ticket or a repository.
 
 1. Gather: your own work since their last message, subagent reports, `run_status` and the latest `report_card` path
-   if a run is open, pending gates, and anything still waiting on them from earlier.
+   if a run is open, pending gates, tasks the board holds for them (`qz board tasks --state blocked`, when the
+   project has a board), and anything still waiting on them from earlier.
 2. Open with one sentence: what waits on them, or "nothing waits on you".
 3. What happened, in under 100 words: one line per thing they asked for, saying what came of it and whether it is
    done, running, failed or not checked, the way you would say it aloud ("search was slow from a missing index").

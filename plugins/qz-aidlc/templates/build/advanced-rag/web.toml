@@ -1,0 +1,20 @@
+# Web pages for the corpus: `uv run -m arag crawl` fetches them into corpus/web/ and enters each one in the manifest,
+# then `uv run -m arag ingest` indexes them like any other document. Nothing is fetched from a host that is not listed
+# in allowed_hosts. Every source names an owner and the groups that may read it, like every document in the manifest.
+
+allowed_hosts = []             # e.g. ["docs.example.com", "*.example.org"]
+allow_private = false          # true only for an intranet site you mean to fetch; cloud metadata addresses stay refused
+user_agent = "QualiZeal-RAG-crawler/1.0"
+max_pages = 50                 # per source
+max_bytes = 2000000            # per page
+timeout_s = 15
+delay_s = 1.0                  # between requests to one host; a longer Crawl-delay in robots.txt wins, up to 10 s
+render = "none"                # none, or lightpanda: run the page's JavaScript first (pages built in the browser)
+render_cmd = ["lightpanda", "fetch", "--obey-robots", "--dump", "html"]
+
+# [[sources]]
+# url = "https://docs.example.com/handbook/"
+# title = "Example handbook"
+# owner = "Docs team"
+# acl = ["all"]
+# follow = true                # also fetch the pages it links to under the same path, up to max_pages

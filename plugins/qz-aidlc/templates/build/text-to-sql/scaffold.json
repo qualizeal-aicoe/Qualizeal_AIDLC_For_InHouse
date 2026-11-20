@@ -1,0 +1,31 @@
+{
+  "title": "Text-to-SQL (LangGraph, Python)",
+  "summary": "Ask a database in plain words, read-only and role-scoped: a LangGraph flow that retrieves the schema, writes SQL, guards the parsed tree, runs it on a read-only connection with an authorizer, catches double counts and value mismatches and retries, withholds instructions found in the data, follows up on a thread, and is measured by execution accuracy. Scripted offline model; Anthropic or any OpenAI-compatible API.",
+  "verified": "RUN: the scaffold's tests and its 27 gold cases ran here offline with the scripted model: execution accuracy 15 of 15, safety 11 of 11, including writes in four disguises, personal columns in SELECT *, filters and joins, a restricted table, instructions in a support ticket, a stacked statement from the model, a query stopped at its time limit, follow-ups on a thread, the local page's host, size and content-type checks, and both real-model providers against stand-in servers with the host allow-list. Not run against a live model, another database engine or a large schema.",
+  "stack_line": "Read-only text-to-SQL on LangGraph and SQLite, with a semantic layer and execution-accuracy evals.",
+  "policy": "semantic.toml",
+  "agent_dir": "sqlagent/",
+  "common": false,
+  "own_readme": true,
+  "adapter": [
+    "uv",
+    "run",
+    "--quiet",
+    "python",
+    "evals/adapter.py"
+  ],
+  "pass_env": [],
+  "secret_env": [],
+  "test_cmd": "uv run -m pytest -q",
+  "run_cmd": "uv run -m sqlagent chat",
+  "setup_steps": [
+    "- uses: astral-sh/setup-uv@v6",
+    "- run: uv sync --locked"
+  ],
+  "live": "No key needed: the scripted model runs offline on the sample questions. For your own questions set provider = \"anthropic\" or \"openai\" in sql.toml and the key in the environment.",
+  "next": [
+    "Point [database] path at a read replica or a copy of your database, and describe it in semantic.toml with the data owner.",
+    "Add twenty real questions with SQL the data owner signs off to evals/gold.jsonl, then run them with your model before anyone relies on the answers.",
+    "Before a team uses it, read docs/adr/0001-text-to-sql-shape.md: a SELECT-only database role, row-level rules, an authenticated service."
+  ]
+}

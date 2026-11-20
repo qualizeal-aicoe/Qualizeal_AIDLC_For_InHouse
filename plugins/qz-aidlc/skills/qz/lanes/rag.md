@@ -37,6 +37,9 @@ the model only when the evaluation improves.
 compare --gate`. A wrong answer is diagnosed from its trace: `uv run -m arag explain <id>`. Move an index with
 `uv run -m arag core export <file>` and `core load <file>`: the sources travel inside and every file is checked.
 
+**Web pages** (either kit): sources in `web.toml` (owner, readers, host in `allowed_hosts`); `crawl --dry-run`, then
+`crawl` and `ingest`. Say which pages were refused and why; `--prune` retires pages gone from the site.
+
 **Measure**: `uv run -m vrag eval --json` for each configuration, or `uv run -m arag compare` for BM25 against hybrid on
 the same questions; report the table. A vendor's own benchmark (for
 example PageIndex's FinanceBench score) is context, not evidence: the golden set decides.

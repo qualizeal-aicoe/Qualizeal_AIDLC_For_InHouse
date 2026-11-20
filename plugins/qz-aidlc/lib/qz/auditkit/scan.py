@@ -22,7 +22,8 @@ STACKS = {
     "Semantic Kernel": r"Microsoft\.SemanticKernel|semantic[-_]kernel",
     "AWS Strands / Bedrock": r"strands[-_]agents|\bstrands\b|bedrock[-_]agentcore|bedrock-runtime|\bboto3\b",
     "Google ADK": r"google\.golang\.org/adk|google[-_]adk",
-    "OpenAI Agents": r"openai[-_]agents|\bopenai\b",
+    "OpenAI Agents SDK": r"openai[-_]agents|from agents import|\bagents\.(Agent|Runner)\b",
+    "OpenAI API": r"\bopenai\b(?![-_]agents)",
     "CrewAI / AutoGen": r"\bcrewai\b|\bautogen\b|\bag2\b",
     "MCP": r"modelcontextprotocol|\bmcp\b",
 }
@@ -177,7 +178,7 @@ def scan(root: Path) -> dict:
     add(_i("Evaluation", "EVAL-2", "Evaluations run in CI and can block a merge", ["LLM09"]), 2 if ci_eval else 0, ci_eval, "A pipeline runs evaluations." if ci_eval else "Evaluations are not part of any pipeline.")
     safety = [n for n in gold if re.search(r"safety|inject|jailbreak|adversar|security", repo.files.get(n, "") + n, re.I)]
     add(_i("Evaluation", "EVAL-3", "The gold set includes attack and refusal cases", ["LLM01", "ASI01"]), 2 if safety else 0, safety, "Safety or injection cases are present." if safety else "No injection, leak or unsafe-action cases in the gold set.")
-    add(_i("Evaluation", "EVAL-4", "Tool-use paths are evaluated, not only final text", ["ASI02"]), 2 if any(re.search(r"tool_called|tool_sequence|trajectory|tool_calls", repo.files.get(n, "")) for n in gold) else (0 if agentic else None), [], "Trajectory checks found in the gold set." if any(re.search(r"tool_called|tool_sequence|trajectory|tool_calls", repo.files.get(n, "")) for n in gold) else "No check looks at which tools were called or in what order.", na=server_only)
+    add(_i("Evaluation", "EVAL-4", "Tool-use paths are evaluated, not only final text", ["ASI02"]), 2 if any(re.search(r"tool_(not_)?called|tool_status|tool_sequence|max_tool_calls|trajectory|tool_calls", repo.files.get(n, "")) for n in gold) else (0 if agentic else None), [], "Trajectory checks found in the gold set." if any(re.search(r"tool_(not_)?called|tool_status|tool_sequence|max_tool_calls|trajectory|tool_calls", repo.files.get(n, "")) for n in gold) else "No check looks at which tools were called or in what order.", na=server_only)
     # ---- observability
     tr = repo.grep(TRACE)
     add(_i("Observability", "OBS-1", "Every run is traced end to end", ["ASI10"]), 2 if tr else 0, tr, "Tracing is wired." if tr else "No tracing: a wrong answer cannot be explained afterwards.")
@@ -187,7 +188,7 @@ def scan(root: Path) -> dict:
     # ---- governance
     req = _json(repo, "arch/requirements.json")
     au = (req or {}).get("autonomy") or {}
-    doc_gate = repo.grep(r"irreversible|human approval|approval gate|autonomy", code_only=False, exclude=None, include=r"\.md$")
+    doc_gate = repo.grep(r"irreversible|human approval|approval gate|autonomy", code_only=False, flags=re.I, exclude=None, include=r"\.md$")
     add(_i("Governance", "GOV-1", "Autonomy is stated: what the agent may do alone and what waits for a person", ["LLM06", "ASI09"]), 2 if au.get("level") else (1 if doc_gate else 0), ["arch/requirements.json"] if au.get("level") else doc_gate, f"Autonomy level: {au['level']}." if au.get("level") else ("Mentioned in documents; write it down as a rule." if doc_gate else "Nothing says what the agent is allowed to do without a person."))
     adrs = repo.has(r"(^|/)(docs/)?(adr|decisions)/.*\.md$")
     add(_i("Governance", "GOV-2", "Architecture decisions are recorded", []), 2 if adrs else 0, adrs, "Decision records exist." if adrs else "No decision records: the next engineer cannot tell a choice from an accident.")

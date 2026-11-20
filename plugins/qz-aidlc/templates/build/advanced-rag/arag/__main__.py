@@ -1,4 +1,4 @@
-"""uv run -m arag <command> — ingest, search, ask, explain, map, flags, eval, compare, core, serve."""
+"""uv run -m arag <command> — crawl, ingest, search, ask, explain, map, flags, eval, compare, core, serve."""
 from __future__ import annotations
 
 import argparse
@@ -103,6 +103,9 @@ def main(argv: list[str] | None = None) -> int:
     co = sp.add_parser("core", help="export the index and its sources as a knowledge core, or load one")
     co.add_argument("action", choices=["export", "load"])
     co.add_argument("file")
+    w = sp.add_parser("crawl", help="fetch the web pages listed in web.toml into the corpus")
+    w.add_argument("--prune", action="store_true", help="mark pages that are gone from the site as superseded")
+    w.add_argument("--dry-run", action="store_true", help="say what would be fetched; fetch nothing")
     v = sp.add_parser("serve", help="chat page and JSON API on this computer")
     v.add_argument("--port", type=int, default=8765)
     v.add_argument("--host", default="127.0.0.1")
@@ -110,6 +113,11 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     cfg = config.load()
 
+    if args.cmd == "crawl":
+        from . import crawl
+        rep = crawl.run(cfg, prune=args.prune, dry_run=args.dry_run)
+        print(crawl.summary(rep, "uv run -m arag ingest"))
+        return 0
     if args.cmd == "stages":
         for n, (mod, what) in STAGES.items():
             try:

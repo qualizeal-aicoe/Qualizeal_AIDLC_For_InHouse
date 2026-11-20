@@ -10,7 +10,7 @@
       "(^|/)CLAUDE\\.md$",
       "AGENTS\\.md$",
       "aidlc/spaces/[^/]+/memory/org\\.md$",
-      "(^|[/\\s'\\\"=(])\\.qz[\\\\/](policy|audit|runs|outputs)[\\\\/]",
+      "(^|[/\\s'\\\"=(])\\.qz[\\\\/](policy|audit|runs|outputs|board)[\\\\/]",
       "(^|/)\\.mcp\\.json$",
       "aidlc/spaces/[^/]+/(?:[^/]+/)*audit/",
       "(^|[\\s/'\\\"=])aidlc/active-spac[e?*]"
@@ -261,8 +261,15 @@
     {
       "id": "QZ-RECORDS-WRITE",
       "tool": "shell",
-      "match": "(>{1,2}|\\btee\\b|\\b(rm|mv|cp|truncate|sed\\s+-i)\\b)[^\\n;&|]*\\.qz[\\\\/](audit|runs|outputs)[\\\\/]",
-      "message": "The audit chain, run ledgers and approved outputs under .qz/ are written only by the QualiZeal tools."
+      "match": "(>{1,2}|\\btee\\b|\\b(rm|mv|cp|truncate|sed\\s+-i)\\b)[^\\n;&|]*\\.qz[\\\\/](audit|runs|outputs|board)[\\\\/]",
+      "message": "The audit chain, run ledgers, approved outputs and the board under .qz/ are written only by the QualiZeal tools."
+    },
+    {
+      "id": "QZ-BOARD-WRITE",
+      "tool": "shell",
+      "match": "\\b(sqlite3?|litecli|sqlite-utils|sqlitebrowser)(\\.exe)?\\b[^\\n;&|]*\\.qz[\\\\/]+board[\\\\/]",
+      "flags": "i",
+      "message": "The board under .qz/board/ changes only through `qz board`, so every message and task change records who made it. Read it with `qz board read <channel>` or `qz board tasks`."
     },
     {
       "id": "QZ-RATECARD-READ",

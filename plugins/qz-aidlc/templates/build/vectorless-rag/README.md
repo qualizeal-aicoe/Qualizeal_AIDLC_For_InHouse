@@ -48,6 +48,10 @@ Measure your own corpus with your own golden questions before choosing a configu
    paraphrases. Keep the `must_not_contain` and `must_not_cite` checks.
 3. Run the evaluation, then add synonyms or switch on the tree strategy only when the score improves.
 4. For a live model, set `[llm] provider = "anthropic"` and export `ANTHROPIC_API_KEY`. Re-run the evaluation.
+5. Web pages: list them in `web.toml` (allowed hosts, an owner and readers per source), run `uv run -m vrag crawl`,
+   then `uv run -m vrag ingest`. Only allowed hosts over https, robots.txt obeyed, no private or metadata addresses;
+   unchanged pages are skipped and `--prune` retires pages gone from the site. `render = "lightpanda"` runs a page's
+   JavaScript first, for pages built in the browser.
 
 ## Before production (shortcuts in this kit)
 

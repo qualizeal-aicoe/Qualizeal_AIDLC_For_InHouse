@@ -22,6 +22,25 @@ way on every laptop and to be taught in a live session.
   same questions (`arag compare --gate`), calibration of the reranker's floor (`arag calibrate`), and knowledge cores
   that carry their sources and are checked when loaded. On the sample handbook: 38 of 40 golden questions, against
   35 for keyword search alone.
+- **An agent memory starter, `agent-memory-py`.** What a person tells an assistant is kept for that person, updated
+  with its history, recalled when a question needs it and erased when they ask: over MCP only after their yes, asked
+  by their client. Sensitive kinds wait for consent; instructions and personal numbers are never stored. Every call is
+  in a hash-chained audit log and a trace, a looping client stops at a limit, and the model extractor sends its key
+  only to listed hosts. The gold set checks the memory calls behind each reply, not only the words.
+- **A text-to-SQL starter, `text-to-sql`**, on LangGraph and SQLite, after the shape of the open-source ChatSQL
+  project: the right tables found first, SQL written, checked as a parsed tree, run read-only, retried with a precise
+  note, then answered. Roles decide which tables and columns a question may touch, enforced three times (the schema
+  card, the guard, an authorizer inside SQLite). Double counts across joins and filters on values the data does not
+  hold are caught and fixed, ambiguous words get a question back, instructions found in the data are withheld,
+  follow-ups work on a thread, and a model's answer is kept only if its numbers are in the rows. Measured by
+  execution accuracy; Anthropic or any OpenAI-compatible API (OpenAI, Groq, vLLM, LiteLLM).
+- **Web pages for both RAG kits.** `crawl` fetches the pages listed in `web.toml` into the corpus with an owner and
+  readers in the manifest: listed hosts only, https, robots.txt and its crawl delay obeyed, private and metadata
+  addresses refused on every redirect, size and type limits, unchanged pages skipped, pages gone from the site
+  retired with `--prune`, and optional rendering in Lightpanda for pages built by JavaScript.
+- **`qz board`**, after Vercel's board: channels, threads and a task board with leases and fencing, so several
+  agents and sessions share one job without two of them taking the same task. One board per repository, across git
+  worktrees; changed only through `qz board`, which the guard enforces.
 - **OpenTelemetry tracing** in the TypeScript starter, and a decision record (`docs/adr/0001-...`) in every agent
   starter and the MCP starter.
 - **CI (continuous integration) on Windows and Linux** for the Studio and every Python starter, with macOS on a
@@ -43,6 +62,8 @@ way on every laptop and to be taught in a live session.
   proxies, packages and disk space. It writes `doctor-report.json`, and when the network re-signs HTTPS it names
   `UV_SYSTEM_CERTS` for uv.
 - The readiness audit marks the agent-loop checks as not applicable to a tool server, instead of failing them.
+- The readiness audit counts every tool-path check the eval runner has (`tool_status`, `tool_not_called` and the
+  rest), reads an autonomy heading in any letter case, and tells the OpenAI API apart from the OpenAI Agents SDK.
 - The README describes 1.0.0; the notes for earlier releases moved to `docs/HISTORY.md`. The quick guide lists the
   new starters.
 

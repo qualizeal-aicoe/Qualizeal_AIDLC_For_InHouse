@@ -160,7 +160,7 @@ repository, a Claude sign-in secret, the Claude GitHub App and one workflow file
 | You want | Type |
 |---|---|
 | anything; it picks the lane | `/qz-aidlc:qz` and say what you need |
-| an agent project to start from | `/qz-aidlc:qz-build langgraph` (or `openai-agents-py`, `claude-agent-sdk-py`, `mcp-server-py`, ...) |
+| an agent project to start from | `/qz-aidlc:qz-build langgraph` (or `openai-agents-py`, `claude-agent-sdk-py`, `mcp-server-py`, `agent-memory-py`, `text-to-sql`, ...) |
 | a knowledge assistant over documents | `/qz-aidlc:qz-rag adapt hybrid ./handbook` |
 | a deck, workbook, estimate or status mail | `/qz-aidlc:qz-office status mail to the delivery head` |
 | a feature built or a bug fixed | say it; the full-stack developer agent takes it, and `ship_check` decides done |

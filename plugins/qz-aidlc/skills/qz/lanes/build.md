@@ -6,7 +6,9 @@ passed gate, build what it decided; if not, say that the stack is unconfirmed an
 1. **Pick the stack** (`stage scaffold`). `agent_scaffold [list]` shows the stacks and what was checked for each.
    Use the stack the decision record names. With no decision, ask one question. A knowledge assistant over documents
    is the `vectorless-rag` or `advanced-rag` stack, and a tool server is `mcp-server-py`: follow the RAG lane
-   (`lanes/rag.md`) for the first two instead of the steps below.
+   (`lanes/rag.md`) for the first two instead of the steps below. Long-term memory for an agent is `agent-memory-py`;
+   questions over a database are `text-to-sql`. Both carry their own README, gold set and CI: scaffold them, then
+   follow their CLAUDE.md (step 2's sample tools and 10-case gold set do not apply to them).
 2. **Scaffold.** `agent_scaffold [new, <stack>, <dest>, --name NAME]`. It creates: one read tool, one side-effecting
    tool behind a human approval gate, limits in one policy file, tracing, an offline stub model, a 10-case gold set,
    CI, a runbook, rules for coding agents, and the vendored kit under `.claude/qz/` so CI needs nothing installed.
@@ -21,3 +23,5 @@ passed gate, build what it decided; if not, say that the stack is unconfirmed an
    gate later changes with `eval [compare, <baseline>, <new>]`.
 6. **Before it leaves the team.** `project_audit [scan]` and the Audit lane for the manual items. Pull requests and
    pushes wait for the person's yes.
+
+Several agents on one build (subagents, sessions, worktrees): plan it as tasks on the board, `references/board.md`.
