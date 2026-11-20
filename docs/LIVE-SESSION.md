@@ -103,8 +103,8 @@ commands above are what it runs.
   international travel?"`. Offline it passes 35 of 40, so `uv run -m arag eval --gate` fails its 0.9 accuracy floor
   (0.857), which is the point of having the models; `compare --gate` still passes, as a tie.
 - **uv reports a certificate error** ("invalid peer certificate", "UnknownIssuer"): the company's network re-signs
-  HTTPS. Set the environment variable `UV_SYSTEM_CERTS=true`, so uv trusts what the computer already trusts, open a
-  new terminal and run the command again.
+  HTTPS. Tell uv to trust what the computer already trusts, for this terminal, then run the command again:
+  `$env:UV_SYSTEM_CERTS = "true"` in PowerShell, or `export UV_SYSTEM_CERTS=true` on macOS or Linux.
 - **A laptop cannot install at all**: pair with a neighbour; the video covers the presenter's screen.
 - **A FAIL on the day**: follow the fix line under it. If it is not quick, pair up and look at it after the session.
 

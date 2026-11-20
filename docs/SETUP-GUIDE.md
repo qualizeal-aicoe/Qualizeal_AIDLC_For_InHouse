@@ -190,8 +190,9 @@ When it blocks something, the message names the rule (for example `QZ-SH-GIT-PUS
 - **The marketplace add fails**: your GitHub account cannot read the repository yet. Accept the invitation, then
   `gh auth login` and `gh auth setup-git`, or clone the repository once and sign in in the browser.
 - **A certificate error** ("invalid peer certificate", "UnknownIssuer", "CERTIFICATE_VERIFY_FAILED"): the company's
-  network re-signs HTTPS. Set `UV_SYSTEM_CERTS=true` for uv; for Python and Claude Code, point `SSL_CERT_FILE` and
-  `NODE_EXTRA_CA_CERTS` at the company's root certificate, which IT has.
+  network re-signs HTTPS. For uv, `setx UV_SYSTEM_CERTS true` on Windows (then a new terminal), or
+  `export UV_SYSTEM_CERTS=true` in your shell profile on macOS or Linux; for Python and Claude Code, point
+  `SSL_CERT_FILE` and `NODE_EXTRA_CA_CERTS` at the company's root certificate, which IT has.
 - **Behind a proxy**: put `HTTPS_PROXY` and `NO_PROXY` in the `env` block of `~/.claude/settings.json`, so background
   agents use them too. The doctor says when they are set in the terminal but not there.
 - **On Windows, `python` opens the Microsoft Store**: the Studio does not use it, but commands you type would.
