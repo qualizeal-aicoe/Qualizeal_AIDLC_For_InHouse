@@ -1,6 +1,8 @@
 /** The agent: Claude Agent SDK with in-process tools, a permission callback as the approval gate, and hard limits. */
 import { query, type CanUseTool, type Options } from "@anthropic-ai/claude-agent-sdk";
+import { SpanStatusCode } from "@opentelemetry/api";
 import { policy } from "./policy.ts";
+import { tracer } from "./telemetry.ts";
 import { server } from "./tools.ts";
 
 export type ToolCall = { name: string; args: Record<string, unknown>; status: "ok" | "pending" | "denied" };
@@ -33,6 +35,24 @@ export function options(gate: CanUseTool): Options {
 }
 
 export async function run(message: string, approve?: boolean): Promise<RunResult> {
+  return tracer().startActiveSpan("agent.run", async (span) => {
+    try {
+      const r = await runOnce(message, approve);
+      span.setAttributes({ "agent.mode": process.env.AGENT_MODE ?? "stub", "agent.awaiting_approval": r.awaiting_approval, "agent.tool_calls": r.tool_calls.length,
+        "gen_ai.usage.input_tokens": r.usage.input_tokens, "gen_ai.usage.output_tokens": r.usage.output_tokens });
+      for (const c of r.tool_calls) span.addEvent("tool_call", { "tool.name": c.name, "tool.status": c.status });
+      return r;
+    } catch (e) {
+      span.recordException(e as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: (e as Error).message });
+      throw e;
+    } finally {
+      span.end();
+    }
+  });
+}
+
+async function runOnce(message: string, approve?: boolean): Promise<RunResult> {
   const calls: ToolCall[] = [];
   const gate = makeGate(approve, calls);
   let text = "";

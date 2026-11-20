@@ -35,7 +35,7 @@ import zipfile
 from pathlib import Path
 
 from . import core
-from ..util import now, project_dir, read_json, write_json
+from ..util import now, project_dir, qz_home, read_json, write_json
 
 REPO = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$")
 LOGIN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
@@ -79,13 +79,13 @@ def matches(d: Path, repo: str) -> bool:
         return False
     rc, out = _git(Path(d), "remote", "-v")
     tail = re.compile(r"[:/]" + re.escape(repo) + r"(?:\.git)?/?\s", re.I)
-    return rc == 0 and bool(tail.search(out + "\n"))
+    return rc == 0 and bool(tail.search(out.replace("\\", "/") + "\n"))    # a Windows path remote uses backslashes
 
 
 def _me(given: str | None) -> str:
     if given and LOGIN.match(given):
         return given
-    s = read_json(Path.home() / ".qz" / "setup.json", {}) or {}
+    s = read_json(qz_home() / "setup.json", {}) or {}
     v = str((s.get("github") or {}).get("login") or "")
     return v if LOGIN.match(v) else "YOUR-LOGIN"
 
@@ -174,7 +174,7 @@ def other_clients(home: Path) -> list[str]:
             c = str((read_json(h / "project.json", {}) or {}).get("client") or "").strip()
             if len(c) >= 3:
                 names.add(c)
-    for f in (core.root() / core.STUDIO / "never-names.txt", Path.home() / ".qz" / "never-names.txt"):
+    for f in (core.root() / core.STUDIO / "never-names.txt", qz_home() / "never-names.txt"):
         if f.is_file():
             names |= {x.strip() for x in f.read_text(encoding="utf-8").splitlines() if len(x.strip()) >= 3 and not x.lstrip().startswith("#")}
     return sorted(n for n in names if n.lower() != own)

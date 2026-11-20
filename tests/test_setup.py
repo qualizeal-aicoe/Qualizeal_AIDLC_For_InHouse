@@ -18,6 +18,7 @@ def home(tmp_path, monkeypatch):
     for k in ("CLAUDE_CODE_REMOTE", "QZ_STAGING_ROOT", "QZ_PLAN", "CLAUDE_PLUGIN_OPTION_PLAN", "CLAUDE_CONFIG_DIR"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))      # Windows reads this one, never HOME: without it a test writes the real settings
     monkeypatch.setenv("QZ_HOME", str(tmp_path / ".qz"))
     monkeypatch.setenv("QZ_WORKSPACE_ROOT", str(tmp_path / "ws"))
     return tmp_path
@@ -79,3 +80,14 @@ def test_the_repository_file_and_the_scripts_match_the_generator():
     for f in ("install.sh", "install.ps1"):
         t = (REPO / "setup" / f).read_text()
         assert "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse" in t and "qz-aidlc@qualizeal" in t and "qz-console@qualizeal" in t and "qz-setup" in t
+
+
+def test_home_is_found_the_way_claude_code_finds_it(tmp_path, monkeypatch):
+    from pathlib import Path
+    from qz import util
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "cfg"))
+    assert util.claude_dir() == tmp_path / "cfg"                                  # Claude Code's own override
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: (_ for _ in ()).throw(RuntimeError("Could not determine home directory."))))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "u"))
+    assert util.user_home() == tmp_path / "u" and util.claude_dir() == tmp_path / "u" / ".claude"   # no crash without a home

@@ -45,7 +45,11 @@ def _plugin_installed() -> bool:
             return bool(c["present"])
     except Exception:
         pass
-    root, present = Path.home() / ".claude" / "plugins", False
+    present = False
+    try:                                                  # Claude Code's folder: CLAUDE_CONFIG_DIR, else ~/.claude (USERPROFILE on Windows)
+        root = Path(__import__("os").environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "plugins"
+    except RuntimeError:                                  # no home folder in this process: nothing is installed for it
+        return False
     for pat in ("*/*/*/.claude-plugin/plugin.json", "*/*/*/*/.claude-plugin/plugin.json"):
         for f in root.glob(pat):
             try:

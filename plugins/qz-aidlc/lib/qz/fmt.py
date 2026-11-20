@@ -18,6 +18,7 @@ import subprocess
 from pathlib import Path
 
 TIMEOUT = 10
+WINDOWS = os.name == "nt"
 WEB = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".json", ".jsonc", ".css", ".scss", ".less",
        ".html", ".vue", ".svelte", ".md", ".mdx", ".yaml", ".yml", ".graphql"}
 BIOME = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".json", ".jsonc", ".css", ".graphql"}
@@ -43,10 +44,18 @@ def _root(proj: Path, f: Path, markers: tuple[str, ...]) -> Path | None:
 
 
 def _node_bin(root: Path, name: str) -> str | None:
-    for cand in (root / "node_modules" / ".bin" / name, root / "node_modules" / ".bin" / f"{name}.cmd"):
+    """The project's own copy of a Node tool. On Windows npm writes three shims; only the .cmd one runs without a
+    shell (the bare one is a sh script that Windows cannot start)."""
+    for n in ((f"{name}.cmd", f"{name}.exe") if WINDOWS else (name,)):
+        cand = root / "node_modules" / ".bin" / n
         if cand.exists():
             return str(cand)
     return None
+
+
+# A .cmd shim runs through cmd.exe, which reads these characters in an argument as commands, even after Python quotes
+# it. A file name carrying one is not handed to the shim; the edit stands and the person is told why.
+CMD_META = re.compile(r'[&|<>^%!"\r\n]')
 
 
 def _deps(root: Path) -> set[str]:
@@ -120,6 +129,8 @@ def after_write(proj: Path, file_path: str) -> str | None:
     if not got:
         return None
     name, cmd, root = got
+    if WINDOWS and cmd[0].lower().endswith((".cmd", ".bat")) and any(CMD_META.search(a) for a in cmd[1:]):
+        return f"{name} was not run on {f.name}: its path has a character cmd.exe would read as a command (& | < > ^ % ! \"); the file is as written."
     before = _digest(f)
     try:
         r = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=TIMEOUT)

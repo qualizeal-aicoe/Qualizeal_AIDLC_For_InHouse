@@ -18,13 +18,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import router
+from .util import qz_home
 
 RANK = {"haiku": 1, "sonnet": 2, "opus": 3, "fable": 4}
 FRESH_S = 6 * 3600
-
-
-def qz_home() -> Path:
-    return Path(os.environ.get("QZ_HOME") or Path.home() / ".qz")
 
 
 def _epoch(v) -> float | None:

@@ -150,7 +150,7 @@ def render(model: dict, proj: Path, out: Path) -> dict:
         mm = mermaid(lv)
         mp = out / f"{key}.mmd"
         mp.write_text(mm + "\n", encoding="utf-8")
-        made["mermaid"].append(str(mp.relative_to(proj)))
+        made["mermaid"].append(mp.relative_to(proj).as_posix())
         page = out / key
         if page.exists():
             for f in ("spec.js",):
@@ -158,14 +158,14 @@ def render(model: dict, proj: Path, out: Path) -> dict:
         else:
             starters.new("arch-flow", page)
         (page / "spec.js").write_text("/* Generated from arch/architecture.json by qz arch diagrams. Edit the model, not this file. */\nwindow.QZ_ARCH = " + json.dumps(spec(model, key), indent=2, ensure_ascii=False) + ";\n", encoding="utf-8")
-        made["pages"].append(str((page / "index.html").relative_to(proj)))
+        made["pages"].append((page / "index.html").relative_to(proj).as_posix())
         md += [f"## {name}", "", lv.get("subtitle") or what, "", "```mermaid", mm, "```", ""]
         nodes = _nodes(lv)
         md += ["| Box | What it does | Kind |", "|---|---|---|"] + [f"| {n['label']} | {n.get('sub', '')} | {n.get('kind', '')} |" for n in nodes.values()] + [""]
         if lv.get("steps"):
             md += ["How it flows:", ""] + [f"{i}. **{s['title']}.** {s.get('caption', '')}" for i, s in enumerate(lv["steps"], 1)] + [""]
-        md += [f"Animated: `{(page / 'index.html').relative_to(proj)}`", ""]
+        md += [f"Animated: `{(page / 'index.html').relative_to(proj).as_posix()}`", ""]
     doc = proj / "ARCHITECTURE.md" if out.name == "diagrams" and out.parent.name == "arch" else out / "ARCHITECTURE.md"
     doc.write_text("\n".join(md), encoding="utf-8")
-    made["doc"] = str(doc.relative_to(proj))
+    made["doc"] = doc.relative_to(proj).as_posix()
     return made

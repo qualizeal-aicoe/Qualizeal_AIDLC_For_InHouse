@@ -24,7 +24,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from ..env import surface
-from ..util import PLUGIN_ROOT, defaults, git, now, project_config, read_json, write_json
+from ..util import PLUGIN_ROOT, defaults, git, now, project_config, qz_home, read_json, user_home, write_json
 
 FOLDERS = {
     "code": "The repository for this project. Open this folder in Claude or your editor.",
@@ -61,17 +61,17 @@ def staged() -> bool:
 
 
 def root() -> Path:
-    v = os.environ.get("QZ_WORKSPACE_ROOT") or (read_json(Path.home() / ".qz" / "workspace.json", {}) or {}).get("root")
+    v = os.environ.get("QZ_WORKSPACE_ROOT") or (read_json(qz_home() / "workspace.json", {}) or {}).get("root")
     if v:
         return Path(v)
     if surface() == "cloud":
         if os.environ.get("QZ_STAGING_ROOT"):
             return Path(os.environ["QZ_STAGING_ROOT"])
         out = Path("/mnt/user-data/outputs")                 # the folder a cloud session can hand to the person's computer
-        return (out if out.is_dir() and os.access(out, os.W_OK) else Path.home()) / "New_Projects"
+        return (out if out.is_dir() and os.access(out, os.W_OK) else user_home()) / "New_Projects"
     if os.name == "nt":
-        return Path("D:/New_Projects") if Path("D:/").exists() else Path.home() / "New_Projects"
-    return Path.home() / "New_Projects"
+        return Path("D:/New_Projects") if Path("D:/").exists() else user_home() / "New_Projects"
+    return user_home() / "New_Projects"
 
 
 def device_root() -> str:

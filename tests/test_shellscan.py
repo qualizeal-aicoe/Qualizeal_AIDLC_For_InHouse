@@ -104,3 +104,14 @@ def test_writes_outside_the_project_ask_and_references_are_read_only(tmp_path):
     assert guard.decide("Write", {"file_path": str(ref / "a.py"), "content": "x"}, proj).rule == "QZ-WR-REFERENCE"
     assert guard.decide("Write", {"file_path": str(Path.home() / "qz-elsewhere" / "a.py"), "content": "x"}, proj).rule == "QZ-ASK-OUTSIDE"
     assert guard.decide("Write", {"file_path": str(proj / "src" / "a.py"), "content": "x"}, proj).action is None
+
+
+def test_git_bash_paths_on_windows_mean_what_git_bash_means(tmp_path):
+    """Claude Code runs its Bash tool in Git Bash on Windows: there /c/x is C:\\x and /tmp is the user's temp folder.
+    A Write tool or PowerShell path is a plain Windows path and keeps its meaning."""
+    import tempfile
+    tmp = tempfile.gettempdir().replace("\\", "/")
+    assert guard._expand("/tmp/scratch.txt", tmp_path, msys=True) == f"{tmp}/scratch.txt"
+    assert guard._expand("/c/Users/me/notes.md", tmp_path, msys=True) == "C:/Users/me/notes.md"
+    assert guard._expand("/w/src/app.py", tmp_path) == "/w/src/app.py"                  # a Write tool path is left alone
+    assert guard._expand("/tmp", tmp_path, msys=True) == tmp and guard._expand("/tmpfiles/x", tmp_path, msys=True) == "/tmpfiles/x"

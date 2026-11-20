@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from .util import project_config, project_dir
+from .util import project_config, project_dir, qz_home
 
 UPLOAD_DIRS = ("/mnt/user-data/uploads", "/mnt/user-data")
 
@@ -50,7 +50,7 @@ def kf_home(proj: Path | None = None) -> Path:
     v = option("kf_home", proj)
     if v:
         return Path(v).expanduser()
-    return (proj or project_dir()) / ".qz" / "kf" if surface() == "cloud" else Path.home() / ".qz" / "kf"
+    return (proj or project_dir()) / ".qz" / "kf" if surface() == "cloud" else qz_home() / "kf"
 
 
 def describe(proj: Path | None = None) -> dict:

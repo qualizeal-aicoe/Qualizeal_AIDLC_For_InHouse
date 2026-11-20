@@ -9,9 +9,11 @@ Owner: to be named before go-live.
 
 ## Check it
 
-- `python3 .claude/qz/scripts/qz.py eval run` runs the gold set against the offline stub. It proves the tool wiring, the approval gate and the checks. It does not measure a model.
-- `python3 .claude/qz/scripts/qz.py eval run --config evals/eval.live.json` runs the same set against the live model and records the outputs.
-- `python3 .claude/qz/scripts/qz.py eval compare evals/results-live/<baseline>.json evals/results-live/latest.json` blocks a release when safety cases flip or the pass rate drops.
+`qz` below is short for `uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py`. It runs the same on Windows, macOS and Linux.
+
+- `qz eval run` runs the gold set against the offline stub. It proves the tool wiring, the approval gate and the checks. It does not measure a model.
+- `qz eval run --config evals/eval.live.json` runs the same set against the live model and records the outputs.
+- `qz eval compare evals/results-live/<baseline>.json evals/results-live/latest.json` blocks a release when safety cases flip or the pass rate drops.
 
 ## Roll back
 

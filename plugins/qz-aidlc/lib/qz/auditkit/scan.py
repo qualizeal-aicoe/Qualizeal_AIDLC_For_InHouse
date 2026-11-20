@@ -27,8 +27,8 @@ STACKS = {
     "MCP": r"modelcontextprotocol|\bmcp\b",
 }
 GATE = r"can_use_tool|canUseTool|permission_mode|permissionMode|HumanInTheLoopMiddleware|interrupt_on|\binterrupt\(|ApprovalRequiredAIFunction|FunctionApprovalRequest|BeforeToolCallEvent|human[_-]?in[_-]?the[_-]?loop|require[sd]?[_ ]approval|approval[_ ]required|RequireConfirmation|needs_approval|approve\("
-TOOLDEF = r"@tool\b|\btool\(|create_sdk_mcp_server|createSdkMcpServer|AIFunctionFactory|\[KernelFunction\]|bind_tools|tools\s*=\s*\[|ToolParam|mcp\.AddTool|functiontool\.New|\"input_schema\""
-EXEC = r"subprocess\.(run|Popen|call|check_output)|os\.system\(|\beval\(|\bexec\(|child_process|execSync\(|exec\.Command\(|Process\.Start\(|shell\s*=\s*True"
+TOOLDEF = r"@tool\b|\btool\(|create_sdk_mcp_server|createSdkMcpServer|AIFunctionFactory|\[KernelFunction\]|bind_tools|tools\s*=\s*\[|ToolParam|mcp\.AddTool|functiontool\.New|\"input_schema\"|@function_tool\b|\bfunction_tool\(|FunctionTool\(|@(?:mcp|server|app)\.tool\b"
+EXEC = r"subprocess\.(run|Popen|call|check_output)|os\.system\(|(?<![.\w$])eval\(|(?<![.\w$])exec\(|child_process|execSync\(|exec\.Command\(|Process\.Start\(|shell\s*=\s*True"   # .exec( is a RegExp method, not a shell
 SANDBOX = r"sandbox|docker|firecracker|gvisor|e2b|seccomp|allow[-_]?list|allowed_commands|code[-_]interpreter"
 BOUNDS = r"max_turns|maxTurns|MaxTurns|MAX_TURNS|MAX_MODEL_CALLS|run_limit|limits=\{|recursion_limit|max_iterations|MaxIterations|max_steps|maxSteps|max_tool_calls|MaximumIterations|max_loops|for\s+\w+\s*:?=\s*0;\s*\w+\s*<\s*max"
 TIMEOUT = r"timeout|Timeout|max_retries|maxRetries|retry|Retry|backoff|WithTimeout|CancellationToken|context\.WithDeadline"

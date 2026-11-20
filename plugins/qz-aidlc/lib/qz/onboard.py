@@ -18,7 +18,7 @@ import sys
 import time
 from pathlib import Path
 
-from .util import PLUGIN_ROOT, now, read_json, write_json
+from .util import PLUGIN_ROOT, claude_dir, now, qz_home, read_json, write_json
 
 PLANS = ("pro", "max", "ultra", "team-standard", "team-premium", "enterprise", "api")
 READS_LIMITS = {"pro", "max", "ultra"}             # the status line carries five-hour and weekly use only for these
@@ -28,12 +28,8 @@ MANAGED = {"Darwin": "/Library/Application Support/ClaudeCode/managed-settings.j
 MIN_CLAUDE = (2, 1, 273)                           # organisation plugin sync
 
 
-def qz_home() -> Path:
-    return Path(os.environ.get("QZ_HOME") or Path.home() / ".qz")
-
-
 def claude_settings() -> Path:
-    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "settings.json"
+    return claude_dir() / "settings.json"
 
 
 def _out(*args: str, timeout: float = 8) -> str:

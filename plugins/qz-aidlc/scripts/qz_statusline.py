@@ -74,7 +74,7 @@ def main() -> None:
     r = reading(d if isinstance(d, dict) else {})
     try:
         save(r, Path(os.environ.get("QZ_HOME") or Path.home() / ".qz"))
-    except OSError:
+    except (OSError, RuntimeError):                       # RuntimeError: no home folder in this process
         pass
     out = text(r)
     try:

@@ -14,7 +14,8 @@ from qz import ship  # noqa: E402
 def git(cwd, *args):
     subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=60,
                    env={"GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@example.com", "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@example.com",
-                        "PATH": __import__("os").environ["PATH"], "HOME": str(cwd)})
+                        "PATH": __import__("os").environ["PATH"], "HOME": str(cwd), "USERPROFILE": str(cwd),
+                        **{k: __import__("os").environ[k] for k in ("SYSTEMROOT",) if k in __import__("os").environ}})
 
 
 def project(tmp_path, test_body="assert add(1, 2) == 3"):
@@ -73,3 +74,23 @@ def test_the_command_line_exits_two_unless_ready(tmp_path):
     assert ship.main([str(root)]) == 2
     good = project(tmp_path / "g")
     assert ship.main([str(good)]) == 0
+
+
+def test_the_tests_run_with_the_projects_own_python(tmp_path, monkeypatch):
+    """The project's .venv first, then uv for a uv project, then any Python here that has pytest; never a bare
+    `python` that cannot import pytest (that reads as a failed test when it is a missing tool)."""
+    import os
+    import shutil
+    d = tmp_path / "p"
+    venv = d / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    venv.parent.mkdir(parents=True)
+    venv.write_text("")
+    assert ship.python_for(d)[0].strip('"\'') == str(venv)
+    venv.unlink()
+    (d / "uv.lock").write_text("")
+    monkeypatch.setattr(shutil, "which", lambda n: "/usr/bin/uv" if n == "uv" else None)
+    assert ship.python_for(d)[0] == "uv run --locked --quiet python"
+    (d / "uv.lock").unlink()
+    monkeypatch.setattr(ship.sys, "executable", str(tmp_path / "no-python-here"))
+    py, why = ship.python_for(d)
+    assert py is None and "pytest is not installed" in why

@@ -27,6 +27,7 @@ def ws(tmp_path, monkeypatch):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("QZ_WORKSPACE_ROOT", str(tmp_path / "ws"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
     for k, v in (("GIT_AUTHOR_NAME", "Tester"), ("GIT_AUTHOR_EMAIL", "t@example.com"), ("GIT_COMMITTER_NAME", "Tester"), ("GIT_COMMITTER_EMAIL", "t@example.com")):
         monkeypatch.setenv(k, v)
     core.new("Refund_Portal", client="Northwind Air")
@@ -185,3 +186,11 @@ def test_the_command_line_and_the_tool_agree(ws, monkeypatch):
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(code), "CLAUDE_PLUGIN_ROOT": str(PLUG)}
     r = subprocess.run([sys.executable, str(PLUG / "scripts" / "qz.py"), "publish", "list", "--project", "Refund_Portal"], capture_output=True, text=True, env=env, cwd=str(code), timeout=60)
     assert r.returncode == 0 and "Nothing published" in r.stdout, r.stderr
+
+
+def test_a_clone_is_recognised_whatever_slashes_its_remote_uses(tmp_path):
+    d = tmp_path / "c"
+    d.mkdir()
+    git(d, "init", "-q")
+    git(d, "remote", "add", "origin", "C:\\Users\\me\\up\\acme-org\\refund-portal.git")
+    assert publish.matches(d, "acme-org/refund-portal") and not publish.matches(d, "acme-org/other")

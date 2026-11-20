@@ -8,9 +8,12 @@ is reported as not run, with the reason: never as passed."""
 from __future__ import annotations
 
 import json
+import os
 import re
+import shlex
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -87,7 +90,30 @@ def _tool(cmd: str) -> str | None:
     exe = cmd.split()[0]
     if exe.startswith("./"):
         return None
-    return None if shutil.which(exe) or (exe == "python" and shutil.which("python3")) else exe
+    return None if shutil.which(exe) else exe
+
+
+def _q(p: str) -> str:
+    return f'"{p}"' if os.name == "nt" else shlex.quote(p)
+
+
+def python_for(d: Path) -> tuple[str | None, str | None]:
+    """The Python that runs this project's tests, as its own CI would: the project's .venv, else uv for a uv project,
+    else the first Python on this machine that has pytest. (None, why) when there is none, so the check reads
+    'not run' and the verdict UNVERIFIED, never a failure that is really a missing tool."""
+    venv = d / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    if venv.exists():
+        return _q(str(venv)), None
+    if (d / "uv.lock").is_file() and shutil.which("uv"):
+        return "uv run --locked --quiet python", None
+    cands = [w for w in (shutil.which("python"), shutil.which("python3")) if w and "WindowsApps" not in w]   # not the Store stub
+    for c in dict.fromkeys(cands + [sys.executable]):
+        try:
+            if subprocess.run([c, "-c", "import pytest"], capture_output=True, timeout=60).returncode == 0:
+                return _q(c), None
+        except (OSError, subprocess.SubprocessError):
+            continue
+    return None, "pytest is not installed for any Python here: add it to the project's dev dependencies, then uv sync (or pip install pytest)"
 
 
 def run(root: Path, base: str | None = None, timeout: int = 900, only: list[str] | None = None) -> dict:
@@ -96,13 +122,21 @@ def run(root: Path, base: str | None = None, timeout: int = 900, only: list[str]
     checks = [c for c in detect(root) if not only or c["kind"] in only]
     results = []
     for c in checks:
-        missing = _tool(c["cmd"])
-        if missing or c.get("needs"):
-            results.append({**c, "status": "not run", "why": f"{missing} is not installed here" if missing else "dependencies are not installed (run the install first)"})
-            continue
-        cmd = c["cmd"].replace("python ", "python3 ", 1) if c["cmd"].startswith("python ") and not shutil.which("python") else c["cmd"]
+        here = root / c["dir"] if c["dir"] != "." else root
+        if c["cmd"].startswith("python "):
+            py, why = python_for(here)
+            if not py:
+                results.append({**c, "status": "not run", "why": why})
+                continue
+            cmd = py + c["cmd"][len("python"):]
+        else:
+            missing = _tool(c["cmd"])
+            if missing or c.get("needs"):
+                results.append({**c, "status": "not run", "why": f"{missing} is not installed here" if missing else "dependencies are not installed (run the install first)"})
+                continue
+            cmd = c["cmd"]
         t0 = time.time()
-        out = ctxrun.run(root, cmd, intent="fail error failed", timeout=min(timeout, 600), cwd=root / c["dir"] if c["dir"] != "." else root)
+        out = ctxrun.run(root, cmd, intent="fail error failed", timeout=min(timeout, 600), cwd=here)
         took = round(time.time() - t0, 1)
         head = out.splitlines()[0] if out else ""
         if head.startswith("Not run"):

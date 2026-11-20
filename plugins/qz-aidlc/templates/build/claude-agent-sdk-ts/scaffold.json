@@ -1,7 +1,7 @@
 {
   "title": "Claude Agent SDK (TypeScript)",
-  "summary": "query() with in-process MCP tools (zod schemas), canUseTool as the approval gate, no built-in tools, turn and budget limits.",
-  "verified": "RUN: type-checked with tsc 7.0.2 against @anthropic-ai/claude-agent-sdk 0.3.322, and tests plus gold set ran here against the offline stub (same tools, same permission callback). The live query() path is type-checked only: no live model call was made here.",
+  "summary": "query() with in-process MCP tools (zod schemas), canUseTool as the approval gate, no built-in tools, turn and budget limits, OpenTelemetry spans.",
+  "verified": "RUN: type-checked with tsc 7.0.2 against @anthropic-ai/claude-agent-sdk 0.3.329 and OpenTelemetry JS (api 1.10, sdk-trace 3.1), and tests plus gold set ran here against the offline stub (same tools, same permission callback). The live query() path is type-checked only: no live model call was made here.",
   "stack_line": "A Claude Agent SDK agent in TypeScript (@anthropic-ai/claude-agent-sdk 0.3).",
   "policy": "src/policy.ts",
   "agent_dir": "src/",

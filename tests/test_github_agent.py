@@ -1,5 +1,6 @@
 """The GitHub agent: a /qz comment runs the Studio in GitHub Actions on a branch of its own (concept from opencode's
 GitHub agent, MIT; built on anthropics/claude-code-action). The guard relaxes only the action's own tools."""
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -40,7 +41,8 @@ def test_ci_mode_allows_only_the_actions_own_tools_and_branch(monkeypatch):
 
 
 def test_setup_writes_the_workflow_only_with_yes(tmp_path):
-    env = {"CLAUDE_PROJECT_DIR": str(tmp_path), "PATH": "/usr/bin:/bin", "QZ_HOME": str(tmp_path / ".h")}
+    env = {"CLAUDE_PROJECT_DIR": str(tmp_path), "PATH": "/usr/bin:/bin", "QZ_HOME": str(tmp_path / ".h"), "HOME": str(tmp_path), "USERPROFILE": str(tmp_path),
+           **{k: os.environ[k] for k in ("SYSTEMROOT", "TEMP", "TMP") if k in os.environ}}                      # what a Windows child process needs
     run = lambda *a: subprocess.run([sys.executable, str(ROOT / "scripts" / "qz.py"), "setup", "github-agent", *a], cwd=tmp_path,  # noqa: E731
                                     capture_output=True, text=True, env=env)
     r = run()

@@ -134,3 +134,19 @@ def test_every_workflow_has_a_run_button_and_a_release_is_checked_before_it_is_c
     assert drop.index("pytest -q tests") < drop.index("git commit"), "a failed check publishes nothing"
     ignore = (REPO / ".gitignore").read_text(encoding="utf-8")
     assert all(x in ignore for x in (".qz/", "docs/internal/", ".env"))
+
+
+def test_nothing_the_plugins_ship_is_ignored_by_git(tmp_path):
+    """The marketplace installs from a git clone, so a file that git ignores never reaches an attendee's machine.
+    A .gitignore inside a shipped kit (the AWS workspace has one) is the usual way this happens."""
+    import shutil
+    if not shutil.which("git"):
+        import pytest
+        pytest.skip("git is not installed here")
+    files = {p.relative_to(REPO).as_posix() for p in (REPO / "plugins").rglob("*") if p.is_file() and "__pycache__" not in p.parts}
+    for m in (REPO / "plugins").glob("*/MANIFEST.sha256"):
+        files |= {f"{m.parent.relative_to(REPO).as_posix()}/{ln.split('  ', 1)[1]}" for ln in m.read_text(encoding="utf-8").splitlines() if "  " in ln}
+    subprocess.run(["git", "init", "-q", str(tmp_path / "g")], check=True, capture_output=True)
+    r = subprocess.run(["git", "-c", "core.excludesFile=", f"--git-dir={tmp_path / 'g' / '.git'}", f"--work-tree={REPO}", "check-ignore", "--no-index", "--stdin"],
+                       input="\n".join(sorted(files)) + "\n", capture_output=True, text=True, timeout=60)
+    assert r.stdout.strip() == "", f"git ignores files the plugin ships:\n{r.stdout}"

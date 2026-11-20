@@ -102,9 +102,12 @@ def test_format_on_edit_runs_only_when_switched_on_and_declared(proj, monkeypatc
     (proj / "package.json").write_text(json.dumps({"devDependencies": {"prettier": "^3"}}))
     binp = proj / "node_modules" / ".bin"
     binp.mkdir(parents=True)
-    fake = binp / "prettier"
-    fake.write_text("#!/bin/sh\nfor f in \"$@\"; do case \"$f\" in --*) ;; *) printf 'formatted\\n' > \"$f\";; esac; done\n")
-    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    if os.name == "nt":                                   # npm's Windows shim is a .cmd file
+        (binp / "prettier.cmd").write_text('@echo off\r\n:next\r\nif "%~1"=="" exit /b 0\r\nif not "%~1"=="--write" (echo formatted)> "%~1"\r\nshift\r\ngoto next\r\n', newline="")
+    else:
+        fake = binp / "prettier"
+        fake.write_text("#!/bin/sh\nfor f in \"$@\"; do case \"$f\" in --*) ;; *) printf 'formatted\\n' > \"$f\";; esac; done\n")
+        fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
     f = proj / "src" / "app.ts"
     f.write_text("let x=1\n")
     assert fmt.after_write(proj, str(f)) is None and f.read_text() == "let x=1\n"          # off by default
@@ -174,3 +177,18 @@ def test_every_command_takes_an_option_first(proj, monkeypatch):
     r = run("vendor", "--check")
     assert r.returncode == 0 and "in sync" in r.stdout, r.stdout + r.stderr
     assert "qz setup github-agent" in run("setup", "--help").stdout
+
+
+def test_a_windows_shim_never_gets_a_file_name_cmd_would_run(proj, monkeypatch):
+    """On Windows a Node tool is a .cmd shim, and cmd.exe treats & | < > ^ % ! as commands even inside an argument."""
+    (proj / "package.json").write_text(json.dumps({"devDependencies": {"prettier": "^3"}}))
+    binp = proj / "node_modules" / ".bin"
+    binp.mkdir(parents=True)
+    (binp / "prettier.cmd").write_text("@echo off\r\nexit /b 0\r\n", newline="")
+    f = proj / "src" / "a&calc.ts"
+    f.write_text("let x=1\n")
+    monkeypatch.setenv("QZ_FORMAT_ON_EDIT", "on")
+    monkeypatch.setattr(fmt, "WINDOWS", True)
+    monkeypatch.setattr(fmt.subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the shim must not run")))
+    note = fmt.after_write(proj, str(f))
+    assert note and "was not run" in note and f.read_text() == "let x=1\n"

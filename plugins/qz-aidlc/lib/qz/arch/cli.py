@@ -35,7 +35,7 @@ def _sha(proj: Path) -> dict:
     out = {}
     for n in FILES:
         p = _a(proj) / n
-        out[n] = hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None
+        out[n] = hashlib.sha256(p.read_bytes().replace(b"\r\n", b"\n")).hexdigest() if p.exists() else None   # same on every OS
     for a in adr.listing(proj):
         t = (proj / a["path"]).read_text(encoding="utf-8")
         out[a["path"]] = hashlib.sha256("\n".join(x for x in t.splitlines() if not x.startswith(("status:", "decision-makers:"))).encode()).hexdigest()
@@ -162,12 +162,12 @@ def main(name: str, rest: list[str]) -> None:
                 raise SystemExit("Score the decision first; a blocked decision has no outcome to record.")
             p = adr.from_decision(proj, dec, r)
             print(f"Wrote {p.relative_to(proj)} (proposed). It is accepted at the gate.")
-            record("adr", str(p.relative_to(proj)), "domain-design")
+            record("adr", p.relative_to(proj).as_posix(), "domain-design")
         else:
             f = json.loads(Path(a.file).read_text(encoding="utf-8"))
             p = adr.write(proj, f["title"], f["context"], f["drivers"], f["options"], f["chosen"], f["because"], f.get("good", []), f.get("bad", []), f["confirmation"], f.get("deciders", ""))
             print(f"Wrote {p.relative_to(proj)} (proposed).")
-            record("adr", str(p.relative_to(proj)), "domain-design")
+            record("adr", p.relative_to(proj).as_posix(), "domain-design")
     elif a.cmd == "spike":
         fea = _load(proj, "feasibility.json") or dict(feasibility.TEMPLATE)
         if a.action == "list":

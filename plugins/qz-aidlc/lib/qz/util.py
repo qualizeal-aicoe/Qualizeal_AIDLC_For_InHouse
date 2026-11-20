@@ -14,6 +14,29 @@ POLICY_FILE = PLUGIN_ROOT / "policy" / "qz-policy.json"
 DEFAULTS_FILE = PLUGIN_ROOT / "policy" / "qz-defaults.json"
 
 
+def user_home() -> Path:
+    """The user's home folder, found the way Claude Code finds it: USERPROFILE on Windows, HOME elsewhere. A process
+    started with neither (a scheduled task, a bare CI step) gets HOME or the temp folder instead of a crash."""
+    try:
+        return Path.home()
+    except RuntimeError:
+        for k in ("USERPROFILE", "HOME"):
+            if os.environ.get(k):
+                return Path(os.environ[k])
+        import tempfile
+        return Path(tempfile.gettempdir())
+
+
+def claude_dir() -> Path:
+    """Claude Code's own folder: CLAUDE_CONFIG_DIR when it is set, as Claude Code itself reads it; else ~/.claude."""
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or user_home() / ".claude")
+
+
+def qz_home() -> Path:
+    """The Studio's per-user folder: QZ_HOME when it is set, else ~/.qz."""
+    return Path(os.environ.get("QZ_HOME") or user_home() / ".qz")
+
+
 def now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 

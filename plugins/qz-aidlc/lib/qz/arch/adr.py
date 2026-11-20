@@ -18,7 +18,7 @@ def listing(proj: Path) -> list[dict]:
         t = p.read_text(encoding="utf-8")
         st = re.search(r"^status:\s*(.+)$", t, re.M)
         ti = re.search(r"^#\s+(.+)$", t, re.M)
-        out.append({"id": f"ADR-{p.name[:4]}", "path": str(p.relative_to(proj)), "title": ti.group(1) if ti else p.stem, "status": st.group(1).strip() if st else "proposed"})
+        out.append({"id": f"ADR-{p.name[:4]}", "path": p.relative_to(proj).as_posix(), "title": ti.group(1) if ti else p.stem, "status": st.group(1).strip() if st else "proposed"})
     return out
 
 

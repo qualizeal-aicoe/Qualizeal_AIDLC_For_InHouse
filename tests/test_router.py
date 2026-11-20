@@ -25,6 +25,7 @@ def home(tmp_path, monkeypatch):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("QZ_HOME", str(tmp_path / ".qz-home"))
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     proj = tmp_path / "proj"
     proj.mkdir()
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(proj))

@@ -70,7 +70,7 @@ def main(name: str, rest: list[str]) -> None:
         out = path.parent / "traceability.md"
         out.write_text(cases.matrix(d), encoding="utf-8")
         print(f"Wrote {out.relative_to(proj)}")
-        record("test-matrix", str(out.relative_to(proj)), "build-and-test")
+        record("test-matrix", out.relative_to(proj).as_posix(), "build-and-test")
         return
     if a.cmd == "approve":
         r = cases.check(d)
@@ -101,4 +101,4 @@ def main(name: str, rest: list[str]) -> None:
         print(f"Wrote {out.relative_to(proj)} with {len(ok)} approved case(s).")
         if a.format == "xray":
             print("Import: Xray Cloud > Testing Board > Test Repository > Import, or POST it to /api/v2/import/test/bulk. Creating issues in Jira is a person's step.")
-        record("test-export", str(out.relative_to(proj)), "build-and-test", format=a.format)
+        record("test-export", out.relative_to(proj).as_posix(), "build-and-test", format=a.format)

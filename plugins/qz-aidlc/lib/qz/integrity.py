@@ -10,7 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from .util import PLUGIN_ROOT
+from .util import PLUGIN_ROOT, qz_home
 
 MANIFEST = "MANIFEST.sha256"
 COVERED = ("skills", "agents", "hooks", "policy", "lib", "scripts", "output-styles", "commands", ".claude-plugin", "templates", "workspace-kit")
@@ -66,7 +66,7 @@ def changed_once(proj: Path, root: Path = PLUGIN_ROOT) -> str | None:
     if r.get("ok") is not False:
         return None
     key = hashlib.sha256(json.dumps([r["changed"], r["missing"], r["extra"]]).encode()).hexdigest()[:16]
-    seen_file = Path.home() / ".qz" / "integrity-seen.json"
+    seen_file = qz_home() / "integrity-seen.json"
     try:
         seen = json.loads(seen_file.read_text(encoding="utf-8")) if seen_file.exists() else {}
     except (OSError, ValueError):

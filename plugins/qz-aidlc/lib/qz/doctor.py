@@ -22,12 +22,12 @@ import time
 from pathlib import Path
 
 from . import audit, redteam
-from .util import PLUGIN_ROOT, git
+from .util import PLUGIN_ROOT, claude_dir, git, qz_home, user_home
 
 MIN_CLAUDE = (2, 1, 295)          # exec-form hooks and onFailure "block"
 REPO = "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse"
 WIN = os.name == "nt"
-STUDIO_VENV = Path.home() / ".qz" / "venv"
+STUDIO_VENV = qz_home() / "venv"
 OPTIONAL = (("openpyxl", "pricing workbooks"), ("docx", "Word documents"), ("pptx", "decks"), ("pypdf", "PDF reading"),
             ("lxml", "office files"), ("PIL", "contact sheets"), ("playwright", "browser checks and recordings"))
 
@@ -214,7 +214,7 @@ def check_network(rep: Report) -> None:
     proxy = [k for k in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "NO_PROXY") if os.environ.get(k)]
     if proxy:
         try:
-            s = json.loads((Path.home() / ".claude" / "settings.json").read_text(encoding="utf-8"))
+            s = json.loads((claude_dir() / "settings.json").read_text(encoding="utf-8"))
             in_settings = any(k.upper() in {x.upper() for x in (s.get("env") or {})} for k in proxy)
         except (OSError, ValueError):
             in_settings = False
@@ -243,7 +243,7 @@ def check_tools(rep: Report, proj: Path) -> None:
     rep.add("PASS" if shutil.which("soffice") else "INFO", "LibreOffice for slide previews (optional)")
     rep.add("PASS" if git(proj, "config", "user.email") else "WARN", "Git identity (user.name and user.email)",
             'git config --global user.name "Your Name"; git config --global user.email you@qualizeal.com')
-    home = str(Path.home())
+    home = str(user_home())
     if " " in home or not home.isascii():
         rep.add("INFO", f"your user folder has a space or a non-English letter ({home}); the Studio handles it, some other tools do not")
     try:
@@ -382,6 +382,11 @@ def setup_workspace(proj: Path) -> int:
             continue
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
+        added += 1
+    space = proj / "aidlc" / "active-space"               # per-user state: git-ignored, so it is written here, never shipped
+    if not space.exists():
+        space.parent.mkdir(parents=True, exist_ok=True)
+        space.write_text("default\n", encoding="utf-8")
         added += 1
     print(f"Workspace: {added} files added, {kept} already present and left as they are.")
     from .names import ROSTER, apply_roster

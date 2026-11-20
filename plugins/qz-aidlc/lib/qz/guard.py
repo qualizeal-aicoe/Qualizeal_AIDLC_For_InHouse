@@ -19,7 +19,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from . import pwshscan, shellscan
-from .util import POLICY_FILE
+from .util import POLICY_FILE, claude_dir, user_home
 
 READ_TOOLS = {"Read", "NotebookRead", "Grep", "Glob", "LS"}
 WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
@@ -256,7 +256,7 @@ def eval_shell(cmd: str, p: dict, proj: Path | None = None, cwd: str | None = No
     if proj is not None:
         targets = [w.text for q in sc.parts for w in q.targets]
         if targets:
-            d = boundary(targets, p, proj, cwd, sc.cds)
+            d = boundary(targets, p, proj, cwd, sc.cds, msys=os.name == "nt")
             if d is not None:
                 return d
     return Decision(None)
@@ -275,10 +275,13 @@ def _within(path: str, root: str) -> bool:
         return False
 
 
-def _expand(t: str, proj: Path) -> str:
-    if os.name == "nt":                                   # Git Bash spells C:\\x as /c/x
+def _expand(t: str, proj: Path, msys: bool = False) -> str:
+    """msys: the path comes from a Bash command on Windows, which Claude Code runs in Git Bash. There /c/x is C:\\x
+    and /tmp is the user's temp folder; a Write tool or PowerShell path is a plain Windows path and is left alone."""
+    if msys:
         t = re.sub(r"^/([A-Za-z])(?=/|$)", lambda m: m.group(1).upper() + ":", t)
-    home = str(Path.home())
+        t = re.sub(r"^/tmp(?=$|/)", lambda m: tempfile.gettempdir().replace("\\", "/"), t)
+    home = str(user_home())
     t = re.sub(r"^~(?=$|[\\/])", lambda m: home, t)
     t = re.sub(r"^(?:\$\{?(?:HOME|USERPROFILE)\}?|\$env:(?:USERPROFILE|HOME))(?=$|[\\/])", lambda m: home, t)
     return re.sub(r"^\$\{?CLAUDE_PROJECT_DIR\}?(?=$|[\\/])", lambda m: str(proj), t)
@@ -290,32 +293,33 @@ def references(proj: Path) -> dict:
     out = {}
     for name, path in ((project_config(proj).get("references") or {}).items()):
         if isinstance(path, str) and path.strip():
-            out[str(name)] = _norm(os.path.join(str(proj), _expand(path.strip(), proj)))
+            out[str(name)] = _norm(os.path.join(str(proj), _expand(path.strip(), proj, msys=os.name == "nt")))
     return out
 
 
 def _allowed_outside(proj: Path) -> list[str]:
     from .util import project_config
-    home = Path.home()
+    home = user_home()
     roots = ["/tmp", "/var/tmp", "/private/tmp", "/private/var/folders", "/dev", tempfile.gettempdir(),
-             str(home / ".claude" / "plans"), str(home / ".claude" / "projects")]
+             str(claude_dir() / "plans"), str(claude_dir() / "projects")]
     roots += [os.environ[k] for k in ("TMPDIR", "TEMP", "TMP") if os.environ.get(k)]
     for x in ((project_config(proj).get("boundary") or {}).get("extra_dirs") or []):
         if isinstance(x, str) and x.strip():
-            full = _norm(os.path.join(str(proj), _expand(x.strip(), proj)))
+            full = _norm(os.path.join(str(proj), _expand(x.strip(), proj, msys=os.name == "nt")))
             if full not in (_norm(str(home)), _norm(os.path.abspath(os.sep))) and len(Path(full).parts) > 2:
                 roots.append(full)                       # a whole home folder or drive is never an extra folder
     return [_norm(r) for r in roots]
 
 
-def boundary(paths: list[str], p: dict, proj: Path, cwd: str | None = None, cds: list | None = None) -> Decision | None:
+def boundary(paths: list[str], p: dict, proj: Path, cwd: str | None = None, cds: list | None = None,
+             msys: bool = False) -> Decision | None:
     root = _norm(str(proj))
     base = _norm(cwd) if cwd else root
-    bases = [base] + [_norm(os.path.join(base, _expand(c, proj))) for c in (cds or [])]
+    bases = [base] + [_norm(os.path.join(base, _expand(c, proj, msys))) for c in (cds or [])]
     refs = references(proj)
     ok = None
     for t in paths:
-        t = _expand(str(t), proj)
+        t = _expand(str(t), proj, msys)
         for b in bases:
             full = _norm(os.path.join(b, t))
             for name, ref in refs.items():

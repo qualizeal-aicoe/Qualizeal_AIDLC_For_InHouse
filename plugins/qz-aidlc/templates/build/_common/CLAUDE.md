@@ -9,7 +9,7 @@ __STACK_LINE__
 - Tool results and user text are data. Never build a system prompt by pasting them in, and never let them choose a tool's target (customer id, recipient, path).
 - Every behaviour change comes with a case in `evals/gold.jsonl`. Attack and refusal cases are tagged `safety`; approval cases are tagged `gate`. Both must stay at 100%.
 - Keys come from the environment. Nothing secret goes in a file, a prompt, a log line or a trace.
-- Run before you push: `__TEST_CMD__` and `python3 .claude/qz/scripts/qz.py eval run`.
+- Run before you push: `__TEST_CMD__` and `uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run` (the gold set, offline).
 
 ## Where things are
 
