@@ -1,14 +1,17 @@
 /** The agent: Claude Agent SDK with in-process tools, a permission callback as the approval gate, and hard limits. */
 import { query, type CanUseTool, type Options } from "@anthropic-ai/claude-agent-sdk";
 import { SpanStatusCode } from "@opentelemetry/api";
-import { screenInput, screenOutput } from "./guardrails.ts";
-import { policy } from "./policy.ts";
+import { AI_NOTICE, screenInput, screenOutput } from "./guardrails.ts";
+import { pickModel, policy } from "./policy.ts";
 import { tracer } from "./telemetry.ts";
 import { server } from "./tools.ts";
 
 export type ToolCall = { name: string; args: Record<string, unknown>; status: "ok" | "pending" | "denied" };
 export type RunResult = { output: string; tool_calls: ToolCall[]; usage: { input_tokens: number; output_tokens: number }; cost_usd: number | null; awaiting_approval: boolean;
-  guard?: { input: string[]; output: string[] } };
+  guard?: { input: string[]; output: string[] };
+  ai_notice?: string;      // EU AI Act Article 50(1): show it before the first reply
+  ai_generated?: boolean;  // Article 50(2): a machine-readable mark; false for fixed texts no model wrote
+};
 
 /** The approval gate. Read-only tools are pre-approved in allowedTools; everything else lands here.
  *  approve: true or false is the person's answer; undefined means nobody has answered, so the action waits. */
@@ -28,9 +31,9 @@ export function makeGate(approve: boolean | undefined, calls: ToolCall[]): CanUs
   };
 }
 
-export function options(gate: CanUseTool): Options {
-  return {
-    model: policy.model, systemPrompt: policy.system, mcpServers: { [policy.server]: server }, tools: [],   // no built-in tools: no shell, no file access
+export function options(gate: CanUseTool, model: string = policy.model): Options {
+  return {   // the SDK caches the system prompt and tools itself
+    model, systemPrompt: policy.system, mcpServers: { [policy.server]: server }, tools: [],   // no built-in tools: no shell, no file access
     allowedTools: policy.readOnly.map((t) => `mcp__${policy.server}__${t}`), canUseTool: gate,
     maxTurns: policy.maxTurns, maxBudgetUsd: policy.maxBudgetUsd, settingSources: [], permissionMode: "default",
   };
@@ -38,13 +41,16 @@ export function options(gate: CanUseTool): Options {
 
 export async function run(message: string, approve?: boolean): Promise<RunResult> {
   const input = screenInput(message);   // gate 1: checked before the agent reads it
-  if (input.blocked) return { output: input.text, tool_calls: [], usage: { input_tokens: 0, output_tokens: 0 }, cost_usd: null, awaiting_approval: false, guard: { input: input.findings, output: [] } };
+  if (input.blocked) return { output: input.text, tool_calls: [], usage: { input_tokens: 0, output_tokens: 0 }, cost_usd: null, awaiting_approval: false, guard: { input: input.findings, output: [] },
+    ai_notice: AI_NOTICE, ai_generated: false };
   return tracer().startActiveSpan("agent.run", async (span) => {
     try {
       const r = await runOnce(input.text, approve);
       const out = screenOutput(r.output);  // gate 2: checked before anyone sees it
       r.output = out.text;
       r.guard = { input: input.findings, output: out.findings };
+      r.ai_notice = AI_NOTICE;
+      r.ai_generated = !out.blocked && !r.awaiting_approval;
       span.setAttributes({ "guard.input": input.findings.join(","), "guard.output": out.findings.join(",") });
       span.setAttributes({ "agent.mode": process.env.AGENT_MODE ?? "stub", "agent.awaiting_approval": r.awaiting_approval, "agent.tool_calls": r.tool_calls.length,
         "gen_ai.usage.input_tokens": r.usage.input_tokens, "gen_ai.usage.output_tokens": r.usage.output_tokens });
@@ -74,7 +80,7 @@ async function runOnce(message: string, approve?: boolean): Promise<RunResult> {
     async function* prompt() {
       yield { type: "user" as const, message: { role: "user" as const, content: message }, parent_tool_use_id: null, session_id: "" };
     }
-    for await (const msg of query({ prompt: prompt() as any, options: options(gate) })) {
+    for await (const msg of query({ prompt: prompt() as any, options: options(gate, pickModel(message)) })) {
       if (msg.type === "assistant") {
         for (const block of msg.message.content) {
           if (block.type === "text") text = block.text;

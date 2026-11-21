@@ -66,7 +66,7 @@ The presenter rehearses the whole session once, with a timer.
 | 5 | The doctor on every laptop |
 | 35 | The handbook demo, step by step |
 | 15 | One question from each person, then its trace |
-| 10 | The gate, and how CI (continuous integration) uses it |
+| 10 | The gate, the QualiZeal standards scorecard, and how CI (continuous integration) uses both |
 
 The demo, from the `handbook` folder:
 
@@ -89,7 +89,12 @@ What each step shows:
    handbook does not hold, so it gives away nothing.
 4. **The same question from HR** gets the band and its source.
 5. **A gate in CI.** On 40 golden questions, hybrid passes 38 and keyword search alone 35. Safety violations: 0.
-6. **The chat page**, with the same answers in a browser.
+6. **The chat page**, with the same answers in a browser. It says the answers are written by AI (EU AI Act,
+   Article 50), and a repeat question comes back from the cache with no search and no model call.
+7. **The QualiZeal standards.** Ask Claude to "check the QualiZeal standards on the handbook": one scorecard, with the
+   six guardrails, the EU AI Act record in `docs/ai-act/`, open source first (the embeddings and reranker are open
+   models on the laptop) and the cost levers, each MET with the file that shows it. Every starter's CI runs the same
+   check.
 
 In Claude Code the same can be asked in plain words ("build the handbook demo with the advanced RAG kit"); the
 commands above are what it runs.

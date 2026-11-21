@@ -3,12 +3,44 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
-## 1.0.0 · 20 November 2026
+## 1.0.0 · 21 November 2026
 
 The first release for the whole AI Center of Excellence (AI CoE). It follows 0.10.0 and is made to install the same
 way on every laptop and to be taught in a live session.
 
 ### Added
+
+- **The QualiZeal standards, one scorecard (`qz standards`).** Everything the Studio builds, and the Studio itself,
+  meets four standards; every starter's CI fails without them and the scorecard lands on the pull request's checks
+  page. All 13 starters meet all four as they are created.
+- **The six guardrails (`qz guardrails`).** Input filter, output filter, tool allowlist, human approval, step limits
+  and sandboxed execution, each with the file and line that shows it. Agent starters refuse instruction-like input,
+  mask card and ID numbers both ways and withhold blocked terms; a guard case joins every gold set (11 cases). A
+  prompt carrying a card number (Luhn-checked) or a national ID number never reaches a model. `qz setup sandbox
+  --yes` switches on Claude Code's own sandbox (macOS, Linux, WSL2).
+- **The EU AI Act as the house standard (`qz aiact`).** Every project keeps a record in `docs/ai-act/`: risk class,
+  role, EU link, the obligations with their dates (Article 50 since 2 August 2026; Annex III high-risk from
+  2 December 2027, as moved by the Digital Omnibus), evidence for each, a risk register, a monitoring plan and an
+  incident runbook. Agents return `ai_notice` and a machine-readable `ai_generated` (false for fixed texts no model
+  wrote); the knowledge kits show the notice on the page. The class is a draft until a person runs `qz aiact confirm
+  --yes`. The Studio keeps its own record.
+- **Open source first (`qz stack`).** The open or open-weight option at every layer unless a vendor is a recorded
+  choice. LangGraph and the OpenAI Agents SDK run live on `qwen3:8b` on Ollama by default; text-to-SQL, the memory
+  kit and both knowledge kits gained an OpenAI-compatible route to a model on your own machine; vendor starters record
+  their vendor. Licence notes where they bite (Open WebUI's branding clause, Gemma 4's move to Apache-2.0).
+- **The cost levers (`qz cost`).** Prompt caching marked where the provider needs it (Anthropic, Bedrock, .NET and Go),
+  easy turns routed to `AGENT_MODEL_SMALL`, a cache for repeat questions in the knowledge kits (keyed by access groups
+  and index build) and a question-to-SQL cache in text-to-SQL (the data is read fresh), cleared tool results in
+  LangGraph. It flags what quietly breaks a lever, such as a timestamp in the system prompt.
+- **Conventions from release 1.0.0 (`qz conventions`).** Branches `<KEY>-<short-slug>`, commits `<type>: <KEY>
+  <description>` with any Conventional Commit type (`<KEY>-0` when there is no ticket), one merge request per story
+  squash-merged into master by a person. The delivery gate suggests the squash commit's type, which decides the
+  release; semantic-release wording (dev0 automatic, qa0 and prod0 through change requests).
+- **Team-practice defaults (`qz practices`).** Test-first, Jest with an 80% coverage floor, the SDK mocked in unit
+  tests, a rejected conditional write returned as a named result; practices discovery overrides any of them per team.
+- **A shared AI-DLC workspace (`/qz-aidlc:qz-setup team`, `qz aidlc check`).** One repository for the `aidlc/`
+  records with the service repositories beside it, per-user cursors and runtime files ignored, records delivered by
+  merge request, and a check that says where each output goes.
 
 - **A bootstrap for every laptop.** `setup\bootstrap.cmd` on Windows, `sh setup/bootstrap.sh` on macOS and Linux. It
   installs Claude Code, uv and Python when they are missing, needs no administrator rights, adds the Studio to Claude

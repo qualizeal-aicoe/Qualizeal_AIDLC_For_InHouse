@@ -7,8 +7,8 @@ tools this session has. Reading needs no approval; every write waits for the per
    acceptance criteria, links, comments. If key facts are missing (acceptance criteria, target repository,
    environments), ask before planning. Find or create the project (`project_status`, `project_new` with the Jira
    key and the GitHub repository; the project lane has the detail), then `run_start` lane `deliver`, key = the
-   story key. Write what you read to `story.md` (key, title, criteria, links, the date read) and `project_file` it
-   with kind `story`: the work must be reproducible from the laptop without Jira open.
+   story key. Write it to `story.md` (key, title, criteria, links, date read) and `project_file` it (kind `story`),
+   so the work reproduces from the laptop without Jira open.
 2. **Code.** The repository is in the project's `code` folder (a cloud session links the attached one with
    `code_dir`). `code_graph [status]` builds the graph.
 3. **Knowledge.** `kf_search` for the client's standards, API rules and earlier decisions (purpose `decide` for
@@ -30,6 +30,8 @@ tools this session has. Reading needs no approval; every write waits for the per
    changed symbols with risk, callers and tests, and the merge danger. A changed symbol with no test gets one, or a
    sentence saying why not. Run the tests it lists. `decisions [check]` holds the branch against the team's
    decisions: fix a conflict, or, if the person agrees, say why with `Overrides <id>: <why>` in the commit message.
+   `qz standards` must meet all four (six guardrails, EU AI Act record, open source first, cost levers); a vendor
+   dependency nobody chose gets the open option.
 7. **Seal outputs.** `output_seal` each approved artefact: requirements, design, test design, the pull-request text.
 8. **Merge request**, one per story. Its title is the squash commit: `ship_check` suggests the type, which decides
    the release. Body: what changed, why, how it was tested, code impact, evidence and report-card paths; save as
@@ -37,7 +39,6 @@ tools this session has. Reading needs no approval; every write waits for the per
    yes on the exact repository, branch and text; then add its address to the file. Jira moves and comments ask
    first. A person squash-merges into master; approvals are the team's setting. Semantic-release tags the
    release: dev0 deploys on its own, qa0 and prod0 go through change requests, human steps. Never claim more.
-9. **Close.** `report_card`. In a cloud session, `project_sync` (with `code: true`) and copy to the laptop. If a
-   person had to take over at any point, record it with `takeover` (stage, layer: spec, context, environment,
-   verification or state, and why). Record the reviewer's decision with `review`. End with `project_status`:
+9. **Close.** `report_card`. In a cloud session, `project_sync` (with `code: true`) and copy to the laptop. Record any
+   take-over with `takeover` (stage, layer, why). Record the reviewer's decision with `review`. End with `project_status`:
    the person opens `index.html` and finds everything.

@@ -11,5 +11,8 @@
   "run_cmd": "python3 -m agent.app \"Where is my order ORD-1001?\"",
   "setup_steps": ["- uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n          cache: pip", "- run: pip install -r requirements.txt"],
   "live": "Set AWS credentials, AWS_REGION and AGENT_MODEL (a Bedrock model id or inference profile) and AGENT_MODE=live. In CI prefer GitHub OIDC to an AWS role over stored keys.",
-  "next": ["Replace the tool bodies in agent/tools.py, or front them with AgentCore Gateway.", "Add a session manager so a waiting approval survives a restart.", "Open the folder in Kiro: steering loads automatically; continue the spec in .kiro/specs/order-support/.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."]
+  "next": ["Replace the tool bodies in agent/tools.py, or front them with AgentCore Gateway.", "Add a session manager so a waiting approval survives a restart.", "Open the folder in Kiro: steering loads automatically; continue the spec in .kiro/specs/order-support/.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."],
+  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "agent/guardrails.py"], "marking": ["every result carries ai_generated", "agent/guardrails.py"]},
+  "vendors": ["aws"],
+  "open_line": "AWS (Bedrock and AgentCore) is this stack's platform by choice, recorded in `.qz/practices.json`; Strands also runs open-weight models through Ollama or LiteLLM."
 }

@@ -17,11 +17,13 @@ A blocked query is refused, never retried. The checkpointer keeps each thread's 
 East?" follows on from the question before it."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
 import threading
 import uuid
+from collections import OrderedDict
 from pathlib import Path
 from typing import TypedDict
 
@@ -64,6 +66,27 @@ class State(TypedDict, total=False):
     answer: str
     usage: dict
     next: str
+
+
+AI_NOTICE = "Answers are written by AI from the data. Check the SQL shown with each answer before you rely on it."   # EU AI Act Article 50(1): shown with every answer
+
+
+class SqlCache:
+    """Question to SQL, in memory, for this agent: a repeat question skips the model and runs the SQL fresh."""
+
+    def __init__(self, size: int = 256):
+        self.size, self.items, self.lock = size, OrderedDict(), threading.Lock()
+
+    def get(self, key: str) -> str | None:
+        with self.lock:
+            return self.items.get(key)
+
+    def put(self, key: str, sql: str) -> None:
+        with self.lock:
+            self.items[key] = sql
+            self.items.move_to_end(key)
+            while len(self.items) > self.size:
+                self.items.popitem(last=False)
 
 
 def _step(state: State, name: str, status: str, **args) -> list:
@@ -138,6 +161,7 @@ class Agent:
         self.retriever = schema.Retriever(self.tables, self.sem)
         self.runner = db.ReadOnly(path, self.allowed, self.deny, int(lim["query_timeout_ms"]), int(lim["max_rows"]))
         self.model = model or models.make(self.cfg)
+        self.sql_cache = SqlCache()
         if checkpointer is None:
             store = Path(self.cfg["store"]["threads"])
             store.parent.mkdir(parents=True, exist_ok=True)
@@ -193,6 +217,10 @@ class Agent:
 
     def _generate(self, s: State) -> dict:
         attempt = int(s.get("attempt") or 0) + 1
+        fresh = attempt == 1 and not s.get("previous") and not s.get("feedback")
+        hit = self.sql_cache.get(self._cache_key(s)) if fresh else None
+        if hit:                                  # a cost lever: the SQL is reused, the data is read fresh
+            return {"attempt": attempt, "sql": hit, "path": _step(s, "generate", "cached", attempt=attempt), "next": "guard"}
         try:
             d = self.model.write_sql(s["question"], s["card"], s.get("previous"), s.get("feedback", ""), attempt)
         except models.NotScripted:
@@ -232,6 +260,12 @@ class Agent:
             return self._retry(s, "execute", e.kind, f"The database said: {e}")
         return {"columns": r.columns, "rows": r.rows, "truncated": r.truncated, "path": _step(s, "execute", "ok", rows=len(r.rows), ms=r.ms), "next": "check"}
 
+    def _cache_key(self, s: State) -> str:
+        """The SQL cache key: who asks (the role decides the tables), the question in normal form and the schema card,
+        so a schema or semantic-layer change is a new key. The answer is never cached: the data changes, the SQL does not."""
+        q = " ".join(re.findall(r"\w+", s["question"].lower()))
+        return hashlib.sha256(f"{self.role}\n{q}\n{s.get('card', '')}".encode()).hexdigest()
+
     def _lookup(self, table: str, column: str, value: str):
         if self.runner.run(f'SELECT 1 FROM "{table}" WHERE "{column}" = ? LIMIT 1', (value,)).rows:
             return True, []
@@ -257,6 +291,8 @@ class Agent:
                 t, c = v["column"].split(".", 1)
                 known = self.tables[t].columns[c].values
                 notes.append(f"There is no {v['column']} '{v['value']}'" + (f": the values are {', '.join(known)}." if known else "."))
+        if not s.get("previous"):                    # only SQL that ran and passed the checks is kept
+            self.sql_cache.put(self._cache_key(s), s["sql"])
         return {"notes": notes, "path": _step(s, "check", "ok"), "next": "answer"}
 
     def _answer(self, s: State) -> dict:
@@ -299,7 +335,9 @@ class Agent:
             out = {"thread_id": thread_id, "role": self.role, "outcome": s.get("outcome") or "failed", "answer": s.get("answer", ""),
                    "sql": s.get("sql") or "", "ran": s.get("run_sql") or "", "columns": s.get("columns") or [], "rows": s.get("rows") or [],
                    "truncated": bool(s.get("truncated")), "tables": s.get("tables") or [], "attempts": int(s.get("attempt") or 0),
-                   "notes": s.get("notes") or [], "path": s.get("path") or [], "usage": s.get("usage") or {}, "provider": self.model.name}
+                   "notes": s.get("notes") or [], "path": s.get("path") or [], "usage": s.get("usage") or {}, "provider": self.model.name,
+                   "ai_notice": AI_NOTICE}
+            out["ai_generated"] = any(p["name"] == "answer" and p["args"].get("by") == "model" for p in out["path"])   # Article 50(2)
             masked = guard.masked(out["ran"] or out["sql"]) if (out["ran"] or out["sql"]) else ""
             for k, v in (("sql.role", self.role), ("sql.outcome", out["outcome"]), ("sql.attempts", out["attempts"]),
                          ("sql.rows", len(out["rows"])), ("sql.query", masked), ("sql.tables", out["tables"]),

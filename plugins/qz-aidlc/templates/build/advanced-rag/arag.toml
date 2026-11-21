@@ -18,12 +18,17 @@ include_superseded = false          # answer only from current versions
 strategy = "hybrid"                 # hybrid (BM25 + vectors, fused, reranked), bm25, or tree (a model reads the outline)
 min_coverage = 0.6                  # bm25 and tree: share of the question's words the best sections must contain
 max_sentences = 3
+cache = 256                         # repeat questions answered from memory by the server (a cost lever); 0: off
 
 [guard]
 redact = ["phone", "card"]          # personal data removed from answers (stage 4)
 
 [llm]
 provider = "none"                   # none (extractive answers), stub (offline, scripted), anthropic (ANTHROPIC_API_KEY)
+# openai: any OpenAI-compatible server. Open source first: an open-weight model on your own machine,
+# for example `ollama pull qwen3:8b`, then provider = "openai" with navigate_model and answer_model = "qwen3:8b".
+base_url = "http://localhost:11434/v1"   # openai provider only; a key, if set, goes only to allowed_hosts
+allowed_hosts = ["localhost", "127.0.0.1"]
 navigate_model = "claude-haiku-5-5"
 answer_model = "claude-sonnet-5-5"
 max_tokens = 700

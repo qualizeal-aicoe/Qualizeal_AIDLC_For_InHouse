@@ -90,6 +90,7 @@ def new(stack: str, dest: Path, name: str, module: str | None = None, kit: bool 
                 p.write_text(n, encoding="utf-8")
     if not meta.get("own_readme"):
         (dest / "README.md").write_text(readme(name, meta), encoding="utf-8")
+    standards(dest, name, meta)
     vend = None
     if kit and meta.get("kit", True):
         from ..vendor.cli import apply
@@ -126,6 +127,26 @@ def to_stage(dest: Path, upto: int, yes: bool) -> dict:
     return {"stack": stack, "stage": upto, "add": add, "replace": replace, "applied": yes}
 
 
+def standards(dest: Path, name: str, meta: dict) -> list[str]:
+    """The house standards a new project starts with: its EU AI Act record (docs/ai-act/) and, when the starter is
+    tied to a vendor, that choice recorded in .qz/practices.json so open-source-first knows it was deliberate."""
+    from ..auditkit import aiact
+    ai = meta.get("ai_act") or {}
+    r = aiact.blank(name, str(ai.get("purpose", "")).replace("__NAME__", name), bool(ai.get("people")), bool(ai.get("generates")),
+                    notice=tuple(ai.get("notice") or ("", "")), marking=tuple(ai.get("marking") or ("", "")))
+    r["literacy"] = "the README, the runbook and CLAUDE.md say what the system does, where it stops and who approves what"
+    written = aiact.write_docs(dest, r)
+    if meta.get("vendors"):
+        f = dest / ".qz" / "practices.json"
+        cur = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
+        cur.setdefault("standards", {})["vendors"] = sorted(set(cur.get("standards", {}).get("vendors", [])) | set(meta["vendors"]))
+        cur["standards"]["_vendors_why"] = f"chosen with the starter: {meta.get('title', 'this stack')}"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps(cur, indent=2) + "\n", encoding="utf-8")
+        written.append(".qz/practices.json")
+    return written
+
+
 def readme(name: str, m: dict) -> str:
     steps = "\n".join(f"{i}. {s}" for i, s in enumerate(m["next"], 1))
     return f"""# {name}
@@ -137,8 +158,20 @@ def readme(name: str, m: dict) -> str:
 - One read-only tool and one tool that moves money, which waits for a person's approval.
 - Limits in one file: `{m['policy']}` (model, turn limit, token cap, approval list).
 - An offline stub model, so tests and the gold set run with no key and no spend.
-- A gold set of 10 cases in `evals/gold.jsonl`: lookups, the approval gate, and injection attempts.
+- A gold set of 11 cases in `evals/gold.jsonl`: lookups, the approval gate, injection attempts and the input filter.
 - Tracing with OpenTelemetry, a CI workflow, a runbook and rules for coding agents (`CLAUDE.md`).
+
+## QualiZeal standards
+
+CI checks every change against four standards; `python3 .claude/qz/scripts/qz.py standards` shows the scorecard here.
+
+- **Six guardrails:** input filter, output filter, tool allowlist, human approval, step limits and sandboxed execution.
+- **EU AI Act:** the record in `docs/ai-act/` gives the risk class, the role and the obligations. Every result carries
+  `ai_notice` (show it before the first reply) and `ai_generated` (a machine-readable mark). The class is a draft until a
+  person confirms it: `python3 .claude/qz/scripts/qz.py aiact confirm --yes`.
+- **Open source first:** {m.get('open_line', 'open-source options first at every layer.')}
+- **Cost levers:** prompt caching on the fixed prefix, easy turns routed to `AGENT_MODEL_SMALL` when it is set, and
+  capped turns, tokens and output.
 
 ## Run it
 

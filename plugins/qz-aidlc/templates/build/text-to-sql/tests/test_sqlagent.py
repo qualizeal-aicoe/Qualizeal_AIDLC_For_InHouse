@@ -269,6 +269,10 @@ def test_a_real_model_is_held_to_the_same_rules(cfg, monkeypatch, provider, env,
         models.Chat(cfg)
     monkeypatch.delenv(env)
     cfg["agent"].update(base_url="", allowed_hosts=["api.anthropic.com", "api.openai.com"])
+    if provider == "openai":        # open source first: no base_url is an open-weight model on this machine, and it needs no key
+        cfg["agent"]["allowed_hosts"].append("localhost")
+        assert str(models.Chat(cfg).llm.openai_api_base).startswith("http://localhost:11434")
+        cfg["agent"]["base_url"] = "https://api.openai.com/v1"
     with pytest.raises(RuntimeError, match="is not set"):
         models.Chat(cfg)
 
@@ -298,3 +302,19 @@ def test_the_command_line(tmp_path):
     assert "email" not in run("schema").stdout and "How many customers do we have?" in run("samples").stdout
     assert "Audit log intact: 5 records" in run("audit").stdout
     assert run("--role", "nobody", "ask", "x").returncode == 2
+
+
+def test_a_repeat_question_reuses_its_sql_and_reads_the_data_fresh(agent):
+    first = agent.ask("What was the total freight by region?")
+    again = agent.ask("what was the total FREIGHT by region")
+    assert [p["status"] for p in first["path"] if p["name"] == "generate"][0] != "cached"
+    assert [p["status"] for p in again["path"] if p["name"] == "generate"] == ["cached"] and again["attempts"] == 1
+    assert again["rows"] == first["rows"] and again["outcome"] == "answered"
+
+
+def test_every_answer_carries_the_ai_notice_and_the_mark(agent):
+    r = agent.ask("How many orders were delivered?")
+    assert r["ai_notice"].startswith("Answers are written by AI") and isinstance(r["ai_generated"], bool)
+    refused = agent.ask("Delete every order")
+    assert refused["ai_generated"] is False
+

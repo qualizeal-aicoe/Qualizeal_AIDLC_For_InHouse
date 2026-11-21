@@ -46,8 +46,9 @@ func (m AnthropicModel) Next(ctx context.Context, transcript []Turn, tools []Too
 		}})
 	}
 	resp, err := m.client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model: anthropic.Model(ModelID()), MaxTokens: MaxOutputTokens,
-		System: []anthropic.TextBlockParam{{Text: System}}, Messages: msgs, Tools: defs,
+		Model: anthropic.Model(PickModel(firstUser(transcript))), MaxTokens: MaxOutputTokens,
+		// The cache breakpoint on the system prompt covers the tools before it: every turn of the loop reuses both.
+		System: []anthropic.TextBlockParam{{Text: System, CacheControl: anthropic.NewCacheControlEphemeralParam()}}, Messages: msgs, Tools: defs,
 	})
 	if err != nil {
 		return Step{}, err
@@ -66,4 +67,14 @@ func (m AnthropicModel) Next(ctx context.Context, transcript []Turn, tools []Too
 		}
 	}
 	return step, nil
+}
+
+// firstUser is the person's message that started the run: the model for the whole run is chosen from it.
+func firstUser(transcript []Turn) string {
+	for _, t := range transcript {
+		if t.Role == "user" {
+			return t.Text
+		}
+	}
+	return ""
 }

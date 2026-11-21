@@ -1,6 +1,7 @@
 """The agent: Claude Agent SDK with in-process tools, a permission callback as the approval gate, and hard limits."""
 import asyncio
 import json
+import logging
 import os
 import warnings
 
@@ -9,6 +10,10 @@ from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ClaudeSDKCli
 
 from . import guardrails, policy
 from .tools import SERVER
+
+# One line per run (tools and their status, tokens, whether it waits): never the message or the reply. Claude Code's own
+# OpenTelemetry export adds spans and metrics when CLAUDE_CODE_ENABLE_TELEMETRY=1.
+log = logging.getLogger("agent")
 
 # Read-only tools are pre-approved on purpose, so the permission callback is not asked about them.
 warnings.filterwarnings("ignore", message="can_use_tool will not be invoked")
@@ -30,9 +35,9 @@ def make_gate(approve: bool | None, calls: list[dict]):
     return can_use_tool
 
 
-def options(gate) -> ClaudeAgentOptions:
-    return ClaudeAgentOptions(
-        model=policy.MODEL, system_prompt=policy.SYSTEM, mcp_servers={policy.SERVER: SERVER}, tools=[],          # no built-in tools: no shell, no file access
+def options(gate, model: str | None = None) -> ClaudeAgentOptions:
+    return ClaudeAgentOptions(                           # the SDK caches the system prompt and tools itself
+        model=model or policy.MODEL, system_prompt=policy.SYSTEM, mcp_servers={policy.SERVER: SERVER}, tools=[],          # no built-in tools: no shell, no file access
         allowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in policy.READ_ONLY], can_use_tool=gate,
         max_turns=policy.MAX_TURNS, max_budget_usd=policy.MAX_BUDGET_USD, setting_sources=[], permission_mode="default")
 
@@ -45,7 +50,7 @@ async def run_async(message: str, approve: bool | None = None) -> dict:
         from .stub import run_stub
         text, usage = await run_stub(message, gate, calls)
     else:
-        async with ClaudeSDKClient(options=options(gate)) as client:
+        async with ClaudeSDKClient(options=options(gate, policy.pick_model(message))) as client:
             await client.query(message)
             async for msg in client.receive_response():
                 if isinstance(msg, AssistantMessage):
@@ -63,6 +68,7 @@ async def run_async(message: str, approve: bool | None = None) -> dict:
     waiting = [c["name"] for c in calls if c["status"] == "pending"]
     if waiting:
         text = f"This needs approval from a person before it can go ahead: {', '.join(waiting)}. It is waiting; nothing has been changed."
+    log.info("run tools=%s usage=%s awaiting_approval=%s", [f"{c['name']}:{c['status']}" for c in calls], usage, bool(waiting))
     return {"output": text, "tool_calls": calls, "usage": usage, "cost_usd": cost, "awaiting_approval": bool(waiting)}
 
 

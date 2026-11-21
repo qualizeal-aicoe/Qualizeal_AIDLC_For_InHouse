@@ -27,5 +27,8 @@
     "Point [database] path at a read replica or a copy of your database, and describe it in semantic.toml with the data owner.",
     "Add twenty real questions with SQL the data owner signs off to evals/gold.jsonl, then run them with your model before anyone relies on the answers.",
     "Before a team uses it, read docs/adr/0001-text-to-sql-shape.md: a SELECT-only database role, row-level rules, an authenticated service."
-  ]
+  ],
+  "ai_act": {"purpose": "Answers analysts' questions about the sample sales data by writing and running read-only SQL.", "people": true, "generates": true, "notice": ["Answers are written by AI from the data. Check the SQL shown with each answer before you rely on it.", "sqlagent/web.py"], "marking": ["every answer carries ai_generated", "sqlagent/graph.py"]},
+  "vendors": [],
+  "open_line": "Any OpenAI-compatible server works, including an open-weight model on Ollama (provider = openai, base_url = http://localhost:11434/v1)."
 }

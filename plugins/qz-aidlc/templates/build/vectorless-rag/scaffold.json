@@ -15,5 +15,8 @@
     "Build stage by stage from stories/stories.json, to docs/contracts.md; each stage's tests already exist.",
     "Run /verify-rag before calling a story done.",
     "Replace corpus/ and evals/golden.jsonl with your own documents and questions."
-  ]
+  ],
+  "ai_act": {"purpose": "Answers people's questions from the team's documents and cites the sources it used.", "people": true, "generates": true, "notice": ["Answers are written by AI from your documents. Check the cited source before you act on one.", "vrag/static/index.html"], "marking": ["every answer carries ai_generated", "vrag/answer.py"]},
+  "vendors": [],
+  "open_line": "No vector database and no embedding service; answers can come from an open-weight model through any OpenAI-compatible server."
 }

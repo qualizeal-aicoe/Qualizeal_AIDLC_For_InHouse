@@ -8,9 +8,9 @@ seed = "data/seed.sql"         # the invented Northwind Freight sample; empty to
 role = "analyst"               # who is asking: set by whoever starts the agent, never by the question (see semantic.toml [roles])
 provider = "scripted"          # scripted (offline; knows the sample questions) | anthropic | openai (any OpenAI-compatible API)
 model = "claude-haiku-5-5"
-base_url = ""                  # openai provider: https://api.openai.com/v1, https://api.groq.com/openai/v1, a LiteLLM proxy...
+base_url = ""                  # openai provider; empty: an open-weight model on Ollama (http://localhost:11434/v1). Or https://api.openai.com/v1, a LiteLLM proxy...
 api_key_env = ""               # the environment variable that holds the key; default ANTHROPIC_API_KEY or OPENAI_API_KEY
-allowed_hosts = ["api.anthropic.com", "api.openai.com", "api.groq.com"]   # the only hosts a key is sent to
+allowed_hosts = ["api.anthropic.com", "api.openai.com", "api.groq.com", "localhost", "127.0.0.1"]   # the only hosts a key is sent to
 max_tokens = 800
 timeout_s = 30
 

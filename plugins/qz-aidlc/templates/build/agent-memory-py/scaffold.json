@@ -27,5 +27,8 @@
     "Point your agent at it: recall before it answers, retain after the person speaks (mem/agent.py shows the order).",
     "Add the sentence shapes your users say to the gold set before you switch the extractor to a model.",
     "Before many people use one store, read docs/adr/0001-memory-shape.md: Postgres with row-level security, encryption at rest, a retention job."
-  ]
+  ],
+  "ai_act": {"purpose": "Keeps what a person told an assistant across sessions, so the assistant does not ask again; the person can see and delete it.", "people": false, "generates": false},
+  "vendors": [],
+  "open_line": "The offline extractor needs no model; an open-weight model works through any OpenAI-compatible server."
 }

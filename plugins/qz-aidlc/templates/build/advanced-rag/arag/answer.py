@@ -35,6 +35,7 @@ class Answer:
     hits: list[str] = field(default_factory=list)
     flags: list[str] = field(default_factory=list)
     redactions: int = 0
+    ai_generated: bool = False     # EU AI Act Article 50(2): true only when a model wrote the text
     latency_ms: int = 0
     trace: str = ""
 
@@ -147,6 +148,7 @@ def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str
     else:
         hits = S.search(con, cfg, question, groups, cs=cs)
     cov = S.coverage(hits, cs)
+    by_model = False
     text, cites, reason = "", [], ""
     if not hits:
         reason = "no section matched the question"
@@ -154,6 +156,7 @@ def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str
         reason = f"the best sections cover {round(cov * len(cs))} of {len(cs)} words of the question"
     elif llm is not None:
         text, cites, reason = generated(llm, cfg, question, hits)
+        by_model = bool(text)
         if not text and reason.startswith("rejected"):
             flags.append("model answer rejected; extractive answer used")
             text, cites = extractive(question, hits, cs, int(cfg["answer"]["max_sentences"]))
@@ -162,6 +165,7 @@ def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str
         text, cites = extractive(question, hits, cs, int(cfg["answer"]["max_sentences"]))
         reason = "" if text else "no sentence in the best sections mentions the question's words"
     ans = Answer(question, user, text or REFUSAL, not text, reason, strategy, cites, [h.node_id for h in hits], flags)
+    ans.ai_generated = by_model and bool(text) and not any(f.endswith("extractive answer used") for f in flags)
     if guard is not None and text:
         ans.text, ans.redactions = guard.redact(ans.text, cfg["guard"]["redact"])
     ans.latency_ms = math.ceil((time.perf_counter() - start) * 1000)

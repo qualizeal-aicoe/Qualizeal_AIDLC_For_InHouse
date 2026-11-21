@@ -1,4 +1,5 @@
 using Anthropic;
+using Anthropic.Models.Messages;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
@@ -6,12 +7,14 @@ namespace OrderAgent;
 
 public sealed record ToolCall(string name, IDictionary<string, object?>? args, string status);
 
-public sealed record RunResult(string output, List<ToolCall> tool_calls, Dictionary<string, long> usage, bool awaiting_approval, Dictionary<string, List<string>>? guard = null);
+/// <summary>ai_notice: shown before the first reply (EU AI Act Article 50(1)); ai_generated: a machine-readable mark, false for fixed texts (50(2)).</summary>
+public sealed record RunResult(string output, List<ToolCall> tool_calls, Dictionary<string, long> usage, bool awaiting_approval, Dictionary<string, List<string>>? guard = null,
+    string? ai_notice = null, bool ai_generated = false);
 
 /// <summary>The agent: Microsoft Agent Framework with approval-required tools, a session, limits and OpenTelemetry.</summary>
 public static class OrderSupport
 {
-    public static AIAgent Build()
+    public static AIAgent Build(string? model = null)
     {
         bool live = Environment.GetEnvironmentVariable("AGENT_MODE") == "live";
         ChatClientAgentOptions options = new()
@@ -21,8 +24,10 @@ public static class OrderSupport
         };
         AIAgent agent = live
             ? new AnthropicClient { ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? throw new InvalidOperationException("Set ANTHROPIC_API_KEY for live runs.") }
-                .AsAIAgent(model: Policy.Model, name: options.Name, instructions: Policy.System, tools: Tools.All(),
-                    clientFactory: inner => inner.AsBuilder().ConfigureOptions(o => o.MaxOutputTokens ??= Policy.MaxOutputTokens).Build())
+                .AsAIAgent(model: model ?? Policy.Model, name: options.Name, instructions: null, tools: Tools.All(),
+                    // The system prompt goes in as a cached block: the breakpoint covers the tools before it, so every turn reuses both.
+                    clientFactory: inner => inner.AsBuilder().ConfigureOptions(o => o.MaxOutputTokens ??= Policy.MaxOutputTokens)
+                        .Use((messages, chatOptions, next, ct) => next(messages.Prepend(CachedSystem()), chatOptions, ct)).Build())
             : new StubChatClient().AsAIAgent(options);
         // Spans for every agent run, model call and tool call. Prompts and results stay out of traces.
         return agent.AsBuilder().UseOpenTelemetry(Policy.TelemetrySource, o => o.EnableSensitiveData = false).Build();
@@ -33,9 +38,10 @@ public static class OrderSupport
     {
         Guardrails.Screened input = Guardrails.ScreenInput(message);   // gate 1: checked before the agent reads it
         if (input.Blocked)
-            return new RunResult(input.Text, [], new() { ["input_tokens"] = 0, ["output_tokens"] = 0 }, false, new() { ["input"] = input.Findings, ["output"] = [] });
+            return new RunResult(input.Text, [], new() { ["input_tokens"] = 0, ["output_tokens"] = 0 }, false, new() { ["input"] = input.Findings, ["output"] = [] },
+                Guardrails.AiNotice, false);
         message = input.Text;
-        agent ??= Build();
+        agent ??= Build(Policy.PickModel(message));
         AgentSession session = await agent.CreateSessionAsync();
         List<ToolCall> calls = [];
         Dictionary<string, long> usage = new() { ["input_tokens"] = 0, ["output_tokens"] = 0 };
@@ -61,8 +67,12 @@ public static class OrderSupport
             ? $"This needs approval from a person before it can go ahead: {string.Join(", ", calls.Where(c => c.status == "pending").Select(c => c.name))}. It is waiting; nothing has been changed."
             : response.Text;
         Guardrails.Screened output = Guardrails.ScreenOutput(text);   // gate 2: checked before anyone sees it
-        return new RunResult(output.Text, calls, usage, waiting, new() { ["input"] = input.Findings, ["output"] = output.Findings });
+        return new RunResult(output.Text, calls, usage, waiting, new() { ["input"] = input.Findings, ["output"] = output.Findings },
+            Guardrails.AiNotice, !output.Blocked && !waiting);
     }
+
+    private static ChatMessage CachedSystem() =>
+        new(ChatRole.System, [new TextContent(Policy.System).WithCacheControl(new CacheControlEphemeral())]);
 
     private static void Collect(AgentResponse response, List<ToolCall> calls, Dictionary<string, long> usage)
     {

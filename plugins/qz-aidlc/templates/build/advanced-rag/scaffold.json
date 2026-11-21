@@ -14,5 +14,8 @@
     "Point [corpus] in arag.toml at your documents and rewrite evals/golden.jsonl with your questions.",
     "Run uv run -m arag calibrate, then set [rerank] min_score from what it shows.",
     "Keep uv run -m arag compare --gate in CI: hybrid must never be worse than BM25 alone."
-  ]
+  ],
+  "ai_act": {"purpose": "Answers people's questions from the team's documents and cites the sources it used.", "people": true, "generates": true, "notice": ["Answers are written by AI from your documents. Check the cited source before you act on one.", "arag/static/index.html"], "marking": ["every answer carries ai_generated", "arag/answer.py"]},
+  "vendors": [],
+  "open_line": "Embeddings and the reranker are open models that run on your machine; answers can come from an open-weight model through any OpenAI-compatible server."
 }

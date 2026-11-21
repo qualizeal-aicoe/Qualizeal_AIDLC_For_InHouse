@@ -25,29 +25,30 @@ class ApprovalGate(HookProvider):
                 event.cancel_tool = "A person declined this action. Do not retry it."
 
 
-def _model():
+def _model(model_id: str | None = None):
     if os.environ.get("AGENT_MODE", "stub") == "stub":
         from .stub import StubModel
         return StubModel()
     if not policy.MODEL_ID:
         raise SystemExit("Set AGENT_MODEL to a Bedrock model id or inference profile for live runs.")
-    from strands.models import BedrockModel
-    return BedrockModel(model_id=policy.MODEL_ID, region_name=policy.REGION, max_tokens=policy.MAX_OUTPUT_TOKENS)
+    from strands.models import BedrockModel, CacheConfig
+    return BedrockModel(model_id=model_id or policy.MODEL_ID, region_name=policy.REGION, max_tokens=policy.MAX_OUTPUT_TOKENS,
+                        cache_config=CacheConfig(strategy="auto"))     # Bedrock cache points on the system prompt and tools
 
 
-def build() -> Agent:
+def build(model_id: str | None = None) -> Agent:
     global _telemetry
     if not _telemetry and os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
         from strands.telemetry import StrandsTelemetry
         StrandsTelemetry().setup_otlp_exporter()      # spans for every model call and tool call
         _telemetry = True
-    return Agent(model=_model(), tools=TOOLS, system_prompt=policy.SYSTEM, hooks=[ApprovalGate()], callback_handler=None, name="__NAME__")
+    return Agent(model=_model(model_id), tools=TOOLS, system_prompt=policy.SYSTEM, hooks=[ApprovalGate()], callback_handler=None, name="__NAME__")
 
 
 @guardrails.guarded
 def run(message: str, approve: bool | None = None, agent: Agent | None = None) -> dict:
     """approve: True or False answers the approval request; None leaves it waiting (keep the agent, or a session manager, to resume)."""
-    agent = agent or build()
+    agent = agent or build(policy.pick_model(message))
     limits = {"turns": policy.MAX_TURNS, "total_tokens": policy.MAX_TOTAL_TOKENS}
     result = agent(message, limits=limits)
     gate = "none"

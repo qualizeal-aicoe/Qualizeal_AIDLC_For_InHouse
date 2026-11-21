@@ -47,10 +47,11 @@ footer{{max-width:1120px;margin:0 auto;padding:0 32px 32px;color:var(--slate);fo
 
 def page(title: str, meta_html: str, body: str, footer_note: str = "") -> str:
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="QualiZeal AI-DLC Studio (AI-assisted engineering)">
 <title>{esc(title)}</title><style>{CSS}</style></head><body>
 <div class="band"><img src="{data_uri('qz-wordmark.png')}" alt="QualiZeal"><h1>{esc(title)}</h1><div class="meta">{meta_html}</div></div>
 <main>{body}</main>
-<footer><img src="{data_uri('qz-mark.png')}" alt=""><span>QualiZeal AI Center of Excellence · {esc(footer_note)}</span></footer></body></html>"""
+<footer><img src="{data_uri('qz-mark.png')}" alt=""><span>QualiZeal AI Center of Excellence · made with the QualiZeal AI-DLC Studio, an AI-assisted engineering system · {esc(footer_note)}</span></footer></body></html>"""
 
 
 def label(lbl: str) -> str:

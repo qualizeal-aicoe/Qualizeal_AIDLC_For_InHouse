@@ -16,6 +16,9 @@ Read only what the lane needs:
 | `references/tooling.md` | the client already runs a tool for a stage (LlamaIndex, promptfoo, Langfuse, Docker...) and ours must fit beside it |
 | `references/test-design.md` | designing test cases from acceptance criteria |
 | `references/audit.md` | scoring the readiness audit, especially the MANUAL items |
+| `references/eu-ai-act.md` | classifying a system, filling its `docs/ai-act/` record, or any question about AI regulation |
+| `references/open-source-stack.md` | choosing a model, runner, gateway, vector store, eval tool or chat UI: the open option first |
+| `references/cost-levers.md` | designing for cost, or a `qz cost` lever is missing or broken |
 
 Stack facts in these files were checked on 12 November 2026 against the installed packages named in each file.
 Frameworks move monthly: before quoting a version, an API name or a service status to a client, confirm it in the

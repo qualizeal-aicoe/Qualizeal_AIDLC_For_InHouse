@@ -41,7 +41,7 @@ MOCK_PY = re.compile(r"\bmoto\b|mock_aws|Stubber\(|unittest\.mock|from mock impo
 COND = re.compile(r"ConditionalCheckFailed(?:Exception)?|ConditionalRequestFailed|PreconditionFailed|TransactionCanceledException")
 COND_WRITE = re.compile(r"\bConditionExpression\b|\bcondition_expression\b|ConditionExpression=")
 SECTIONS = {"branch": "Way of Working", "commit": "Way of Working", "mr": "Way of Working", "jira_key": "Way of Working",
-            "release": "Deployment", "testing": "Testing Posture", "errors": "Code Style"}
+            "release": "Deployment", "testing": "Testing Posture", "errors": "Code Style", "standards": "Way of Working"}
 
 
 # ---------------------------------------------------------------------- what applies

@@ -96,16 +96,20 @@ class Chat:
                                      max_retries=2, api_key=_key(env), base_url=base)
         elif self.name == "openai":
             from langchain_openai import ChatOpenAI
-            base = _check_host((a.get("base_url") or "https://api.openai.com/v1").rstrip("/"), a["allowed_hosts"])
+            # Open source first: with no base_url, an open-weight model on your own machine through Ollama (no key needed).
+            base = _check_host((a.get("base_url") or "http://localhost:11434/v1").rstrip("/"), a["allowed_hosts"])
             env = a.get("api_key_env") or "OPENAI_API_KEY"
+            local = (urllib.parse.urlsplit(base).hostname or "") in LOOPBACK
             self.llm = ChatOpenAI(model=a["model"], max_tokens=int(a["max_tokens"]), timeout=float(a["timeout_s"]),
-                                  max_retries=2, api_key=_key(env), base_url=base)
+                                  max_retries=2, api_key=os.environ.get(env, "").strip() or "local" if local else _key(env), base_url=base)
         else:
             raise SystemExit(f"Unknown provider '{self.name}' in sql.toml: scripted, anthropic or openai.")
 
     def _call(self, system: str, prompt: str) -> tuple[str, dict]:
         from langchain_core.messages import HumanMessage, SystemMessage
-        msg = self.llm.invoke([SystemMessage(content=system), HumanMessage(content=prompt)])
+        fixed = ([{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}] if self.name == "anthropic"
+                 else system)                    # the fixed system prompt, marked for Anthropic's cache; OpenAI caches long prefixes itself
+        msg = self.llm.invoke([SystemMessage(content=fixed), HumanMessage(content=prompt)])
         u = msg.usage_metadata or {}
         text = msg.content if isinstance(msg.content, str) else "".join(b.get("text", "") for b in msg.content if isinstance(b, dict))
         return text, {"input_tokens": int(u.get("input_tokens", 0)), "output_tokens": int(u.get("output_tokens", 0))}

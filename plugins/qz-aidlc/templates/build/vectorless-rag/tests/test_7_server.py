@@ -48,3 +48,17 @@ def test_the_page_and_its_script_are_served(url):
                                         (b"x" * 9000, 413)])
 def test_bad_requests_are_refused(url, body, code):
     assert post(url, body)[0] == code
+
+
+def test_a_repeat_question_is_answered_from_the_cache_within_its_access_groups(url):
+    q = {"question": "What is the hotel cap for international trips?", "as": "employee"}
+    _, first = post(url, q)
+    _, again = post(url, {**q, "question": "what is the HOTEL cap for international trips"})
+    assert "answered from the cache" not in first["flags"] and "answered from the cache" in again["flags"]
+    assert again["text"] == first["text"] and again["ai_generated"] is False and first["ai_notice"].startswith("Answers are written by AI")
+
+
+def test_the_page_tells_people_the_answers_are_written_by_ai(url):
+    with urllib.request.urlopen(url + "/", timeout=5) as r:
+        assert b"Answers are written by AI from your documents" in r.read()
+

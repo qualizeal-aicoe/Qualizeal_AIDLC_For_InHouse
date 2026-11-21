@@ -6,6 +6,9 @@ reply before anyone sees it. Pattern-based, offline and fast; a team can put a c
   are masked, so the model, the trace and the logs never hold them.
 - Output: the same numbers are masked in the reply, and a reply containing a term on the team's blocked list
   (policy.BLOCKED_TERMS, empty by default) is replaced, never sent.
+- EU AI Act, Article 50: every result carries `ai_notice` (the app shows it before the first reply, so people know
+  they are dealing with an AI) and `ai_generated` (a machine-readable mark: true for a model's reply, false for the
+  fixed refusal and withheld texts, which no model wrote).
 """
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ from . import policy
 REFUSAL = ("I can't act on that: it reads like an instruction to change how I work, not a question about an order. "
            "Ask me about an order instead.")
 WITHHELD = "I can't send that reply. A person will follow up."
+AI_NOTICE = "You're chatting with an AI assistant, not a person."
 INSTRUCTION = re.compile(
     r"\b(ignore|disregard|forget|override)\b[^.\n]{0,60}\b(instructions?|rules|prompts?|guidelines|guardrails?)\b"
     r"|\byou are now\b|\b(system|developer) prompt\b|\b(jailbreak|dan mode|developer mode)\b"
@@ -80,10 +84,13 @@ def guarded(run):
         inp = screen_input(message)
         if inp.blocked:
             return {"output": inp.text, "tool_calls": [], "usage": {"input_tokens": 0, "output_tokens": 0}, "awaiting_approval": False,
-                    "guard": {"input": inp.findings, "output": []}}
+                    "guard": {"input": inp.findings, "output": []}, "ai_notice": AI_NOTICE, "ai_generated": False}
         result = run(inp.text, *args, **kwargs)
         out = screen_output(str(result.get("output") or ""))
         result["output"] = out.text
         result["guard"] = {"input": inp.findings, "output": out.findings}
+        result["ai_notice"] = AI_NOTICE                       # Article 50(1): shown before the first reply
+        result["ai_generated"] = (result.get("ai_generated", True) and not out.blocked     # Article 50(2): false for the fixed
+                                  and not result.get("awaiting_approval"))                  # texts no model wrote
         return result
     return wrapper

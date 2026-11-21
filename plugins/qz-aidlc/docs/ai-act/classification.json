@@ -1,0 +1,49 @@
+{
+  "_about": "EU AI Act record (Regulation (EU) 2024/1689 as amended by (EU) 2026/1744). Keep it true as the system changes; `qz aiact` shows what it brings and the evidence for each. Not legal advice: a person confirms it.",
+  "system": "QualiZeal AI-DLC Studio",
+  "intended_purpose": "Helps QualiZeal engineering teams plan, build, test and deliver software and AI systems inside Claude Code. Every write, push and send waits for a person, and merging is always a person's step. Out of scope: rating or monitoring the people who use it.",
+  "role": "deployer",
+  "eu_link": "unknown",
+  "prohibited": {
+    "manipulation": false,
+    "exploiting_vulnerabilities": false,
+    "social_scoring": false,
+    "crime_prediction_by_profiling": false,
+    "facial_image_scraping": false,
+    "emotion_recognition_work_or_education": false,
+    "biometric_categorisation_sensitive": false,
+    "realtime_remote_biometric_id_public": false,
+    "intimate_imagery_or_csam": false
+  },
+  "high_risk": {
+    "annex_i_product": false,
+    "annex_iii_area": "",
+    "article_6_3_not_high_risk": false,
+    "profiles_people": false
+  },
+  "transparency": {
+    "interacts_with_people": true,
+    "generates_content": true,
+    "emotion_or_biometric": false,
+    "deepfakes": false,
+    "public_interest_text": false
+  },
+  "gpai": {
+    "provides_model": false,
+    "systemic_risk": false
+  },
+  "notice": {
+    "text": "made with the QualiZeal AI-DLC Studio, an AI-assisted engineering system",
+    "where": "lib/qz/brand.py"
+  },
+  "marking": {
+    "how": "every Studio page carries a generator tag; AI-written commits carry Claude Code's Co-Authored-By trailer",
+    "where": "lib/qz/brand.py"
+  },
+  "literacy": "the quick guide and the live session materials teach what the Studio does, where it stops, and the person's part at each gate",
+  "confirmed": {
+    "by": "",
+    "on": ""
+  },
+  "_role_note": "QualiZeal deploys Claude Code, Anthropic's AI system on its general-purpose models; this plugin configures it. Anthropic is the provider."
+}

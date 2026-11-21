@@ -16,6 +16,8 @@ import (
 const (
 	Refusal  = "I can't act on that: it reads like an instruction to change how I work, not a question about an order. Ask me about an order instead."
 	Withheld = "I can't send that reply. A person will follow up."
+	// AINotice is shown before the first reply (EU AI Act Article 50(1)).
+	AINotice = "You're chatting with an AI assistant, not a person."
 )
 
 // BlockedTerms lists words or phrases a reply must never contain (gate 2). Empty: off.

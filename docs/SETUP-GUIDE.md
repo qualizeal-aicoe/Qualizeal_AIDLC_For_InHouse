@@ -105,7 +105,18 @@ Restart Claude Code, sign in with the Claude account you use for work, and type 
    when drive D exists, otherwise `New_Projects` in your home folder. To keep projects elsewhere, put
    `{"root": "E:\\Work"}` in `.qz\workspace.json` in your home folder.
 
-`/qz-aidlc:qz-setup doctor` checks everything again at any time.
+`/qz-aidlc:qz-setup doctor` checks everything again at any time. Two more, when you want them:
+
+- `/qz-aidlc:qz-setup team` lays out a shared AI-DLC workspace for a team: one repository for the `aidlc/` records
+  (intents, memory, code knowledge, team knowledge) with the service repositories beside it. `qz aidlc check` says
+  where each output goes and whether git agrees.
+- `qz setup sandbox --yes` turns on Claude Code's own sandbox for this project (filesystem and network isolation for
+  the commands Claude runs; macOS, Linux and WSL2). On native Windows it says so and changes nothing; the guard still
+  reads every command.
+
+Every project the Studio starts meets the QualiZeal standards (`qz standards`): the six guardrails, an EU AI Act
+record in `docs/ai-act/`, open source first and the cost levers. A person confirms the AI Act class once, with
+`qz aiact confirm --yes`; a vendor the team chooses is recorded with `qz practices set standards.vendors <name> --yes`.
 
 Two switches you may want in `/plugin` > qz-aidlc > Configure: **Format on edit** (formats each file Claude writes with
 the formatter your project declares, if it is installed; off by default) and **Voice**. Tokens you enter there, such as

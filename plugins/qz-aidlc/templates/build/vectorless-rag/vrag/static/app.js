@@ -52,6 +52,12 @@ document.getElementById("f").addEventListener("submit", async (e) => {
       n.textContent = "Personal data was removed from this answer.";
       out.appendChild(n);
     }
+    if ((a.flags || []).includes("answered from the cache")) {
+      const n = document.createElement("div");
+      n.className = "note";
+      n.textContent = "Answered from the cache: the same question was asked before, so no search or model call was needed.";
+      out.appendChild(n);
+    }
   } catch (err) {
     out.textContent = "The assistant could not be reached.";
   }

@@ -4,7 +4,8 @@ import os
 import uuid
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import HumanInTheLoopMiddleware, ModelCallLimitMiddleware
+from langchain.agents.middleware import ClearToolUsesEdit, ContextEditingMiddleware, HumanInTheLoopMiddleware, ModelCallLimitMiddleware
+from langchain_anthropic.middleware import AnthropicPromptCachingMiddleware
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -14,24 +15,30 @@ from .telemetry import tracer
 from .tools import TOOLS
 
 
-def _model():
+def _model(model_id: str | None = None):
     if os.environ.get("AGENT_MODE", "stub") == "stub":
         from .stub import StubChatModel
         return StubChatModel()
     from langchain.chat_models import init_chat_model
-    return init_chat_model(policy.MODEL, max_tokens=policy.MAX_OUTPUT_TOKENS, timeout=policy.REQUEST_TIMEOUT_S, max_retries=2)
+    common = dict(max_tokens=policy.MAX_OUTPUT_TOKENS, timeout=policy.REQUEST_TIMEOUT_S, max_retries=2)
+    if policy.MODEL:                                       # a vendor, chosen by setting AGENT_MODEL
+        return init_chat_model(model_id or policy.MODEL, **common)
+    return init_chat_model(model_id or policy.LOCAL_MODEL, model_provider="openai", base_url=policy.LOCAL_BASE_URL,
+                           api_key=os.environ.get("OPENAI_API_KEY") or "local", **common)
 
 
-def build(checkpointer=None):
+def build(checkpointer=None, model_id: str | None = None):
     """For anything longer than one process, pass a durable checkpointer (SqliteSaver, PostgresSaver)."""
-    return create_agent(_model(), tools=TOOLS, system_prompt=policy.SYSTEM, checkpointer=checkpointer or InMemorySaver(),
-                        middleware=[HumanInTheLoopMiddleware(interrupt_on=policy.NEEDS_APPROVAL), ModelCallLimitMiddleware(run_limit=policy.MAX_MODEL_CALLS, exit_behavior="end")])
+    return create_agent(_model(model_id), tools=TOOLS, system_prompt=policy.SYSTEM, checkpointer=checkpointer or InMemorySaver(),
+                        middleware=[HumanInTheLoopMiddleware(interrupt_on=policy.NEEDS_APPROVAL), ModelCallLimitMiddleware(run_limit=policy.MAX_MODEL_CALLS, exit_behavior="end"),
+                                    AnthropicPromptCachingMiddleware(unsupported_model_behavior="ignore"),        # caches system prompt and tools on Claude
+                                    ContextEditingMiddleware(edits=[ClearToolUsesEdit(trigger=policy.CLEAR_TOOL_RESULTS_AT)])])
 
 
 @guardrails.guarded
 def run(message: str, approve: bool | None = None, thread_id: str | None = None, agent=None) -> dict:
     """approve: True or False answers the approval request; None leaves it waiting (resume later with the same thread_id)."""
-    agent = agent or build()
+    agent = agent or build(model_id=policy.pick_model(message))
     thread_id = thread_id or uuid.uuid4().hex
     cfg = {"configurable": {"thread_id": thread_id}, "recursion_limit": policy.RECURSION_LIMIT}
     with tracer().start_as_current_span("agent.run") as span:

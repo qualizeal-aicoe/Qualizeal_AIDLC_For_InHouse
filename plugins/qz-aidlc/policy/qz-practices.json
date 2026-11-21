@@ -42,5 +42,12 @@
   },
   "errors": {
     "conditional_write_rejected": "named result"
+  },
+  "standards": {
+    "_about": "The house standards every build meets (`qz standards`). eu_ai_act: follow (the Act's obligations for the system's class, EU link or not), when-in-scope (only with an EU link), off (report only). vendors: vendors the person or team chose; open source first applies everywhere else.",
+    "eu_ai_act": "follow",
+    "open_source_first": true,
+    "vendors": [],
+    "cost_levers": true
   }
 }

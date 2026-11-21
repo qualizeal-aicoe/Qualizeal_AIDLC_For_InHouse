@@ -258,6 +258,40 @@ def test_a_model_extractor_is_held_to_the_same_policy(tmp_path, monkeypatch):
         extract.AnthropicExtractor("claude-haiku-5-5").extract("hello")
 
 
+class _OpenModel(BaseHTTPRequestHandler):
+    seen: list = []
+
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers["content-length"])))
+        _OpenModel.seen.append({"auth": self.headers.get("authorization"), "path": self.path, "roles": [m["role"] for m in body["messages"]]})
+        out = {"memories": [{"kind": "profile", "key": "location", "value": "Kochi", "text": "I live in Kochi"}], "forget": []}
+        data = json.dumps({"choices": [{"message": {"content": json.dumps(out)}}], "usage": {"prompt_tokens": 210, "completion_tokens": 30}}).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def log_message(self, *a):
+        pass
+
+
+def test_an_open_weight_model_on_this_machine_needs_no_key(tmp_path, monkeypatch):
+    """Open source first: the openai provider talks to any OpenAI-compatible server; on this machine it sends no key."""
+    srv = HTTPServer(("127.0.0.1", 0), _OpenModel)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    ex = extract.OpenAICompatibleExtractor("qwen3:8b", 300, 5, base_url=f"http://127.0.0.1:{srv.server_port}/v1")
+    m = Memory(load(), path=tmp_path / "m.db", audit=tmp_path / "a.jsonl", extractor=ex)
+    rep = m.retain("asha", "I live in Kochi.")
+    srv.shutdown()
+    m.close()
+    assert {d.key: d.decision for d in rep.decisions}["location"] == "added" and rep.usage == {"input_tokens": 210, "output_tokens": 30}
+    assert _OpenModel.seen[0] == {"auth": None, "path": "/v1/chat/completions", "roles": ["system", "user"]}
+    with pytest.raises(RuntimeError, match="allowed_hosts"):
+        extract.OpenAICompatibleExtractor("qwen3:8b", base_url="https://models.example.net/v1")
+
+
 def test_the_gold_set_passes_its_gate():
     assert gold(gate=True) == 0
 

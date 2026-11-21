@@ -140,11 +140,12 @@ class AnthropicExtractor:
         if u.scheme != "https" and host not in LOOPBACK:
             raise RuntimeError("ANTHROPIC_BASE_URL must use https: the key would travel in clear text.")
 
-    def extract(self, text: str) -> Extraction:
+    def _call(self, text: str) -> tuple[str, dict]:
         key = os.environ.get("ANTHROPIC_API_KEY")
         if not key:
             raise RuntimeError("ANTHROPIC_API_KEY is not set: set it in the environment, or use provider = \"stub\".")
-        body = json.dumps({"model": self.model, "max_tokens": self.max_tokens, "system": SYSTEM,
+        body = json.dumps({"model": self.model, "max_tokens": self.max_tokens,          # the fixed prompt, marked for the cache
+                           "system": [{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
                            "messages": [{"role": "user", "content": text}]}).encode("utf-8")
         req = urllib.request.Request(self.base + "/v1/messages", data=body, method="POST", headers={
             "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
@@ -152,12 +153,16 @@ class AnthropicExtractor:
             reply = json.loads(r.read().decode("utf-8"))
         usage = reply.get("usage") or {}
         out = "".join(p.get("text", "") for p in reply.get("content", []) if p.get("type") == "text")
+        return out, {"input_tokens": int(usage.get("input_tokens", 0)), "output_tokens": int(usage.get("output_tokens", 0))}
+
+    def extract(self, text: str) -> Extraction:
+        out, usage = self._call(text)
         out = re.sub(r"^```(?:json)?\s*|\s*```$", "", out.strip())
         try:
             data = json.loads(out)
         except ValueError:
             data = {}
-        ex = Extraction(usage={"input_tokens": int(usage.get("input_tokens", 0)), "output_tokens": int(usage.get("output_tokens", 0))})
+        ex = Extraction(usage=usage)
         for m in data.get("memories") or []:
             if isinstance(m, dict) and m.get("key") and m.get("value"):
                 ex.memories.append(Candidate(str(m.get("kind") or "fact"), str(m["key"])[:60], str(m["value"])[:200],
@@ -166,10 +171,45 @@ class AnthropicExtractor:
         return ex
 
 
+class OpenAICompatibleExtractor(AnthropicExtractor):
+    """The same extraction through any OpenAI-compatible server. Open source first: with no base_url it is an
+    open-weight model on this machine through Ollama, and no key is needed. A key, when set, follows the same rules:
+    only to a host on [extract] allowed_hosts, over https unless it is this machine, and never through a redirect."""
+
+    name = "openai"
+
+    def __init__(self, model: str, max_tokens: int = 600, timeout_s: float = 20, allowed_hosts=("localhost", "127.0.0.1"), base_url: str = ""):
+        self.model, self.max_tokens, self.timeout_s = model, int(max_tokens), float(timeout_s)
+        self.base = (base_url or os.environ.get("OPENAI_BASE_URL") or "http://localhost:11434/v1").rstrip("/")
+        u = urllib.parse.urlsplit(self.base)
+        host = (u.hostname or "").lower()
+        self.local = host in LOOPBACK
+        if not self.local and host not in {h.lower() for h in allowed_hosts}:
+            raise RuntimeError(f"base_url points at {host or 'no host'}, which is not in [extract] allowed_hosts: the key is sent only to hosts listed there.")
+        if u.scheme != "https" and not self.local:
+            raise RuntimeError("base_url must use https: the key would travel in clear text.")
+
+    def _call(self, text: str) -> tuple[str, dict]:
+        key = os.environ.get("OPENAI_API_KEY", "")
+        if not key and not self.local:
+            raise RuntimeError("OPENAI_API_KEY is not set: set it in the environment, or use a server on this machine.")
+        body = json.dumps({"model": self.model, "max_tokens": self.max_tokens,
+                           "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}]}).encode("utf-8")
+        req = urllib.request.Request(self.base + "/chat/completions", data=body, method="POST",
+                                     headers={"content-type": "application/json"} | ({"authorization": f"Bearer {key}"} if key else {}))
+        with _OPENER.open(req, timeout=self.timeout_s) as r:
+            reply = json.loads(r.read().decode("utf-8"))
+        usage = reply.get("usage") or {}
+        out = str(((reply.get("choices") or [{}])[0].get("message") or {}).get("content") or "")
+        return out, {"input_tokens": int(usage.get("prompt_tokens", 0)), "output_tokens": int(usage.get("completion_tokens", 0))}
+
+
 def make(cfg: dict):
     e = cfg["extract"]
     if e["provider"] == "anthropic":
         return AnthropicExtractor(e["model"], e["max_tokens"], e["timeout_s"], e.get("allowed_hosts", ["api.anthropic.com"]))
+    if e["provider"] == "openai":
+        return OpenAICompatibleExtractor(e["model"], e["max_tokens"], e["timeout_s"], e.get("allowed_hosts", []), e.get("base_url", ""))
     if e["provider"] != "stub":
-        raise SystemExit(f"Unknown extractor '{e['provider']}' in mem.toml: use stub or anthropic.")
+        raise SystemExit(f"Unknown extractor '{e['provider']}' in mem.toml: use stub, openai or anthropic.")
     return StubExtractor()

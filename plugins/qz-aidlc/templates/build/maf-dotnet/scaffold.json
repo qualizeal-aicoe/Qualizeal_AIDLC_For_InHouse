@@ -11,5 +11,8 @@
   "run_cmd": "dotnet run --project src/Agent -- \"Where is my order ORD-1001?\"",
   "setup_steps": ["- uses: actions/setup-dotnet@v4\n        with:\n          dotnet-version: '10.0.x'", "- run: dotnet build src/Agent"],
   "live": "Set ANTHROPIC_API_KEY and AGENT_MODE=live. For Azure OpenAI or Microsoft Foundry, swap the client in OrderSupport.Build(); the tools, approval loop and tracing stay the same.",
-  "next": ["Replace the two method bodies in src/Agent/Tools.cs with calls to your systems.", "Persist the AgentSession so a waiting approval survives a restart, and route the approval to a real person.", "For multi-agent or long-running work, move to Agent Framework workflows; keep the same tools and approval wrappers.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."]
+  "next": ["Replace the two method bodies in src/Agent/Tools.cs with calls to your systems.", "Persist the AgentSession so a waiting approval survives a restart, and route the approval to a real person.", "For multi-agent or long-running work, move to Agent Framework workflows; keep the same tools and approval wrappers.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."],
+  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "src/Agent/Guardrails.cs"], "marking": ["every result carries ai_generated", "src/Agent/OrderSupport.cs"]},
+  "vendors": ["anthropic"],
+  "open_line": "Anthropic is the model by choice, recorded in `.qz/practices.json`; Microsoft Agent Framework takes any IChatClient, so OllamaSharp swaps in an open-weight model."
 }

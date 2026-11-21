@@ -11,6 +11,8 @@ import { policy } from "./policy.ts";
 
 export const REFUSAL = "I can't act on that: it reads like an instruction to change how I work, not a question about an order. Ask me about an order instead.";
 export const WITHHELD = "I can't send that reply. A person will follow up.";
+/** EU AI Act Article 50(1): the app shows this before the first reply. */
+export const AI_NOTICE = "You're chatting with an AI assistant, not a person.";
 const INSTRUCTION = /\b(ignore|disregard|forget|override)\b[^.\n]{0,60}\b(instructions?|rules|prompts?|guidelines|guardrails?)\b|\byou are now\b|\b(system|developer) prompt\b|\b(jailbreak|dan mode|developer mode)\b|\breveal\b[^.\n]{0,60}\b(prompt|instructions?|passwords?|secrets?|keys?|credentials?)\b/i;
 const CARD = /\b(?:\d[ -]?){12,18}\d\b/g;
 const NATIONAL_ID = /\b\d{3}-\d{2}-\d{4}\b/g;

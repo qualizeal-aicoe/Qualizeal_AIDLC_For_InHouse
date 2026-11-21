@@ -5,7 +5,10 @@ path = ".mem/memory.db"        # one SQLite file; see docs/adr/0001-memory-shape
 audit = ".mem/audit.jsonl"     # what happened, never what was said
 
 [extract]
-provider = "stub"              # stub (offline, a few sentence shapes) or anthropic (ANTHROPIC_API_KEY, free text)
+provider = "stub"              # stub (offline, a few sentence shapes), openai (any OpenAI-compatible server) or anthropic
+# Open source first: provider = "openai" with model = "qwen3:8b" runs an open-weight model on this machine through
+# Ollama (`ollama pull qwen3:8b`), with no key. base_url points it at any other OpenAI-compatible server.
+base_url = ""                  # openai provider; empty: http://localhost:11434/v1
 model = "claude-haiku-5-5"
 max_tokens = 600
 timeout_s = 20

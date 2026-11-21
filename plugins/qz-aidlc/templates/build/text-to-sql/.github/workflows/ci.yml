@@ -29,9 +29,9 @@ jobs:
       - name: Agentic project audit
         shell: bash
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
-      - name: The six guardrails (input, output, tools, approval, limits, sandbox)
+      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers)
         shell: bash
-        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py guardrails --gate
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py standards --gate
       - name: Team decisions (docs/decisions/) against this pull request
         if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest'
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci

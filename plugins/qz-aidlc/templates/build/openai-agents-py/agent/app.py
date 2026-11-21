@@ -15,23 +15,28 @@ from .tools import TOOLS
 DECLINED = "A person declined this action. Do not retry it."
 
 
-def _model():
+def _model(model_id: str | None = None):
     if os.environ.get("AGENT_MODE", "stub") == "stub":
         from .stub import StubModel
         return StubModel()
-    return policy.MODEL                                   # OpenAI Responses API; OPENAI_API_KEY comes from the environment
+    if policy.MODEL:                                      # OpenAI, chosen by setting AGENT_MODEL; OPENAI_API_KEY from the environment
+        return model_id or policy.MODEL                   # OpenAI caches repeated prompt prefixes of 1,024 tokens or more itself
+    from agents import OpenAIChatCompletionsModel
+    from openai import AsyncOpenAI
+    return OpenAIChatCompletionsModel(model=model_id or policy.LOCAL_MODEL, openai_client=AsyncOpenAI(
+        base_url=policy.LOCAL_BASE_URL, api_key=os.environ.get("OPENAI_API_KEY") or "local"))
 
 
-def build() -> Agent:
+def build(model_id: str | None = None) -> Agent:
     set_tracing_disabled(not policy.SEND_TRACES_TO_OPENAI)
-    return Agent(name="__SLUG__", instructions=policy.SYSTEM, tools=TOOLS, model=_model(),
+    return Agent(name="__SLUG__", instructions=policy.SYSTEM, tools=TOOLS, model=_model(model_id),
                  model_settings=ModelSettings(max_tokens=policy.MAX_OUTPUT_TOKENS, timeout=policy.REQUEST_TIMEOUT_S))
 
 
 async def arun(message: str, approve: bool | None = None, agent: Agent | None = None) -> dict:
     """approve: True or False answers the approval request; None leaves it waiting. A waiting run can be kept with
     result["state"] (save it, then call resume() when the person answers)."""
-    agent = agent or build()
+    agent = agent or build(policy.pick_model(message))
     with tracer().start_as_current_span("agent.run") as span:
         try:
             result = await Runner.run(agent, message, max_turns=policy.MAX_TURNS)
@@ -48,7 +53,7 @@ async def arun(message: str, approve: bool | None = None, agent: Agent | None = 
         except MaxTurnsExceeded:
             span.set_attribute("agent.stopped", "max_turns")
             return {"output": "Stopped: this request needed more steps than the agent is allowed.", "tool_calls": [], "usage": {"input_tokens": 0, "output_tokens": 0},
-                    "awaiting_approval": False, "state": None}
+                    "awaiting_approval": False, "state": None, "ai_generated": False}
         out = _result(result, gate)
         span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in out["tool_calls"]]))
         span.set_attribute("gen_ai.usage.input_tokens", out["usage"]["input_tokens"])

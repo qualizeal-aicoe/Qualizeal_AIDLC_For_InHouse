@@ -5,7 +5,7 @@ or a generative AI (GenAI) engineer gets tested starters for the stacks our proj
 work from a decision to a reviewed pull request, and a harness that keeps prompts, keys and pricing where they belong.
 AI-DLC is the AI-Driven Development Life Cycle.
 
-Prepared by Prashobh Paul, AI Architect, QualiZeal AI CoE. Internal to QualiZeal.
+Prepared by the QualiZeal AI Center of Excellence (AI CoE). Internal to QualiZeal.
 
 | Plugin | What it is |
 |---|---|
@@ -57,24 +57,38 @@ of evaluation cases gates each change, and CI and a runbook come with it.
 
 | Starter | What it is | Checked in CI on every push |
 |---|---|---|
-| `langgraph` | LangGraph with LangChain (Python) | 4 tests and 10 gold cases, with interrupt and resume; Windows and Linux |
-| `openai-agents-py` | OpenAI Agents SDK (Python) | 6 tests and 10 gold cases, with an approval, a declined refund and a resume from saved state; Windows and Linux |
-| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 4 tests and 10 gold cases; Windows and Linux |
-| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 4 tests and 10 gold cases; Linux |
-| `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 6 tests and 8 contract cases through a real MCP client; Windows and Linux |
-| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 59 tests; 38 of 40 golden questions with the real models, against 35 for keyword search alone; no safety violations; Windows and Linux |
-| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 55 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
-| `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 17 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
-| `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 38 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
-| `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 30 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
-| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 5 tests and 10 gold cases; Linux |
-| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 4 tests and 10 gold cases; Linux |
-| `go-anthropic` | Go on the Anthropic API | vet, tests and 10 gold cases; Linux |
+| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 10 tests and 11 gold cases, with interrupt and resume; Windows and Linux |
+| `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 12 tests and 11 gold cases, with an approval, a declined refund and a resume from saved state; Windows and Linux |
+| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 9 tests and 11 gold cases; Windows and Linux |
+| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 7 tests and 11 gold cases; Linux |
+| `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 8 tests and 8 contract cases through a real MCP client; Windows and Linux |
+| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 61 tests; 38 of 40 golden questions with the real models, against 35 for keyword search alone; no safety violations; Windows and Linux |
+| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 57 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
+| `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 18 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
+| `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 42 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
+| `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 31 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
+| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 10 tests and 11 gold cases; Linux |
+| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 9 tests and 11 gold cases; Linux |
+| `go-anthropic` | Go on the Anthropic API | vet, tests and 11 gold cases; Linux |
 
 The Python starters use uv with a lock file, so a laptop gets the versions CI tested (the Strands starter keeps a
 requirements file). Only the TypeScript starter needs
 Node.js (22); `maf-dotnet` needs the .NET 10 SDK and `go-anthropic` Go 1.26. Every gold set runs against the offline
 stub, so none of these numbers involves a live model.
+
+## The QualiZeal standards
+
+Everything the Studio builds, and the Studio itself, meets four standards. `qz standards` prints one scorecard, every
+starter's CI fails without it, and on GitHub it lands on the pull request's checks page.
+
+| Standard | What it checks |
+|---|---|
+| Six guardrails | Input filter, output filter, tool allowlist, human approval, step limits and sandboxed execution, each with the file and line that shows it |
+| EU AI Act | A record in `docs/ai-act/`: the risk class (prohibited, high-risk, limited or minimal), the role, the EU link, and evidence for every obligation that brings. Every agent result carries `ai_notice` and a machine-readable `ai_generated`; the knowledge kits show the notice on the page. The Studio builds to the Act whether or not a system reaches the EU, and the class is a draft until a person confirms it |
+| Open source first | Each AI layer (model, runtime, framework, vector store, evals, tracing) is open, or tied to a vendor by a recorded choice. The framework-neutral starters run live on an open-weight model on your own machine by default (`qwen3:8b` on Ollama); picking a vendor starter records the vendor |
+| Cost levers | Prompt caching on the fixed prefix, easy turns routed to a smaller model (`AGENT_MODEL_SMALL`), batch where work can wait, a cache for repeat questions that never crosses an access boundary, capped context, and smaller models for narrow work |
+
+All 13 starters meet all four the moment they are created; `tests/test_standards.py` creates each one and checks.
 
 ## Lanes
 
@@ -153,6 +167,8 @@ The video (under a minute, no sound) is made from real output of the commands in
   and nothing enters a project's memory without a person approving the exact words.
 - The browser checks open local files by default; another host is used only after a person lists it, internal and
   cloud-metadata addresses are refused, and steps that delete, pay or send are refused outside a test environment.
+- A prompt carrying a payment card number (Luhn-checked) or a national ID number is never sent to a model, and every
+  agent starter masks both on the way in and on the way out.
 - Each release ships a list of its files' hashes. A skill, hook or policy file edited after release is named at the
   next session start, and the doctor shows it.
 

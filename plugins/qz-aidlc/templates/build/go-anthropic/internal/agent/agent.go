@@ -49,6 +49,8 @@ type Result struct {
 	Usage            Usage  `json:"usage"`
 	AwaitingApproval bool   `json:"awaiting_approval"`
 	Guard            *Guard `json:"guard,omitempty"`
+	AINotice         string `json:"ai_notice"`    // EU AI Act Article 50(1): show it before the first reply
+	AIGenerated      bool   `json:"ai_generated"` // Article 50(2): a machine-readable mark; false for fixed texts
 }
 
 // Guard says what the input and output filters found.
@@ -76,12 +78,14 @@ func NewModel() Model {
 func Run(ctx context.Context, model Model, message string, approve Approver) (Result, error) {
 	in := ScreenInput(message)
 	if in.Blocked {
-		return Result{Output: in.Text, ToolCalls: []Call{}, Guard: &Guard{Input: in.Findings, Output: []string{}}}, nil
+		return Result{Output: in.Text, ToolCalls: []Call{}, Guard: &Guard{Input: in.Findings, Output: []string{}}, AINotice: AINotice}, nil
 	}
 	res, err := run(ctx, model, in.Text, approve)
 	out := ScreenOutput(res.Output)
 	res.Output = out.Text
 	res.Guard = &Guard{Input: in.Findings, Output: out.Findings}
+	res.AINotice = AINotice
+	res.AIGenerated = !out.Blocked && !res.AwaitingApproval
 	return res, err
 }
 

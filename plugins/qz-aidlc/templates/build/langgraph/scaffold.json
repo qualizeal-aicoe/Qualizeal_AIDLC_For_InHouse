@@ -35,5 +35,8 @@
     "Replace the two tool bodies in agent/tools.py with calls to your systems.",
     "Swap InMemorySaver for SqliteSaver or PostgresSaver in agent/app.py before anything runs longer than one process.",
     "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
-  ]
+  ],
+  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "agent/guardrails.py"], "marking": ["every result carries ai_generated", "agent/guardrails.py"]},
+  "vendors": [],
+  "open_line": "Live runs default to an open-weight model on your own machine (qwen3:8b on Ollama, Apache-2.0); set AGENT_MODEL to use a vendor."
 }

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULTS = {
     "database": {"path": "data/northwind.db", "seed": "data/seed.sql"},
     "agent": {"role": "analyst", "provider": "scripted", "model": "claude-haiku-5-5", "base_url": "", "api_key_env": "",
-              "allowed_hosts": ["api.anthropic.com", "api.openai.com", "api.groq.com"], "max_tokens": 800, "timeout_s": 30},
+              "allowed_hosts": ["api.anthropic.com", "api.openai.com", "api.groq.com", "localhost", "127.0.0.1"], "max_tokens": 800, "timeout_s": 30},
     "limits": {"max_attempts": 3, "max_rows": 200, "query_timeout_ms": 2000, "max_question_chars": 1000,
                "recursion_limit": 25, "max_turns": 100},
     "retrieval": {"max_tables": 5},

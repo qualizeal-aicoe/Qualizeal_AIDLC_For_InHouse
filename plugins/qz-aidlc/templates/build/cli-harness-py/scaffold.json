@@ -27,5 +27,8 @@
     "Point [target] in harness.toml at the team's mock server and add its host to allowed_hosts; keep any token in MOCKCTL_TOKEN.",
     "To wrap another tool (Jenkins, an internal admin API, a test-data service), follow docs/runbook.md: same contract, new backend, new commands, then `uv run mockctl skill`.",
     "Before agents use it on a shared server, read docs/adr/0001-cli-harness-shape.md: who may say yes to a destructive command, and where the audit log is kept."
-  ]
+  ],
+  "ai_act": {"purpose": "Lets AI agents drive a command-line tool through a typed, audited harness.", "people": false, "generates": false},
+  "vendors": [],
+  "open_line": "No model and no vendor SDK."
 }

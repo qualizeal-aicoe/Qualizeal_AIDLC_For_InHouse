@@ -27,5 +27,8 @@
     "Replace orders() in server/data.py with a read-only call to your order system.",
     "Change a tool, then run uv run -m server.pin and commit tests/tool_pins.json with it.",
     "Before serving a team over HTTP, put OAuth in front of it (the SDK's token_verifier and AuthSettings)."
-  ]
+  ],
+  "ai_act": {"purpose": "Gives AI agents read access to orders, and a refund tool that waits for a person's approval, over the Model Context Protocol.", "people": false, "generates": false},
+  "vendors": [],
+  "open_line": "No model and no vendor SDK: the server is plain Python on the open MCP standard."
 }
