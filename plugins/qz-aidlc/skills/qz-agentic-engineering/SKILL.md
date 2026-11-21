@@ -12,7 +12,8 @@ Read only what the lane needs:
 | `references/method.md` | starting any architecture: the order of work and the rules the `arch` tool enforces |
 | `references/patterns.md` | choosing between a workflow, one agent, or several; placing gates, guards and state |
 | `references/stacks/<stack>.md` | a stack is being scored, scaffolded or reviewed (one file per stack) |
-| `references/evaluation.md` | writing a gold set, reading results, calibrating a judge, gating a release |
+| `references/evaluation.md` | writing a gold set, reading results, calibrating a judge, gating a release, RAG metrics, watching it after launch |
+| `references/tooling.md` | the client already runs a tool for a stage (LlamaIndex, promptfoo, Langfuse, Docker...) and ours must fit beside it |
 | `references/test-design.md` | designing test cases from acceptance criteria |
 | `references/audit.md` | scoring the readiness audit, especially the MANUAL items |
 

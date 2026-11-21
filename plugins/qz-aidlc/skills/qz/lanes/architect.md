@@ -6,7 +6,8 @@ play). Everything lives in `arch/` and is driven by the `arch` tool. The order i
 1. **Requirements** (`stage requirements-analysis`). `arch [init]`, then fill `arch/requirements.json` with the person:
    the problem and its success measure, non-goals, functional requirements with observable acceptance, quality
    scenarios in six parts with a number in the measure (security, reliability, cost, performance, observability,
-   human oversight), constraints, data and its classification, autonomy and every action that cannot be undone.
+   human oversight), constraints, data (source, quality, classification, our right to use it), autonomy and every
+   action that cannot be undone.
    Challenge anything vague: ask for the number. `arch [req]` until it says READY. Pull context with `kf_search` and,
    when a Jira or Confluence connector is present, read the epic and linked pages (reading needs no approval).
 2. **Options and stack** (`stage feasibility`). In `arch/decision.json` write the criteria with weights that add to

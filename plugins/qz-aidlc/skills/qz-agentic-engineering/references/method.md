@@ -2,15 +2,17 @@
 
 1. **Problem before solution.** Who has the problem, what it costs today, the number that means success, and what the
    system will not do. If the person opens with a technology ("we need a multi-agent system"), ask what outcome it is
-   for and write that down instead.
+   for and write that down instead. Then audit the data: where it comes from, how good it is, what personal data it
+   holds, and our right to use it for this purpose (licence, consent, contract). A gap here is a risk with an owner.
 2. **Requirements that can fail.** Functional requirements carry an acceptance a tester can observe. Qualities are
    scenarios in six parts: source, stimulus, environment, artifact, response, measure. Six are always considered for
    agentic systems: security, reliability, cost, performance, observability, human oversight. "Fast", "scalable",
    "secure" are not requirements until they have a number.
 3. **Autonomy is a requirement.** State the level (suggest, act with approval, act within limits) and list every
    action that cannot be undone. Each one gets a gate with a named approver.
-4. **Decide against a baseline.** Always score a no-agent option: a fixed workflow with one model call. Agents earn
-   their place by beating it on criteria fixed in advance. Lock criteria and weights before scoring; apply
+4. **Decide against a baseline.** Always score a no-agent option: a fixed workflow with one model call. When the
+   rules are known or the answer is a label, also score a no-model option: rules, search or a small classifier.
+   Models and agents earn their place by beating these on criteria fixed in advance. Lock criteria and weights before scoring; apply
    knock-outs first; score twice independently with written evidence; reconcile gaps over one point; test whether a
    20% move in any weight flips the winner. Write what would change the decision.
 5. **Prove the risky parts.** A spike has a question, a pass/fail criterion with a number, and a time-box, all

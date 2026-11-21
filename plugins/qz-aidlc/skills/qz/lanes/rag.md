@@ -48,4 +48,6 @@ Never, unless the person asks: a hosted embedding service or a vector database s
 server (the PageIndex MCP uploads to its cloud; the archived SQLite MCP server has a known SQL injection). Never:
 access control applied after retrieval, or an answer without a citation.
 
+RAG or fine-tuning or long context, and watching it live: `qz-agentic-engineering` patterns.md, evaluation.md.
+
 End with `report_card`.

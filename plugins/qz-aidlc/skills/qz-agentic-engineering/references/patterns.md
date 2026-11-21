@@ -9,12 +9,25 @@
 | Evaluator and optimiser loop | quality can be judged against a clear rubric | no reliable judge exists | doubles calls; cap the rounds |
 | Multi-agent with shared state | separate roles with separate permissions are a requirement | it is chosen for the diagram | hardest to debug and evaluate; inter-agent messages are untrusted input |
 
+Where the knowledge comes from, decided before the pattern:
+
+| Need | Use | Why not the others |
+|---|---|---|
+| Facts that change, must be cited, or differ by who asks | retrieval-augmented generation (RAG): re-index on change, filter by permission at retrieval, cite | fine-tuning goes stale and cannot cite; long context re-sends everything on every call |
+| A small, stable set that fits the window (one contract, a policy pack) | long context with prompt caching | an index is overhead for a few pages |
+| Live or structured data (orders, balances, tickets) | a tool or a query (the text-to-SQL starter) | an index of a database is stale by tomorrow |
+| A style, format or narrow label the model still gets wrong with examples in the prompt | fine-tuning, after few-shot examples fail | it teaches behaviour, not facts |
+
+Most production systems combine them: RAG or tools for facts, the prompt or a fine-tune for style.
+
 Where the controls go, on any pattern:
 
 - **Human gate**: before every action that cannot be undone (send, pay, delete, merge, deploy, write to a system of
   record). The gate shows the exact action and arguments. A declined action is reported, never retried.
 - **Guard**: between untrusted input (user text, retrieved documents, tool results, other agents) and anything that
   acts. Untrusted text never becomes instructions and never chooses a tool's target (customer id, recipient, path).
+  On the way out, check what leaves: personal data, secrets, and toxic or off-policy text; block or redact it and
+  record the hit.
 - **Least privilege**: the agent gets the tools the task needs and no built-in shell or file access unless required;
   read-only tools are pre-approved, everything else asks.
 - **Limits**: turns, tool calls, tokens and cost per task; timeouts and bounded retries on every call.

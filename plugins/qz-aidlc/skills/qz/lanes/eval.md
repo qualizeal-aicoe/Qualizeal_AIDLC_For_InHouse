@@ -18,3 +18,6 @@ Read `qz-agentic-engineering/references/evaluation.md`. Works on any repository,
    `eval [replay]` for free on every push (it re-checks recorded outputs) and the live run on demand.
 6. Report the result in one line with n, rate, interval and what changed. Never quote a stub or replay run as a
    measure of the model.
+7. **After launch** (when the person asks how to release or watch it). The staged release, traces, the numbers to
+   watch, drift and the feedback loop are in `evaluation.md`: every thumbs-down, edit or escalation becomes a gold
+   case, with the person's yes, before its fix. A client's own tools fit beside ours: `tooling.md`, same folder.

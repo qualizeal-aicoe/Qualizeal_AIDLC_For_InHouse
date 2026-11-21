@@ -43,6 +43,14 @@ way on every laptop and to be taught in a live session.
   Decisions are never edited, only replaced; one carrying instructions, a secret or a rate is refused, and a planted
   one is withheld from agents. The `decisions` tool, `qz decisions`, the starters' CI and the Studio's own first
   four decisions come with it.
+- **The basics, written down.** The method now states what the lanes assumed: score a no-model option (rules,
+  search, a small classifier) beside the no-agent one; audit the data's source, quality, personal data and our right
+  to use it; choose between RAG, fine-tuning, long context and tools by what the knowledge is; check what leaves as
+  well as what comes in. The evaluation guide adds RAG metrics (context recall, faithfulness, refusals, permission
+  violations), results per slice as the fairness check, the staged release, OpenTelemetry traces any client tool can
+  read, drift, and the feedback loop that turns each thumbs-down into a gold case. A new page maps the tools clients
+  already run (LlamaIndex, promptfoo, DeepEval, Phoenix, MLflow, Langfuse, Docker, Evidently) to what the Studio
+  ships, and says where nothing exists yet.
 - **A command-line harness starter, `cli-harness-py`**, after the CLI-Anything method (HKUDS): agents drive a team's
   tool through its real API instead of its screen. Every command answers in JSON with one exit code per kind of
   failure, declares whether it reads, writes or destroys, plans with `--dry-run`, and needs `--yes`, added only after a
