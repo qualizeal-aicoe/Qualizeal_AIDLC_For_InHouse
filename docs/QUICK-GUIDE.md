@@ -120,7 +120,7 @@ The plugins, commands, agents, tool server, policy files, scripts, settings (`QZ
 | `qz-decisions` | team decisions tied to the code they are about: shown when an agent opens that code, checked before a commit and in CI | `docs/decisions/, lib/qz/decisions.py` |
 | `qz-conventions` | branch, commit and merge-request conventions checked at the commit, the push and the merge request; the delivery gate suggests the squash type and says what it releases | `lib/qz/conventions.py` |
 | `qz-practices` | the team's practices: QualiZeal defaults, overridden per team at practices discovery | `policy/qz-practices.json, .qz/practices.json` |
-| `qz-aidlc-workspace` | the team's shared AI-DLC workspace: the records in one repository, the service repositories beside it under services/ | `qz aidlc setup|check, lib/qz/aidlcws.py` |
+| `qz-aidlc-workspace` | the team's shared AI-DLC workspace: the records in one repository, the service repositories beside it under services/ | `qz aidlc setup, qz aidlc check, lib/qz/aidlcws.py` |
 | `qz-guardrails` | the six gates every agent passes (input filter, output filter, tool allowlist, human approval, step limits, sandboxed execution), checked with evidence on the Studio and on any project | `qz guardrails, lib/qz/auditkit/gates.py` |
 | `qz-aiact` | the EU AI Act record every project keeps: risk class, role, the obligations they bring and evidence for each; a person confirms the class | `qz aiact, docs/ai-act/, lib/qz/auditkit/aiact.py` |
 | `qz-stack` | open source first: which layers of an AI stack are open, which are tied to a vendor by recorded choice, and the open option for each | `qz stack, lib/qz/auditkit/oss.py` |
