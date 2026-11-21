@@ -11,7 +11,7 @@ import time
 import json
 from pathlib import Path
 
-from . import audit, decisions, footprint, guard, ledger
+from . import audit, conventions, decisions, footprint, guard, ledger
 from .ctx import hook as ctxhook
 from .names import shown, tag
 from .util import now, project_config, project_dir, qz_dir
@@ -197,8 +197,19 @@ def pre_tool(p: dict) -> dict | None:
             ledger.record_gate(led, "ask", d.rule, tool, tid, d.message)
         audit.append(proj, "GUARD_" + d.action.upper(), rule=d.rule, tool=tool, run=led["run_id"], stage=led["stage"])
         out = _pre(d.action, f"{d.message} (rule {d.rule})")
-        if d.action == "ask" and tool in guard.SHELL_TOOLS:
-            dc = _quiet(decisions.hook_check, proj, guard.normalise(str(tin.get("command") or "")))
+        shell = d.action == "ask" and tool in guard.SHELL_TOOLS
+        cmd = guard.normalise(str(tin.get("command") or "")) if shell else ""
+        cv = (_quiet(conventions.hook_check, proj, cmd, led) if shell else
+              _quiet(conventions.tool_check, proj, tool, tin, led) if d.action == "ask" and conventions.MR_TOOL.search(tool or "") else None)
+        if cv and cv["action"] == "deny":                # a protected branch or a title that does not fit: no question to ask
+            ledger.count(led, "deny", cv["rule"])
+            audit.append(proj, "GUARD_DENY", rule=cv["rule"], tool=tool, run=led["run_id"], stage=led["stage"])
+            out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                          "permissionDecisionReason": f"{tag('qz-conventions')} {cv['message']} (rule {cv['rule']})"}}
+        else:
+            if cv:                                       # the person approving sees the branch, the commits and the release
+                out["hookSpecificOutput"]["permissionDecisionReason"] += f" {tag('qz-conventions')} {cv['message']}"
+            dc = _quiet(decisions.hook_check, proj, cmd) if shell else None
             if dc:                                       # a push that already waits for the person shows the conflict too
                 audit.append(proj, "DECISION_CONFLICT", tool=tool, run=led["run_id"], stage=led["stage"])
                 out["hookSpecificOutput"]["permissionDecisionReason"] += f" {tag('qz-decisions')} {dc['message']}"
@@ -208,6 +219,11 @@ def pre_tool(p: dict) -> dict | None:
         ledger.record_gate(led, "ask", rule, tool, tid, msg)
         audit.append(proj, "GUARD_ASK", rule=rule, tool=tool, run=led["run_id"], stage=led["stage"])
         out = _pre("ask", f"{msg} (rule {rule})")
+    elif tool in guard.SHELL_TOOLS and (cv := _quiet(conventions.hook_check, proj, guard.normalise(str(tin.get("command") or "")), led)) and cv["action"] == "deny":
+        ledger.count(led, "deny", cv["rule"])
+        audit.append(proj, "GUARD_DENY", rule=cv["rule"], tool=tool, run=led["run_id"], stage=led["stage"])
+        out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                      "permissionDecisionReason": f"{tag('qz-conventions')} {cv['message']} (rule {cv['rule']})"}}
     elif tool in guard.SHELL_TOOLS and (dc := _quiet(decisions.hook_check, proj, guard.normalise(str(tin.get("command") or "")))):
         ledger.count(led, "ask", "QZ-ASK-DECISION-CONFLICT")
         ledger.record_gate(led, "ask", "QZ-ASK-DECISION-CONFLICT", tool, tid, dc["message"])

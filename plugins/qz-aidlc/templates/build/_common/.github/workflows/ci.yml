@@ -2,7 +2,7 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, master]
 permissions:
   contents: read
 jobs:
@@ -22,6 +22,9 @@ __SETUP_STEPS__
       - name: Team decisions (docs/decisions/) against this pull request
         if: github.event_name == 'pull_request'
         run: python3 .claude/qz/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci
+      - name: Conventions (branch name, merge-request title, the squash commit and its release)
+        if: github.event_name == 'pull_request'
+        run: python3 .claude/qz/scripts/qz.py conventions check --base origin/${{ github.base_ref }} --ci --offline
       - uses: actions/upload-artifact@v4
         if: always()
         with:

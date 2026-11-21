@@ -231,7 +231,8 @@ def _lane(mod: str, name: str, rest: list[str]) -> None:
 
 PASS_THROUGH = {"ship": ("qz.ship", {}), "publish": ("qz.ws.publish", {}), "undo": ("qz.snapshot", {}),
                 "redo": ("qz.snapshot", {"redo": True}), "goal": ("qz.goal", {}), "spec": ("qz.spec.cli", {}),
-                "hillclimb": ("qz.hillclimb", {}), "board": ("qz.board", {}), "decisions": ("qz.decisions", {})}
+                "hillclimb": ("qz.hillclimb", {}), "board": ("qz.board", {}), "decisions": ("qz.decisions", {}),
+                "conventions": ("qz.conventions", {}), "practices": ("qz.practices", {})}
 # Lane tools by command name -> package under qz/. Each parses its own options.
 LANES = {"kf": "kf", "price": "bid", "sow": "bid", "deck": "bid", "voice": "bid", "demo": "demo", "arch": "arch",
          "build": "buildkit", "eval": "evalkit", "test": "stlc", "audit-project": "auditkit", "craft": "craft",

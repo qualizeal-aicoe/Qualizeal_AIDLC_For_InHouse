@@ -45,6 +45,27 @@
       "message": "Protected branches change only through an approved merge request; force pushes and branch deletions are never made by an agent."
     },
     {
+      "id": "QZ-CONVENTION-PROTECTED",
+      "tool": "shell",
+      "match": "(?!)",
+      "note": "Emitted from code (conventions.hook_check): a git push whose target is a protected branch (master, main, develop), named on the command line or simply the branch checked out. Applies everywhere, with or without a Jira key.",
+      "message": "Protected branches change only through a merge request that a person squash-merges."
+    },
+    {
+      "id": "QZ-CONVENTION-COMMIT",
+      "tool": "shell",
+      "match": "(?!)",
+      "note": "Emitted from code (conventions.hook_check): a git commit whose subject is not <type>: <KEY> <description> where a Jira key is known (the team's practices, the story being delivered, or the branch name). The reason carries the fixed subject, so the agent can retry at once.",
+      "message": "Commit messages follow <type>: <KEY> <description>; <KEY>-0 when no ticket exists."
+    },
+    {
+      "id": "QZ-CONVENTION-TITLE",
+      "tool": "shell",
+      "match": "(?!)",
+      "note": "Emitted from code (conventions.hook_check): a merge request (gh pr create, glab mr create) whose title does not fit <type>: <KEY> <description>. The title becomes the squash commit on master and its type decides the release, so the reason carries the squash subject the delivery gate suggests.",
+      "message": "The merge request's title is the squash commit: <type>: <KEY> <description>."
+    },
+    {
       "id": "QZ-SH-GIT-MERGE",
       "tool": "shell",
       "match": "\\bgit(?:\\.exe)?['\"]?(?:\\s+(?:-[cC]\\s*(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s;&|]+)|--(?:git-dir|work-tree|namespace|exec-path|config-env|super-prefix)(?:=\\S*|\\s+\\S+)|--?[\\w-]+(?:=\\S*)?))*\\s+(merge|rebase)(?![\\w-])|\\bglab\\s+mr\\s+(merge|approve)\\b|\\bgh\\s+pr\\s+(merge|review\\s+--approve)\\b",

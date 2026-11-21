@@ -19,6 +19,8 @@ PARTS: dict[str, tuple[str, str]] = {
     "qz-context": ("shortens large tool output before the model reads it and keeps the original searchable", ".qz/ctx/ctx.sqlite"),
     "qz-memory": ("project notes a person confirmed, read at the start of each session, with history and undo", ".qz/memory/"),
     "qz-decisions": ("team decisions tied to the code they are about: shown when an agent opens that code, checked before a commit and in CI", "docs/decisions/, lib/qz/decisions.py"),
+    "qz-conventions": ("branch, commit and merge-request conventions checked at the commit, the push and the merge request; the delivery gate suggests the squash type and says what it releases", "lib/qz/conventions.py"),
+    "qz-practices": ("the team's practices: QualiZeal defaults, overridden per team at practices discovery", "policy/qz-practices.json, .qz/practices.json"),
     "qz-route": ("reads each request without a model call and names the lane, tool, agent, model and effort that fit, with what is in hand", "policy/qz-routes.json, lib/qz/router.py"),
     "qz-office": ("decks, planning and status workbooks, estimates and e-mails written for each reader", "lib/qz/office/"),
     "qz-publish": ("saves locally first, then pushes to a new, existing or team repository after a person's yes", "lib/qz/ws/publish.py"),

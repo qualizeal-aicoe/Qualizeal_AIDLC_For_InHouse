@@ -3,9 +3,11 @@
 Finds the stacks in a repository (Node or TypeScript, Python, .NET, Go, Java; at the root and one folder down, such
 as web/ and api/), runs each one's own checks (tests, lint, types, build) through the context layer (no
 credentials in the environment, the full output kept, a short view returned), and adds checks every change needs:
-no secrets in changed files, no new debug leftovers, tests touched when source changed, and no conflict with the
-team's decisions in docs/decisions/ when the repository keeps any. A check that cannot run
-is reported as not run, with the reason: never as passed."""
+no secrets in changed files, no new debug leftovers, tests touched when source changed, no conflict with the team's
+decisions in docs/decisions/ when the repository keeps any, and the team's practices: the branch, commit and
+merge-request conventions (with the squash commit to use and what merging it releases), the Jest coverage floor, the
+SDK mocked in unit tests, and conditional writes whose rejection is a named result. This is the delivery gate. A check
+that cannot run is reported as not run, with the reason: never as passed."""
 from __future__ import annotations
 
 import json
@@ -175,11 +177,23 @@ def run(root: Path, base: str | None = None, timeout: int = 900, only: list[str]
                                    or (f"{len(dr['leads'])} lead(s) to read: qz decisions check" if dr["leads"] else None)})
         except Exception as e:                       # a check that cannot run is reported as not run, never as passed
             results.append({"stack": "all", "dir": ".", "kind": "team decisions", "cmd": "qz decisions check", "status": "not run", "why": f"{type(e).__name__}: {e}"})
+    mr = None
+    from . import conventions, practices
+    try:
+        mr = conventions.gate(root, base)
+        if mr.get("applies"):
+            results += conventions.ship_results(mr)
+    except Exception as e:                           # never claimed as passed
+        results.append({"stack": "all", "dir": ".", "kind": "conventions", "cmd": "qz conventions", "status": "not run", "why": f"{type(e).__name__}: {e}"})
+    try:
+        results += practices.check(root, names)
+    except Exception as e:
+        results.append({"stack": "all", "dir": ".", "kind": "team practices", "cmd": "qz practices check", "status": "not run", "why": f"{type(e).__name__}: {e}"})
     if not checks:
         results.insert(0, {"stack": "?", "dir": ".", "kind": "project checks", "cmd": "-", "status": "not run", "why": "no tests, lint, types or build defined in the repository"})
     failed = [r for r in results if r["status"] == "failed"]
     not_run = [r for r in results if r["status"] == "not run" and r["kind"] in ("tests", "build", "project checks")]
-    return {"root": str(root), "base": base, "changed": len(names), "results": results, "ready": not failed and not not_run,
+    return {"root": str(root), "base": base, "changed": len(names), "results": results, "ready": not failed and not not_run, "merge_request": mr,
             "verdict": "READY" if not failed and not not_run else ("NOT READY" if failed else "UNVERIFIED")}
 
 
@@ -190,6 +204,10 @@ def markdown(r: dict) -> str:
         note = (x.get("why") or (f"{x['seconds']} s, full output ctx [get, {x['id']}]" if x.get("id") else "")).replace("|", "/")
         rows.append(f"| {x['kind']} | {x['dir']} | `{x['cmd']}` | {x['status']} | {note} |")
     rows += ["", "READY means every check that exists passed. UNVERIFIED means tests or a build could not run here: say so, do not claim done."]
+    mr = r.get("merge_request") or {}
+    if mr.get("applies"):
+        from . import conventions
+        rows += ["", conventions.markdown(mr).rstrip()]
     return "\n".join(rows) + "\n"
 
 

@@ -56,7 +56,7 @@ def test_everything_qualizeal_built_starts_with_qz():
     entries = [h for groups in hooks.values() for g in groups for h in g["hooks"]]
     assert entries and all(h["command"] == "uv" and h["args"][-2].endswith("/scripts/qz_hook.py") for h in entries)
     used = set(re.findall(r'environ(?:\.get)?[\(\[]"([A-Z_0-9]+)"', "\n".join(f.read_text(encoding="utf-8") for f in (PLUG / "lib").rglob("*.py"))))
-    assert all(v.startswith(("QZ_", "CLAUDE_")) or v in ("ANTHROPIC_API_KEY", "GITHUB_ACTIONS", "PROGRAMFILES", "GITHUB_EVENT_PATH", "GITHUB_STEP_SUMMARY") for v in used), sorted(used)   # read for presence only: Claude Code's own key, the GitHub runner's flag, and where Windows keeps Git Bash; the decisions check reads the runner's pull request and writes its job summary
+    assert all(v.startswith(("QZ_", "CLAUDE_")) or v in ("ANTHROPIC_API_KEY", "GITHUB_ACTIONS", "PROGRAMFILES", "GITHUB_EVENT_PATH", "GITHUB_STEP_SUMMARY", "GITHUB_HEAD_REF") for v in used), sorted(used)   # read for presence only: Claude Code's own key, the GitHub runner's flag, and where Windows keeps Git Bash; the decisions check reads the runner's pull request and writes its job summary
     assert all(k.startswith("qz-") for k in names.PARTS)
 
 
@@ -64,7 +64,7 @@ def test_every_guard_rule_id_starts_with_QZ():
     policy = json.loads((PLUG / "policy" / "qz-policy.json").read_text(encoding="utf-8"))
     ids = _ids(policy, [])
     assert len(ids) >= 79 and all(i.startswith("QZ-") for i in ids), [i for i in ids if not i.startswith("QZ-")]
-    assert len(set(ids)) == 106
+    assert len(set(ids)) == 109
     schema = (PLUG / "policy" / "qz-policy.schema.json").read_text(encoding="utf-8")
     assert schema.count('"pattern": "^QZ-[A-Z0-9-]+$"') == 4
     for mod in ("guard.py", "hooks.py"):

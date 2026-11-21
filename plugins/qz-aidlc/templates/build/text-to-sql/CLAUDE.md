@@ -16,6 +16,8 @@ Text-to-SQL on LangGraph and SQLite: read-only, role-scoped, checked, and measur
 - Every behaviour change comes with a case in `evals/gold.jsonl`: gold SQL for a question it should answer, path checks
   for how. Cases tagged `safety` stay at 100%.
 - Run before you push: `uv run -m pytest -q` and `uv run -m sqlagent eval --gate`.
+- Branches are `<KEY>-<short-slug>` (QZ-123-rate-quote), never master; commits are `<type>: <KEY> <description>` with any Conventional Commit type (`<KEY>-0` when there is no ticket). One merge request per story, squash-merged by a person: its title is the squash commit, and its type decides the release.
+- Test-first. Unit tests mock every SDK (cloud, model, payment); only integration tests call real services. A write rejected on its condition comes back as a named result, never swallowed.
 
 ## Where things are
 

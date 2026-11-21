@@ -2,7 +2,7 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --locked
       - name: Unit tests and the tool pins
@@ -19,6 +21,12 @@ jobs:
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run --label ci
       - name: Agentic project audit
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
+      - name: Team decisions (docs/decisions/) against this pull request
+        if: github.event_name == 'pull_request'
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci
+      - name: Conventions (branch name, merge-request title, the squash commit and its release)
+        if: github.event_name == 'pull_request'
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py conventions check --base origin/${{ github.base_ref }} --ci --offline
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -16,6 +16,8 @@ an evaluation gate. Python 3.11+, standard library, pypdf for PDF.
 - Keep a change only if `uv run -m vrag eval` improves or holds and the gate passes; say the numbers.
 - Keys come from the environment only. Nothing secret goes in a file, a prompt, a log line or the audit log.
 - Before saying a story is done, run the project's verify skill: `/verify-rag`.
+- Branches are `<KEY>-<short-slug>` (QZ-123-rate-quote), never master; commits are `<type>: <KEY> <description>` with any Conventional Commit type (`<KEY>-0` when there is no ticket). One merge request per story, squash-merged by a person: its title is the squash commit, and its type decides the release.
+- Test-first. Unit tests mock every SDK (cloud, model, payment); only integration tests call real services. A write rejected on its condition comes back as a named result, never swallowed.
 
 ## Where things are
 

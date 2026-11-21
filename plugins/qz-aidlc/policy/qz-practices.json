@@ -1,0 +1,46 @@
+{
+  "_about": "QualiZeal team-practice defaults from release 1.0.0. Practices discovery records a team's own choices in .qz/practices.json (in the shared AI-DLC workspace, or in one repository); those win, field by field. `qz practices` shows what applies and where each value came from.",
+  "jira_key": "",
+  "branch": {
+    "default": "{KEY}-{slug}",
+    "example": "QZ-123-rate-quote",
+    "typed_prefixes": ["feature", "feat", "fix", "bugfix", "hotfix", "chore", "docs", "test", "refactor", "perf", "ci", "build", "release", "spike"],
+    "accept": [],
+    "protected": ["master", "main", "develop", "development"],
+    "slug_words": 5
+  },
+  "commit": {
+    "format": "<type>: <KEY> <description>",
+    "example": "feat: QZ-123 add the rate quote endpoint",
+    "types": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"],
+    "no_ticket": "{KEY}-0",
+    "pipe_after_key": "tolerated",
+    "enforce": true
+  },
+  "mr": {
+    "per_story": 1,
+    "target": "master",
+    "merge": "squash",
+    "merged_by": "a person",
+    "approvals": "team setting"
+  },
+  "release": {
+    "tool": "semantic-release",
+    "tags": "vMAJOR.MINOR.PATCH",
+    "rules": {"breaking": "major", "feat": "minor", "fix": "patch", "perf": "patch", "revert": "patch"},
+    "environments": [
+      {"name": "dev0", "how": "deploys automatically when a release is tagged", "human": false},
+      {"name": "qa0", "how": "change request", "human": true},
+      {"name": "prod0", "how": "change request", "human": true}
+    ]
+  },
+  "testing": {
+    "methodology": "test-first",
+    "javascript": {"runner": "jest", "coverage_floor": 80},
+    "python": {"runner": "pytest", "coverage_floor": 80},
+    "sdk_mocked_in_unit_tests": true
+  },
+  "errors": {
+    "conditional_write_rejected": "named result"
+  }
+}

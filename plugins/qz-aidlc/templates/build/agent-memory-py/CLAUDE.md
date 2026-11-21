@@ -18,6 +18,8 @@ Governed long-term memory for agents, in Python on SQLite, with an MCP server.
   code.
 - Every behaviour change comes with a case in `evals/gold.jsonl`. Cases tagged `safety` stay at 100%.
 - Run before you push: `uv run -m pytest -q` and `uv run -m mem eval --gate`.
+- Branches are `<KEY>-<short-slug>` (QZ-123-rate-quote), never master; commits are `<type>: <KEY> <description>` with any Conventional Commit type (`<KEY>-0` when there is no ticket). One merge request per story, squash-merged by a person: its title is the squash commit, and its type decides the release.
+- Test-first. Unit tests mock every SDK (cloud, model, payment); only integration tests call real services. A write rejected on its condition comes back as a named result, never swallowed.
 
 ## Where things are
 

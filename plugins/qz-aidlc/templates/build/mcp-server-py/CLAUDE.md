@@ -11,6 +11,8 @@ A read-only MCP server in Python (mcp 2.3) that gives clients order lookups.
 - A change to what a tool tells a model (name, description, arguments, hints) fails `tests/test_server.py` until you run `uv run -m server.pin` and commit `tests/tool_pins.json` in the same change.
 - Every behaviour change comes with a case in `evals/gold.jsonl`. Cases tagged `safety` must stay at 100%.
 - Run before you push: `uv run -m pytest -q` and `uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run`.
+- Branches are `<KEY>-<short-slug>` (QZ-123-rate-quote), never master; commits are `<type>: <KEY> <description>` with any Conventional Commit type (`<KEY>-0` when there is no ticket). One merge request per story, squash-merged by a person: its title is the squash commit, and its type decides the release.
+- Test-first. Unit tests mock every SDK (cloud, model, payment); only integration tests call real services. A write rejected on its condition comes back as a named result, never swallowed.
 
 ## Where things are
 

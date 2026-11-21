@@ -26,6 +26,12 @@ delivery-planning's Bolt sequence. We accept the trade-off of losing
 intermediate commits on `main` because the audit log preserves the full
 event sequence anyway.
 
+<!-- QualiZeal team-practice defaults (QZ layer, release 1.0.0): they apply where team.md affirms nothing else, and practices discovery can override any of them per team (`qz practices` shows what applies and why). -->
+- **QZ branches**: `<KEY>-<short-slug>` (for example `QZ-123-rate-quote`) with no type prefix; the typed forms GitHub push rules require (`feature/<KEY>-<slug>`, `fix/<KEY>-...`) stay accepted. The trunk is `master`, and it stays protected.
+- **QZ commits**: `<type>: <KEY> <description>` with any Conventional Commit type; `<KEY>-0` when no ticket exists; an optional `|` after the key is tolerated.
+- **QZ merge requests**: one per story, squash-merged into `master` by a person; the number of approvals is a team setting. The squash commit's type decides the release, so the delivery gate (`ship_check`) suggests it.
+- **QZ records**: in a shared AI-DLC workspace, `aidlc/` (intents, memory, code knowledge, team knowledge) is one repository and the service repositories sit beside it under `services/`; records reach it by merge request like any other change, which keeps approved specifications in version control.
+
 ## Walking Skeleton
 
 When practices are scope-dependent, select the walking skeleton only when the
@@ -79,6 +85,9 @@ selected strategy.
 Build and Test verifies defined coverage floors and affirmed quality targets;
 they may not be weakened to make a step pass.
 
+<!-- QualiZeal default (QZ layer): replaces the test-after default above where team.md affirms nothing else. -->
+- **QZ testing**: test-first: a failing test, then the code that passes it. JavaScript and TypeScript use Jest with an 80% coverage floor held in `coverageThreshold`. Unit tests mock every SDK (cloud, model, payment); only integration tests call real services.
+
 Affirm a stricter posture in `team.md` if the team commits to one.
 
 ## Guard Policy
@@ -94,6 +103,9 @@ sign-off in CodePipeline or a CD platform's environment protection.
 Teams that have invested in test coverage and observability sometimes
 graduate to continuous deployment to production (every commit
 auto-deploys); that's a team decision, not a framework default.
+
+<!-- QualiZeal default (QZ layer) -->
+- **QZ releases**: tag-based semantic-release on `master` (a breaking change is major, `feat` minor, `fix`, `perf` and `revert` patch, anything else no release). dev0 deploys automatically when a release is tagged; qa0 and prod0 go through change requests and stay human steps. Agents describe releases this way and never claim a deployment beyond dev0.
 
 ## Code Style
 
@@ -111,6 +123,9 @@ When the framework makes a code-style suggestion, agents read the
 project's linter config first; the agent's suggestion only fires if the
 linter doesn't already cover it.
 
+<!-- QualiZeal default (QZ layer) -->
+- **QZ errors**: a write rejected on its condition (DynamoDB's `ConditionalCheckFailedException`, an HTTP 412) is returned as a named result, for example `{ ok: false, reason: 'CONDITION_FAILED' }`, never swallowed.
+
 ## Forbidden
 
 <!-- QualiZeal org guardrails v0.1 -->
@@ -125,7 +140,7 @@ linter doesn't already cover it.
 ## Mandated
 
 <!-- QualiZeal org guardrails v0.1 (QZ layer; AWS text above is unchanged) -->
-- **QZ delivery conventions**: branch names carry the Jira key (`feature/<KEY>-<slug>`); commit messages are `feat|fix|chore: <KEY> <summary>`; who is working comes from git config and is never typed by a person.
+- **QZ identity**: who is working comes from git config and is never typed by a person; branch, commit and merge-request conventions are under Way of Working.
 - **QZ evidence**: every approved output (requirements, design, test design, code summary, pull-request text) is sealed with `qz output <file> --kind <kind>`; every story ends with `qz report`.
 - **QZ verification**: code is built and tested with the repository's own commands before a pull request is proposed; if a check cannot run, the output is labelled UNVERIFIED with the reason. A failed check gets at most two fix attempts, then the person decides.
 - **QZ knowledge**: look up QualiZeal and client knowledge with `kf_search` and live Confluence before relying on memory; cite the source and its date.

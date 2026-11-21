@@ -18,6 +18,8 @@ reciprocal rank, reranked by a cross-encoder. Python 3.11+, SQLite, NumPy and tw
 - Tests use the offline embedder and reranker (the defaults in `arag/config.py`); `arag.toml` switches on the real
   models. Keep it that way, so tests never download anything.
 - Keys come from the environment only. Nothing secret goes in a file, a prompt, a trace or the audit log.
+- Branches are `<KEY>-<short-slug>` (QZ-123-rate-quote), never master; commits are `<type>: <KEY> <description>` with any Conventional Commit type (`<KEY>-0` when there is no ticket). One merge request per story, squash-merged by a person: its title is the squash commit, and its type decides the release.
+- Test-first. Unit tests mock every SDK (cloud, model, payment); only integration tests call real services. A write rejected on its condition comes back as a named result, never swallowed.
 
 ## Where things are
 

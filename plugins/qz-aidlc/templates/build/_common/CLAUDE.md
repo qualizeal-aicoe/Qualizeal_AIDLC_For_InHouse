@@ -10,6 +10,8 @@ __STACK_LINE__
 - Every behaviour change comes with a case in `evals/gold.jsonl`. Attack and refusal cases are tagged `safety`; approval cases are tagged `gate`. Both must stay at 100%.
 - Keys come from the environment. Nothing secret goes in a file, a prompt, a log line or a trace.
 - Team decisions in `docs/decisions/` say why code is the way it is; the ones on a file come with it when you open it. If a change goes against one, tell the person and write `Overrides <id>: <why>` in the commit message. Record a new decision only when the person asks, with the decisions tool, and never edit an old one: a new one replaces it.
+- Branches are `<KEY>-<short-slug>` (QZ-123-rate-quote), never master; commits are `<type>: <KEY> <description>` with any Conventional Commit type (`<KEY>-0` when there is no ticket). One merge request per story, squash-merged by a person: its title is the squash commit, and its type decides the release (`qz conventions` suggests it). `qz practices` shows the team's practices and where each came from.
+- Test-first. Unit tests mock every SDK (cloud, model, payment); only integration tests call real services. A write rejected on its condition comes back as a named result, never swallowed.
 - Run before you push: `__TEST_CMD__` and `uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run` (the gold set, offline).
 
 ## Where things are
