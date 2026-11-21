@@ -8,17 +8,14 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go vet ./... && go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agent ./cmd/agent \
-    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/evaladapter ./cmd/evaladapter
+RUN go vet ./... && go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agent ./cmd/agent
 
-# The gold set runs here, in its own stage: `docker build --target gold .` fails when a case fails.
-FROM python:3.12-slim AS gold
+# The gold set runs here, in its own stage, through the project's own adapter (go run ./cmd/evaladapter):
+# `docker build --target gold .` fails when a case fails. python3 runs the vendored QualiZeal kit.
+FROM build AS gold
+RUN command -v python3 >/dev/null || (apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*)
 ENV AGENT_MODE=stub
-WORKDIR /app
-COPY . .
-COPY --from=build /out/evaladapter /usr/local/bin/evaladapter
-RUN python3 -c "import json,pathlib; p=pathlib.Path('evals/eval.json'); c=json.loads(p.read_text()); c['adapter']['command']=['evaladapter']; p.write_text(json.dumps(c))" \
-    && python3 .claude/qz/scripts/qz.py eval run --label container
+RUN python3 .claude/qz/scripts/qz.py eval run --label container
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/agent /agent

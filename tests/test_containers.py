@@ -33,7 +33,10 @@ def test_there_are_thirteen_starters_and_each_has_a_container():
 def test_the_container_file_is_pinned_non_root_and_healthy(name):
     text = (BUILD / name / "Dockerfile").read_text(encoding="utf-8")
     assert text.startswith("# syntax=docker/dockerfile:1"), name
+    named = set(re.findall(r"(?m)^FROM \S+ AS (\S+)$", text))    # a later stage may start from an earlier one
     for line in re.findall(r"(?m)^FROM (\S+)", text):
+        if line in named:
+            continue
         image = line.split("@")[0]
         assert ":" in image.rsplit("/", 1)[-1] and not image.endswith(":latest"), f"{name}: unpinned base image {line}"
     final = stages(text)[-1]

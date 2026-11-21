@@ -9,14 +9,14 @@ COPY . .
 RUN dotnet test tests/Agent.Tests -c Release && dotnet publish src/Agent -c Release -o /out
 
 # The gold set runs here, in its own stage, against the published build: `docker build --target gold .` fails
-# when a case fails. No SDK and no network: the cases run the same Agent.dll the final image ships.
+# when a case fails. The cases run the same Agent.dll the final image ships, from inside the project (out/).
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS gold
 RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
 ENV AGENT_MODE=stub
 WORKDIR /src
 COPY . .
-COPY --from=build /out /out
-RUN python3 -c "import json,pathlib; p=pathlib.Path('evals/eval.json'); c=json.loads(p.read_text()); c['adapter']['command']=['dotnet','/out/Agent.dll','--eval']; p.write_text(json.dumps(c))" \
+COPY --from=build /out ./out
+RUN python3 -c "import json,pathlib; p=pathlib.Path('evals/eval.json'); c=json.loads(p.read_text()); c['adapter']['command']=['dotnet','out/Agent.dll','--eval']; p.write_text(json.dumps(c, indent=2))" \
     && python3 .claude/qz/scripts/qz.py eval run --label container
 
 FROM mcr.microsoft.com/dotnet/runtime:10.0
