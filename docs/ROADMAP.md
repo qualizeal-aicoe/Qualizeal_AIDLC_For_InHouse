@@ -4,7 +4,7 @@
 Context Protocol) servers, two RAG (retrieval-augmented generation) kits with web pages, agent memory, text-to-SQL
 and a governed command line for agents to drive a team's tools. Every starter meets the QualiZeal standards (the six
 guardrails, the EU AI Act, open source first and the cost levers) and ships in a container that runs its own gold
-set. This page says what 1.1 adds, why, and what "done" means for each. It is a plan, not a promise: each item ships only when its tests and gold set pass in CI on Windows
+set. This page says what 1.0.1 and 1.1 add, why, and what "done" means for each. It is a plan, not a promise: each item ships only when its tests and gold set pass in CI on Windows
 and Linux, like everything in 1.0.0.
 
 ## Why these
@@ -21,6 +21,17 @@ MCP and A2A (Agent2Agent) now sit together under the Agentic AI Foundation, and 
 speaks A2A can be called by other teams' agents without a custom integration. That is why A2A comes in 1.1 alongside
 CrewAI rather than later.
 
+Two items come from watching the Studio work rather than from the chart: people add or change things while a stage
+is still running, and teams decide things on branches that have not met yet. The method for both is from
+git-ontology-agent (gogoymh, MIT): every result is a typed entry that knows the request it came from and what it
+depends on. We take the method only and write our own code, with no second model and no new vendor.
+
+## 1.0.1
+
+| Item | What we build | Done means |
+|---|---|---|
+| Why a change was made, in its commit | Every commit an agent makes carries trailers beside Claude Code's own: `Request:` (the story key and which of the person's messages asked for it), `Stage:` (the AI-DLC stage) and `Base:` (the commit the work started from). 1.1 adds `Relation:` and `Invalidates:` with the changes mid-run | `qz conventions` checks the trailers on agent commits; a test answers "why did this file change, and at whose request" from git history alone |
+
 ## 1.1
 
 | Item | What we build | Done means |
@@ -30,7 +41,8 @@ CrewAI rather than later.
 | Workflow builders: n8n and Dify | Nodes or tools that call a Studio starter (the memory, the text-to-SQL agent, a RAG kit) from an n8n workflow or a Dify app, over MCP or HTTP | A sample workflow imported and run in CI against a local n8n; the same safety cases pass when the call comes from the workflow |
 | A front end for agents: CopilotKit | A React page that shows an agent's steps, its approval requests and its answers, for the demo lane and for client prototypes | The approval flow works end to end in a browser test; nothing is rendered as HTML from model or tool output |
 | More retrieval and optimisation: LlamaIndex, Agno, DSPy | LlamaIndex as an alternative ingest and retrieval path in the hybrid kit; an Agno starter; DSPy to tune a prompt against a gold set | Each is measured against what 1.0.0 already does on the same gold set; it ships only if it is at least as good, or it ships as an option with the numbers beside it |
-| Team decisions across branches | When an agent edits a function a teammate's open branch also changes, say so right after the edit and whether the two clash; a team view of the decisions recorded and reused across the CoE's repositories | Two clones in a test see each other's unmerged change to the same function and nothing else; the team view runs on files and git alone, with no server and no data leaving the machines |
+| Changes in the middle of a run | When the person adds or changes something while a stage is running, the message is labelled one of five ways: an addition, a correction, a separate request, a cancel or a progress question. The labels have neutral names, and below 80% confidence the Studio asks instead of guessing. Every AI-DLC record a stage writes (requirements, the architecture decision, test cases, code) carries the story it came from and the records it was built from, so a correction marks exactly the work built on it as stale and only that is redone. The board, the console band and the report card word each record by its status: settled work plainly, running work as ongoing, discarded work never, replaced work with who changed it. The rule reaches the conductor through the prompt hook, and only while a run is open | A gold set of 20 mid-run messages, each labelled right or asked about, none acted on with the wrong label; a test where a corrected requirement marks exactly its dependents stale and nothing else; the board never shows work in progress as done; the always-loaded context stays under its 8,000-token cap; no model call beyond the session's own |
+| Team decisions across branches | When an agent edits a function a teammate's open branch also changes, say so right after the edit and whether the two clash; a team view of the decisions recorded and reused across the CoE's repositories. Decision records from parallel branches are reconciled entry by entry, each by a rule for its type: constraints add up, a correction wins, a decision is worked out again when something it rests on changed, the later finding wins, progress notes stay on their own branch, and anything else goes to a person. The team view lives on its own branch, written with git plumbing (no checkout, no working tree), and travels through GitHub | Two clones in a test see each other's unmerged change to the same function and nothing else; a test merges two branches' decision records and settles each case by its rule, asking only where no rule applies; the team view runs on files and git alone, with no server and no data leaving the machines |
 | Cursor and Codex | The lanes and rules for Cursor and the Codex CLI, next to Claude Code | The same starters scaffold and pass their tests from each tool; the guard's rules apply wherever the tool allows hooks, and the README says where it does not |
 
 ## Brought forward into 1.0.0
