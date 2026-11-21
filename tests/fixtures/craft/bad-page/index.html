@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Fixture: a page built from defaults</title>
+<style>
+  body { margin: 0; font-family: Arial, sans-serif; color: #222; background: #fff; }
+  *:focus { outline: none; }
+  .hero { padding: 90px 40px; text-align: center; background: linear-gradient(135deg, #6d28d9, #ec4899); color: #fff; }
+  .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.2em; margin: 0 0 8px; }
+  h1 { font-family: Georgia, serif; font-size: 56px; margin: 0; }
+  .grad { background: linear-gradient(90deg, #f59e0b, #ef4444); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 40px; }
+  .muted { color: #b9bcc2; font-size: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px; }
+  .card { border: 1px solid #ddd; border-radius: 14px; padding: 23px; box-shadow: 0 0 28px rgba(124, 58, 237, .55); background: #fafafa; }
+  .card .inner { border: 1px solid #ccc; border-radius: 10px; padding: 11px; background: #fff; }
+  .note { border-left: 6px solid #7c3aed; padding: 13px 19px; background: #f5f3ff; margin: 27px 0; }
+  .long { font-family: "Times New Roman", serif; text-align: justify; line-height: 1.1; font-size: 15px; }
+  .mono { font-family: "Courier New", monospace; } .verd { font-family: Verdana, sans-serif; }
+  .tiny { display: inline-block; width: 16px; height: 16px; padding: 0; border: 0; background: #7c3aed; }
+  .spin { width: 40px; height: 40px; background: #7c3aed; animation: grow 1.2s infinite alternate; }
+  @keyframes grow { from { width: 40px; } to { width: 160px; } }
+  .fixed-wide { width: 640px; background: #eee; padding: 9px; }
+</style>
+</head>
+<body>
+<section class="hero">
+  <p class="eyebrow">Welcome</p>
+  <h1>Supercharge your <span class="grad">workflow</span></h1>
+</section>
+<div class="wrap">
+  <p class="eyebrow">Features</p>
+  <h1>Everything you need</h1>
+  <p class="muted">This grey sentence sits on a white page and is far too pale for anyone to read comfortably in a meeting room or on a phone outdoors.</p>
+  <div class="grid">
+    <div class="card"><span>🚀</span><h3>Fast</h3><p>Ship faster than ever.</p><div class="inner"><p class="verd">Nested detail box one</p></div></div>
+    <div class="card"><span>🔒</span><h3>Secure</h3><p>Enterprise-grade security.</p><div class="inner"><p class="verd">Nested detail box two</p></div></div>
+    <div class="card"><span>✨</span><h3>Smart</h3><p>Powered by intelligence.</p><div class="inner"><p class="verd">Nested detail box three</p></div></div>
+  </div>
+  <div class="note"><p class="mono">A callout with a thick stripe down its left edge.</p></div>
+  <h4>Details</h4>
+  <p class="long">This paragraph is justified, set in a fourth family and with almost no leading, and it runs the full width of the container so that a reader's eye has a long way to travel back to the start of the next line, which is exactly the kind of block that people skip. It keeps going for a while longer so that the measure can be taken reliably by the review tool that reads this fixture during the automated tests.</p>
+  <form><input type="text" placeholder="Email"><button class="tiny"></button> <a href="#" class="tiny" style="background:#333"></a></form>
+  <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" style="width:120px;height:60px">
+  <div class="spin"></div>
+  <div class="fixed-wide">This block is 640 pixels wide whatever the screen.</div>
+</div>
+</body>
+</html>

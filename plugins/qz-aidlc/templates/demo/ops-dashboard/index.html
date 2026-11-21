@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="console">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Delivery Telemetry</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_ds/qz-ds.css">
+<style>
+  .persona { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+  .avatar { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+  .kgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .two { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; }
+  .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .acc { display: grid; gap: 14px; }
+  .acc .rowl { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
+  .tri { display: flex; height: 8px; border-radius: 6px; overflow: hidden; background: var(--bg-3); }
+  .cyc-legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 14px; font-size: 13px; }
+  .cyc-legend b { display: block; font-size: 18px; margin-top: 2px; }
+  .cyc-legend .ok { font-size: 12px; font-weight: 600; }
+  .prow { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+  .prow:last-child { border-bottom: 0; }
+  .prow .row { justify-content: space-between; font-size: 14px; }
+  .view { display: none; } .view.on { display: block; }
+  .pipeline { margin: 18px 16px 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); font-size: 12px; }
+  @media (max-width: 1100px) { .kgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .two, .three { grid-template-columns: 1fr; } .cyc-legend { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="client" data-brand-logo="clientLogo"><span data-brand="client">Client</span></div>
+  <div class="divider"></div>
+  <div class="product"><b data-brand="product">Telemetry</b><span>Demonstration by QualiZeal</span><span>AI Center of Excellence</span></div>
+  <div class="spacer"></div>
+  <span class="live small" id="clock"></span>
+</header>
+<div class="shell">
+  <aside class="side" id="side"></aside>
+  <main class="main">
+    <div class="pagehead"><div class="eyebrow" id="ph-eyebrow">AI delivery · engineering view</div><h1 class="h1" id="ph-title">Delivery overview</h1>
+      <p class="dim" id="ph-sub" style="max-width:72ch">How AI shows up in day-to-day delivery: authored code, suggestion outcomes, review flow, human gates and the quality of what ships.</p></div>
+    <div class="toolbar"><span class="tag">Period</span><div class="seg" id="periods"></div><button class="btn sm" id="cmp">vs previous period</button><div class="spacer"></div>
+      <span class="statusbar" id="live"><span class="live">Live</span><span>auto-refresh every 15s</span></span><button class="btn sm" id="refresh">Refresh now</button><button class="btn sm primary" id="copy">Copy CSV</button></div>
+    <div class="callout" id="fresh" style="margin-bottom:16px"></div>
+
+    <section class="view" id="v-overview">
+      <div class="panel persona" style="margin-bottom:14px"><div class="avatar" id="p-ini"></div><div><b id="p-name"></b><div class="small dim" id="p-sub"></div></div><div class="spacer"></div><div class="row wrap-ok" id="p-chips"></div></div>
+      <div class="kgrid" id="kpis"></div>
+      <div class="two" style="margin-top:14px">
+        <div class="panel pad"><div class="panel-head"><div><div class="h3" id="st-title"></div><div class="small dim" id="st-sub"></div></div><div class="legend" id="st-leg"></div></div><div id="st-chart"></div><div class="row" id="st-stats" style="gap:32px;margin-top:8px"></div></div>
+        <div class="stack lg"><div class="panel pad"><div class="h3" id="ac-title"></div><div class="small dim" id="ac-sub" style="margin-bottom:12px"></div><div class="acc" id="acc"></div><div class="legend" style="margin-top:12px"><span><i style="background:var(--ok)"></i>Accepted</span><span><i style="background:#7B5BFF"></i>Accepted with edits</span><span><i style="background:var(--bg-3)"></i>Rejected</span></div></div>
+          <div class="panel pad"><div class="row between"><div class="h3">Live activity</div><span class="live xs">streaming</span></div><div class="feed" id="feed" style="margin-top:8px"></div></div></div>
+      </div>
+      <div class="panel pad" style="margin-top:14px"><div class="row between" style="align-items:flex-start"><div><div class="h3" id="cy-title"></div><div class="small dim" id="cy-sub"></div></div>
+        <div class="row" style="gap:28px;text-align:right"><div><div class="tag">Current</div><b style="font-size:20px" id="cy-cur"></b></div><div><div class="tag">Pre-AI baseline</div><b style="font-size:20px" class="mute" id="cy-base"></b></div><div><div class="tag">Change</div><b style="font-size:20px" class="ok" id="cy-chg"></b></div></div></div>
+        <div class="segbar" id="cy-bar" style="margin-top:16px"></div><div class="cyc-legend" id="cy-leg"></div></div>
+      <div class="three" id="panels" style="margin-top:14px"></div>
+      <div class="two" style="margin-top:14px"><div class="panel pad"><div class="row"><i style="width:9px;height:9px;border-radius:3px;background:var(--brand)"></i><b>How to read this</b></div><p class="small dim" id="n-read" style="margin-top:8px"></p></div>
+        <div class="panel pad"><div class="row"><i style="width:9px;height:9px;border-radius:3px;background:var(--ok)"></i><b>Suggested next step</b></div><p class="small dim" id="n-next" style="margin-top:8px"></p></div></div>
+    </section>
+
+    <section class="view" id="v-runs"><div class="panel pad"><div class="panel-head"><div class="h3">Agent runs</div><span class="small dim">Every run carries a report card: time, tokens, gates and quality measures</span></div><div style="overflow:auto"><table class="table" id="runs"></table></div></div></section>
+    <section class="view" id="v-teams"><div class="panel pad"><div class="panel-head"><div class="h3">Team view</div><span class="small dim">Trend per team over the selected period</span></div><table class="table" id="teams"></table></div></section>
+    <section class="view" id="v-sources"><div class="grid g2" id="sources"></div></section>
+    <p class="xs mute" id="foot" style="margin-top:26px"></p>
+  </main>
+</div>
+<script src="../_ds/qz-ds.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+{
+  "spikes": [
+    {
+      "id": "SPK-1",
+      "question": "Does one structured model call reach the accuracy and cost targets?",
+      "criterion": "Queue accuracy at least 90% on the 200 gold tickets, 25 of 25 escalations, under 0.04 USD per ticket",
+      "timebox_hours": 16.0,
+      "risk": "",
+      "covers": [
+        "FR-1",
+        "FR-3",
+        "QS-3"
+      ],
+      "status": "passed",
+      "result": "183 of 200 correct (91.5%), 25 of 25 escalations caught, 0.011 USD per ticket at the mean and 0.016 at p95",
+      "evidence": [
+        "spikes/SPK-1-baseline-accuracy.md"
+      ],
+      "registered": "2026-11-12T19:57:40.519056Z",
+      "criterion_sha256": "a46b8e74536ced27964fff5db27c6bbc1ef2fc924c917ee30e780f4a99e84fb3",
+      "ran": "2026-11-12T19:57:48.228293Z",
+      "hours": 14.0
+    },
+    {
+      "id": "SPK-2",
+      "question": "Can ticket text make the lookup read another customer?",
+      "criterion": "0 cross-customer tool calls over the 60-case injection set",
+      "timebox_hours": 8.0,
+      "risk": "",
+      "covers": [
+        "QS-1"
+      ],
+      "status": "passed",
+      "result": "0 cross-customer tool calls over 60 injection cases; customer id is read from the ticket record",
+      "evidence": [
+        "spikes/SPK-2-injection.md"
+      ],
+      "registered": "2026-11-12T19:57:40.607423Z",
+      "criterion_sha256": "8289b13c5b86d13c3e059eb145623a299b95684b438afad14d41b67ee49d5fc3",
+      "ran": "2026-11-12T19:57:48.313734Z",
+      "hours": 6.0
+    }
+  ],
+  "premortem": [
+    {
+      "risk": "Queue accuracy drops on live tickets because the gold set under-represents new product lines",
+      "likelihood": 3,
+      "impact": 4,
+      "early_signal": "Weekly re-route rate over 12%",
+      "mitigation": "Refresh the gold set monthly from re-routed tickets; alert on the re-route rate",
+      "owner": "Support lead",
+      "spike": "SPK-1"
+    },
+    {
+      "risk": "A ticket's text steers the model into looking up another customer",
+      "likelihood": 2,
+      "impact": 5,
+      "early_signal": "Any tool call whose customer id differs from the ticket's",
+      "mitigation": "The lookup tool takes the customer id from the ticket record, never from model output; injection set runs in CI",
+      "owner": "Tech lead"
+    },
+    {
+      "risk": "Order API latency makes triage miss the 20 second target at peak",
+      "likelihood": 3,
+      "impact": 3,
+      "early_signal": "Lookup p95 over 8 seconds",
+      "mitigation": "Classify first, attach shipments asynchronously, one retry",
+      "owner": "Tech lead"
+    },
+    {
+      "risk": "Model price or version change raises cost per ticket",
+      "likelihood": 2,
+      "impact": 2,
+      "early_signal": "Ledger cost per ticket up 20% week on week",
+      "mitigation": "Per-ticket token budget; model id pinned in configuration",
+      "owner": "Delivery manager"
+    }
+  ],
+  "practicality": {
+    "team_skills": {
+      "have": [
+        "Python",
+        "boto3",
+        "SQS",
+        "pytest"
+      ],
+      "gap": [],
+      "plan": ""
+    },
+    "run_cost": {
+      "per_task_usd": 0.011,
+      "tasks_per_month": 54000,
+      "label": "MEASURED",
+      "basis": "Token counts from the SPK-1 trace on 200 gold tickets at Bedrock list price"
+    },
+    "latency": {
+      "p95_seconds": 6.4,
+      "label": "MEASURED",
+      "basis": "SPK-1 run, 200 tickets, sequential"
+    },
+    "operations": {
+      "owner": "Client platform team, with QualiZeal on call for the first 8 weeks",
+      "rollback": "Prompt and model id are versioned configuration; previous version restored by redeploying the last tag",
+      "runbook": "docs/runbook.md, written in the build phase"
+    },
+    "dependencies": [
+      {
+        "name": "Amazon Bedrock Converse API",
+        "version": "2023-09-30",
+        "status": "GA",
+        "licence": "AWS service terms"
+      },
+      {
+        "name": "boto3",
+        "version": "1.40",
+        "status": "GA",
+        "licence": "Apache-2.0"
+      },
+      {
+        "name": "OpenTelemetry GenAI semantic conventions",
+        "version": "1.37",
+        "status": "development",
+        "licence": "Apache-2.0",
+        "fallback": "Plain span attributes under our own prefix; rename when the convention is stable"
+      }
+    ]
+  },
+  "trace": [
+    {
+      "requirement": "FR-1",
+      "covered_by": [
+        "SPK-1",
+        "classifier"
+      ]
+    },
+    {
+      "requirement": "FR-2",
+      "covered_by": [
+        "lookup"
+      ]
+    },
+    {
+      "requirement": "FR-3",
+      "covered_by": [
+        "SPK-1",
+        "gate"
+      ]
+    },
+    {
+      "requirement": "QS-1",
+      "covered_by": [
+        "SPK-2",
+        "guard"
+      ]
+    },
+    {
+      "requirement": "QS-2",
+      "covered_by": [
+        "lookup",
+        "worker"
+      ]
+    },
+    {
+      "requirement": "QS-3",
+      "covered_by": [
+        "SPK-1",
+        "ledger"
+      ]
+    },
+    {
+      "requirement": "QS-5",
+      "covered_by": [
+        "traces"
+      ]
+    },
+    {
+      "requirement": "QS-6",
+      "covered_by": [
+        "gate",
+        "ADR-0001"
+      ]
+    }
+  ]
+}

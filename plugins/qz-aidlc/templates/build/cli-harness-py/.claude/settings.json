@@ -1,0 +1,33 @@
+{
+  "extraKnownMarketplaces": {
+    "qualizeal": {
+      "source": {
+        "source": "github",
+        "repo": "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "qz-aidlc@qualizeal": true,
+    "qz-console@qualizeal": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(uv run mockctl status:*)",
+      "Bash(uv run mockctl describe:*)",
+      "Bash(uv run mockctl stubs list:*)",
+      "Bash(uv run mockctl stubs get:*)",
+      "Bash(uv run mockctl requests list:*)",
+      "Bash(uv run mockctl requests count:*)",
+      "Bash(uv run mockctl requests verify:*)",
+      "Bash(uv run mockctl scenarios list:*)",
+      "Bash(uv run mockctl history:*)",
+      "Bash(uv run mockctl audit:*)"
+    ],
+    "ask": [
+      "Bash(uv run mockctl stubs clear:*)",
+      "Bash(uv run mockctl requests clear:*)",
+      "Bash(uv run mockctl scenarios reset:*)"
+    ]
+  }
+}

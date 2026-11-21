@@ -1,0 +1,72 @@
+# Settings for the hybrid RAG assistant. Every value has a default in arag/config.py (the offline ones, used by
+# the tests); this file switches on the real models.
+
+[corpus]
+path = "corpus"
+manifest = "corpus/manifest.json"   # every document: owner, version, status and who may read it
+
+[index]
+path = ".arag/index.db"             # rebuilt in full by `uv run -m arag ingest`
+
+[search]
+k = 5
+weights = [4.0, 2.0, 1.0]           # BM25 weight for section title, heading path, body text
+synonyms = ""                       # hybrid needs no list; "corpus/synonyms.json" still helps with acronyms (2FA)
+include_superseded = false          # answer only from current versions
+
+[answer]
+strategy = "hybrid"                 # hybrid (BM25 + vectors, fused, reranked), bm25, or tree (a model reads the outline)
+min_coverage = 0.6                  # bm25 and tree: share of the question's words the best sections must contain
+max_sentences = 3
+cache = 256                         # repeat questions answered from memory by the server (a cost lever); 0: off
+
+[guard]
+redact = ["phone", "card"]          # personal data removed from answers (stage 4)
+mask_at_ingest = ["card", "id"]     # masked before a section is indexed: the index and any model never hold them
+blocked_terms = []                  # an answer holding one is withheld (an output check, off until the team lists terms)
+
+[llm]
+provider = "none"                   # none (extractive answers), stub (offline, scripted), anthropic (ANTHROPIC_API_KEY)
+# openai: any OpenAI-compatible server. Open source first: an open-weight model on your own machine,
+# for example `ollama pull qwen3:8b`, then provider = "openai" with navigate_model and answer_model = "qwen3:8b".
+base_url = "http://localhost:11434/v1"   # openai provider only; a key, if set, goes only to allowed_hosts
+allowed_hosts = ["localhost", "127.0.0.1"]
+navigate_model = "claude-haiku-5-5"
+answer_model = "claude-sonnet-5-5"
+max_tokens = 700
+timeout_s = 30
+
+# Demo identities. In production the groups come from single sign-on, never from the request.
+[users]
+employee = ["all"]
+manager = ["all", "managers"]
+hr = ["all", "hr", "managers"]
+finance = ["all", "finance"]
+
+[audit]
+path = ".arag/audit.jsonl"
+store_question = true
+
+[eval]
+golden = "evals/golden.jsonl"
+thresholds = "evals/thresholds.json"
+results = "evals/results"
+
+[dense]
+embedder = "fastembed"              # fastembed (bge-small, 384 dimensions, ONNX on the CPU) or hash (offline, for tests)
+model = "BAAI/bge-small-en-v1.5"
+cache = ""                          # empty: ARAG_MODEL_CACHE, else ~/.cache/qz-aidlc/models (downloaded once)
+
+[rerank]
+reranker = "cross-encoder"          # cross-encoder, overlap (offline, for tests) or none
+model = "Xenova/ms-marco-MiniLM-L-6-v2"
+min_score = -7.0                    # by meaning: refuse below this, unless the words cover the question (calibrate: uv run -m arag calibrate)
+sentence_margin = 4.0               # answer sentences within this many points of the best sentence
+sentence_min = -7.0                 # and never below this
+
+[hybrid]
+fetch_k = 20                        # candidates from each of BM25 and the vectors before fusion and reranking
+weights = [1.0, 1.0]                # BM25, vectors in the reciprocal rank fusion
+
+[trace]
+path = ".arag/traces"               # one JSON trace per answer: uv run -m arag explain <id>

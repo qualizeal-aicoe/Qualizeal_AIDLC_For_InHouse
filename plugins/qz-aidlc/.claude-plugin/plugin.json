@@ -1,0 +1,68 @@
+{
+  "name": "qz-aidlc",
+  "version": "1.0.0",
+  "description": "QualiZeal AI-DLC Studio: tested starters for LangGraph, the OpenAI Agents SDK, the Claude Agent SDK, an MCP server, agent memory, text-to-SQL, a command line agents drive tools through, AWS Strands, Microsoft Agent Framework and Go; vectorless and hybrid RAG kits with cited answers, gates and web pages; a board for several agents on one job; lanes to architect, spec with fresh-eyes review, build, evaluate, test, audit, deliver, demo, bid and write office decks and mail; routing that fits the model and effort to the task; a guard that reads every command on a line, per-turn undo, goal mode, a GitHub agent, publishing that saves locally first, an audit chain, run ledger and report cards.",
+  "author": {
+    "name": "QualiZeal AI Center of Excellence"
+  },
+  "license": "Proprietary - QualiZeal internal",
+  "userConfig": {
+    "github_token": {
+      "type": "string",
+      "title": "GitHub token",
+      "description": "Fine-grained token for QualiZeal repositories (contents and pull requests: read and write). Stored in secure storage.",
+      "sensitive": true,
+      "default": ""
+    },
+    "atlassian_site": {
+      "type": "string",
+      "title": "Atlassian site",
+      "description": "Your Jira/Confluence site, for example aicoe-genq.atlassian.net",
+      "default": ""
+    },
+    "atlassian_email": {
+      "type": "string",
+      "title": "Atlassian e-mail",
+      "description": "Used only by Knowledge Fabric ingestion from Confluence.",
+      "default": ""
+    },
+    "atlassian_token": {
+      "type": "string",
+      "title": "Atlassian API token",
+      "description": "Used only by Knowledge Fabric ingestion from Confluence. Stored in secure storage.",
+      "sensitive": true,
+      "default": ""
+    },
+    "pricing_workbook": {
+      "type": "string",
+      "title": "Pricing workbook path",
+      "description": "Full path to your copy of the SEG pricing workbook (.xlsm). Read only by the pricing tool; never shown in the conversation.",
+      "default": ""
+    },
+    "kf_home": {
+      "type": "string",
+      "title": "Knowledge Fabric folder",
+      "description": "Folder for the Knowledge Fabric index. Leave empty for ~/.qz/kf, or point at a team share.",
+      "default": ""
+    },
+    "voice": {
+      "type": "string",
+      "title": "Voice",
+      "description": "How Claude writes to you in these sessions: normal, terse or grunt. Questions that need your yes, warnings and anything a client reads stay in full sentences.",
+      "default": "normal"
+    },
+    "plan": {
+      "type": "string",
+      "title": "Claude plan",
+      "description": "pro, max, ultra, team-standard, team-premium, enterprise or api. Routing uses it to judge how much is in hand; Pro, Max and Ultra also report usage to the status line.",
+      "default": ""
+    },
+    "format_on_edit": {
+      "type": "string",
+      "title": "Format on edit",
+      "description": "on or off. When on, a file Claude writes is formatted by the formatter the project declares (prettier, biome, ruff, black, gofmt), if it is installed. Nothing is downloaded.",
+      "default": "off"
+    }
+  },
+  "homepage": "https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse"
+}

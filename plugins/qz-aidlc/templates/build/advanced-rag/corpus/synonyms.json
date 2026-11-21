@@ -1,0 +1,24 @@
+{
+  "about": "Words people use in questions mapped to the words the documents use. Query expansion only: the documents are never changed. Add a pair when the evaluation shows a question missed for want of it.",
+  "terms": {
+    "vacation": ["annual leave"],
+    "pto": ["annual leave"],
+    "holidays": ["annual leave", "public holiday"],
+    "time off": ["leave"],
+    "maternity": ["parental leave"],
+    "paternity": ["parental leave"],
+    "work from home": ["hybrid working", "remote"],
+    "wfh": ["hybrid working", "remote"],
+    "2fa": ["multi-factor authentication", "mfa"],
+    "two-factor": ["multi-factor authentication", "mfa"],
+    "per diem": ["daily allowance"],
+    "reimburse": ["expense claims"],
+    "abroad": ["international"],
+    "site is down": ["outage", "sev1"],
+    "goes down": ["outage", "sev1"],
+    "down": ["outage"],
+    "gym": ["wellness allowance"],
+    "vendor": ["supplier"],
+    "buy": ["purchase"]
+  }
+}

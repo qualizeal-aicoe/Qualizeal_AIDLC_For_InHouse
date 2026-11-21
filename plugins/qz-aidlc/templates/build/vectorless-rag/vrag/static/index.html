@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="QualiZeal AI-DLC Studio (AI-assisted engineering)">
+<title>Ask the handbook</title>
+<style>
+  :root { --ink: #1d2433; --muted: #5b6475; --line: #e3e6ec; --bg: #f7f8fa; --accent: #1f5fbf; --warn: #8a5a00; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+  header { padding: 16px 20px; border-bottom: 1px solid var(--line); background: #fff; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; flex: 1; }
+  header label { color: var(--muted); font-size: 14px; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px 20px 120px; }
+  .msg { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 12px 0; }
+  .q { background: #eef3fb; border-color: #d6e2f5; }
+  .refused { border-left: 4px solid var(--warn); }
+  .cites { margin: 8px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--muted); }
+  .note { font-size: 13px; color: var(--warn); margin-top: 6px; }
+  form { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid var(--line); padding: 12px 20px; display: flex; gap: 8px; }
+  input[type=text] { flex: 1; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+  button { font: inherit; padding: 10px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; }
+  .hint { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ask the handbook</h1>
+  <label for="as">Asking as</label>
+  <select id="as"></select>
+</header>
+<main id="log">
+  <p class="hint">Answers come only from the handbook, with the document and section they came from. If the handbook
+  does not say, the assistant says so. Northwind Freight is a fictional company.</p>
+  <p class="hint notice" role="note">Answers are written by AI from your documents. Check the cited source before you act on one.</p>
+  <p class="hint">Built with the QualiZeal AI-DLC Studio.</p>
+</main>
+<form id="f">
+  <input id="q" type="text" maxlength="500" placeholder="How many days of annual leave do I get?" autocomplete="off" required>
+  <button type="submit">Ask</button>
+</form>
+<script src="/app.js"></script>
+</body>
+</html>

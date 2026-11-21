@@ -1,0 +1,43 @@
+{
+  "title": "LangGraph agent (Python)",
+  "summary": "create_agent with HumanInTheLoopMiddleware for the approval gate, a checkpointer for resume, model and recursion limits, OpenTelemetry.",
+  "verified": "RUN: the scaffold's tests and gold set ran here against the offline stub with langchain 1.5.2 and langgraph 1.2.24, including interrupt and resume; the image built and its gold set passed 11 of 11 inside the container with no network. Not run against a live model here.",
+  "stack_line": "A LangGraph agent in Python (langchain 1.5, langgraph 1.2).",
+  "policy": "agent/policy.py",
+  "agent_dir": "agent/",
+  "adapter": [
+    "uv",
+    "run",
+    "--quiet",
+    "python",
+    "evals/adapter.py"
+  ],
+  "pass_env": [
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "AGENT_MODEL",
+    "AWS_REGION",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN"
+  ],
+  "secret_env": [
+    "ANTHROPIC_API_KEY"
+  ],
+  "test_cmd": "uv run -m pytest -q tests",
+  "run_cmd": "uv run -m agent.app \"Where is my order ORD-1001?\"",
+  "setup_steps": [
+    "- uses: astral-sh/setup-uv@v6",
+    "- run: uv sync --locked"
+  ],
+  "live": "Set ANTHROPIC_API_KEY and AGENT_MODE=live. For OpenAI set OPENAI_API_KEY and AGENT_MODEL=openai:<model id>; for Bedrock, AWS credentials and AGENT_MODEL=bedrock_converse:<model id>.",
+  "next": [
+    "Replace the two tool bodies in agent/tools.py with calls to your systems.",
+    "Swap InMemorySaver for SqliteSaver or PostgresSaver in agent/app.py before anything runs longer than one process.",
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+  ],
+  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "agent/guardrails.py"], "marking": ["every result carries ai_generated", "agent/guardrails.py"]},
+  "vendors": [],
+  "open_line": "Live runs default to an open-weight model on your own machine (qwen3:8b on Ollama, Apache-2.0); set AGENT_MODEL to use a vendor.",
+  "container_check": "docker run --rm --network none app:ci"
+}

@@ -1,0 +1,66 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: uv sync --locked
+      - name: The WireMock jar, kept between runs
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: wiremock-standalone-3.13.2
+      - name: The WireMock jar, checked against its SHA-256
+        run: uv run python scripts/fetch_wiremock.py
+      - name: Tests, the real WireMock included
+        run: uv run -m pytest -q
+        env:
+          MOCKCTL_REQUIRE_WIREMOCK: "1"
+      - name: The harness standard (effects, dry runs, --yes, no credential options, skill file, permission rules)
+        run: uv run python -m mockctl.standard
+      - name: The gold set through the QualiZeal eval runner
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run --label ci
+      - name: Agentic project audit
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
+      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers)
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py standards --gate
+      - name: Team decisions (docs/decisions/) against this pull request
+        if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest'
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci
+      - name: Conventions (branch name, merge-request title, the squash commit and its release)
+        if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest'
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py conventions check --base origin/${{ github.base_ref }} --ci --offline
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qz-reports-${{ matrix.os }}
+          path: |
+            evals/results/report.html
+            .qz/outputs/project-audit/audit.html
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t app:ci .
+      - name: The gold set inside the container (offline, no key)
+        run: docker run --rm --network none app:ci

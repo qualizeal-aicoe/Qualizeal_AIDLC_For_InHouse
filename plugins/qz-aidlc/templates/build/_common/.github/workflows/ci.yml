@@ -1,0 +1,45 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+__SETUP_STEPS__
+      - name: Unit tests
+        run: __TEST_CMD__
+      - name: Gold set against the offline stub (no key, no spend)
+        run: python3 .claude/qz/scripts/qz.py eval run --label ci
+      - name: Agentic project audit
+        run: python3 .claude/qz/scripts/qz.py audit-project scan
+      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers)
+        run: python3 .claude/qz/scripts/qz.py standards --gate
+      - name: Team decisions (docs/decisions/) against this pull request
+        if: github.event_name == 'pull_request'
+        run: python3 .claude/qz/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci
+      - name: Conventions (branch name, merge-request title, the squash commit and its release)
+        if: github.event_name == 'pull_request'
+        run: python3 .claude/qz/scripts/qz.py conventions check --base origin/${{ github.base_ref }} --ci --offline
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qz-reports
+          path: |
+            evals/results/report.html
+            .qz/outputs/project-audit/audit.html
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t app:ci .
+      - name: The gold set inside the container (offline, no key)
+        run: __CONTAINER_CHECK__

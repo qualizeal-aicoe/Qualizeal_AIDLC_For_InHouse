@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="console">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Delivery Telemetry</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* QualiZeal demo design system.
+   Two themes on one set of components:
+     data-theme="story"   dark navy, editorial serif headlines, glass panels  (product and knowledge demos)
+     data-theme="console" light, dense, enterprise dashboard                  (telemetry, ops, agent consoles)
+   Brand colours come from assets/brand/tokens.json. Change a client accent with --accent / --brand only. */
+
+:root {
+  --qz-blue: #0096FF; --qz-blue-deep: #0A6FD6; --qz-coral: #F43D59; --qz-navy: #0B1F3A;
+  --qz-violet: #7B5BFF; --qz-cyan: #22C3E6; --qz-green: #1F9D6B; --qz-amber: #E89B0C; --qz-red: #D2334C;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px; --r-pill: 999px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --nav-h: 60px;
+}
+
+[data-theme="story"] {
+  --bg: #0A1836; --bg-1: #0E2049; --bg-2: #142A5E; --bg-3: #1B3574;
+  --panel: rgba(18, 38, 86, .62); --panel-solid: #112552; --panel-2: rgba(27, 53, 116, .55);
+  --border: #24407F; --border-soft: #1A3065; --border-strong: #3A5BB0;
+  --text: #EAF0FA; --dim: #B4BFDB; --mute: #98A6C8;
+  --brand: var(--qz-blue); --brand-soft: rgba(0, 150, 255, .16); --accent: var(--qz-coral); --accent-soft: rgba(244, 61, 89, .16);
+  --ok: #34D399; --ok-soft: rgba(52, 211, 153, .14); --warn: #FBBF24; --warn-soft: rgba(251, 191, 36, .14); --bad: #FB7185; --bad-soft: rgba(251, 113, 133, .14);
+  --shadow: 0 10px 40px rgba(0, 0, 0, .45); --glow: 0 0 32px rgba(0, 150, 255, .35);
+  --grid-line: rgba(0, 150, 255, .07);
+  color-scheme: dark;
+}
+
+[data-theme="console"] {
+  --bg: #F5F6F9; --bg-1: #FFFFFF; --bg-2: #EEF2F8; --bg-3: #E3E9F2;
+  --panel: #FFFFFF; --panel-solid: #FFFFFF; --panel-2: #F7F9FC;
+  --border: #E2E7EF; --border-soft: #EDF0F5; --border-strong: #CCD5E3;
+  --text: #16243A; --dim: #46556E; --mute: #5E6E86;
+  --brand: #0860BD; --brand-soft: #E7F1FD; --accent: #CC2540; --accent-soft: #FDECEF;
+  --ok: #17734C; --ok-soft: #E3F5EC; --warn: #8A5A12; --warn-soft: #FDF3DC; --bad: #B92737; --bad-soft: #FCE8EA;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .06); --glow: none;
+  --grid-line: transparent;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-sans); background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; min-height: 100vh; }
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+[data-theme="story"] :focus-visible { outline-color: #7CC4FF; }
+::selection { background: var(--brand); color: #fff; }
+input, textarea, select { font: inherit; color: inherit; }
+img { max-width: 100%; display: block; }
+.mono { font-family: var(--font-mono); }
+.dim { color: var(--dim); } .mute { color: var(--mute); } .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+.brand { color: var(--brand); } .accent { color: var(--accent); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.nowrap { white-space: nowrap; } .num { font-variant-numeric: tabular-nums; }
+
+/* ---------- story backdrop ---------- */
+html[data-theme="story"] { background: #0A1836; }
+.backdrop { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(1200px 700px at 85% -10%, rgba(34, 195, 230, .14), transparent 60%),
+    radial-gradient(900px 600px at -10% 30%, rgba(0, 150, 255, .18), transparent 60%),
+    radial-gradient(800px 600px at 60% 110%, rgba(244, 61, 89, .14), transparent 60%),
+    linear-gradient(180deg, #0B1B3E 0%, #0A1836 45%, #0A1430 100%); }
+.texture { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 28px 28px; mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 80%); }
+
+/* ---------- top bar ---------- */
+.topbar { position: sticky; top: 0; z-index: 50; height: var(--nav-h); display: flex; align-items: center; gap: 18px;
+  padding: 0 28px; background: #F8F9FB; color: #16243A; border-bottom: 1px solid #E5E8EE; }
+[data-theme="console"] .topbar { background: #fff; }
+.topbar .client { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; letter-spacing: -.01em; white-space: nowrap; }
+.topbar .client img { height: 30px; width: auto; }
+.topbar .divider { width: 1px; height: 32px; background: #DCE1EA; }
+.topbar .product { display: flex; flex-direction: column; line-height: 1.15; }
+.topbar .product b { font-size: 14px; }
+.topbar .product span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #5B6B82; }
+.topbar .product span + span { font-size: 11px; color: #5E6E86; }
+.topbar nav { margin-left: auto; display: flex; gap: 22px; font-size: 14px; font-weight: 500; }
+.topbar nav a { color: #1A1F36; }
+.topbar nav a.on { color: var(--qz-blue-deep); }
+.topbar .cta { margin-left: 8px; }
+
+/* ---------- buttons, chips ---------- */
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: var(--r-md);
+  font-weight: 600; font-size: 14px; border: 1px solid var(--border-strong); background: var(--panel-solid); color: var(--text);
+  transition: transform .15s var(--ease), box-shadow .2s, background .2s; white-space: nowrap; }
+.btn:hover { transform: translateY(-1px); text-decoration: none; }
+.btn.primary { background: var(--qz-blue-deep); border-color: transparent; color: #fff; }
+.btn.accent { background: linear-gradient(135deg, var(--qz-coral), #C81550); border-color: transparent; color: #fff; }
+.btn.grad { background: linear-gradient(135deg, var(--qz-coral) 0%, var(--qz-violet) 60%, var(--qz-blue) 100%); color: #fff; border: 0; }
+.btn.ghost { background: transparent; }
+.btn.sm { height: 30px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 600; background: var(--bg-2); color: var(--dim); border: 1px solid var(--border-soft); white-space: nowrap; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+.chip.info { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
+.chip.violet { background: rgba(123, 91, 255, .14); color: #5B3FD9; border-color: transparent; }
+[data-theme="story"] .chip.violet { color: #B9A8FF; }
+.chip.mono, .tag { font-family: var(--font-mono); font-weight: 500; letter-spacing: .02em; }
+.tag { font-size: 11px; text-transform: uppercase; color: var(--mute); letter-spacing: .08em; }
+.src { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px;
+  background: var(--bg-2); color: var(--dim); white-space: nowrap; flex: none; }
+.src.otel { background: rgba(123, 91, 255, .13); color: #5B3FD9; } .src.github { background: var(--brand-soft); color: var(--brand); }
+.src.jira { background: rgba(34, 195, 230, .14); color: #007399; } .src.kf { background: var(--accent-soft); color: var(--accent); }
+.live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, .6); } 70% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+.statusbar { display: inline-flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: var(--r-pill);
+  background: var(--panel); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 13px; color: var(--dim); backdrop-filter: blur(10px); }
+.statusbar .chip { height: 20px; font-size: 11px; }
+
+/* ---------- type ---------- */
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+[data-theme="console"] .eyebrow { color: var(--mute); letter-spacing: .12em; }
+[data-theme="story"] .eyebrow { color: #FF6B81; }
+.display { font-family: var(--font-serif); font-weight: 400; font-size: clamp(44px, 6.2vw, 84px); line-height: 1.02; letter-spacing: -.02em; }
+.display em, .h1 em, .h2 em { font-style: italic; color: #FF6B81; padding-right: .06em; }
+[data-theme="console"] :is(.display, .h1, .h2) em { color: var(--accent); }
+.h1 { font-family: var(--font-serif); font-weight: 400; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -.015em; }
+[data-theme="console"] .h1 { font-family: var(--font-sans); font-weight: 700; font-size: 28px; letter-spacing: -.02em; }
+.h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; letter-spacing: -.01em; line-height: 1.25; }
+.h3 { font-weight: 650; font-size: 16px; line-height: 1.35; }
+.lede { font-size: 18px; color: var(--dim); max-width: 62ch; line-height: 1.6; }
+.small { font-size: 13px; } .xs { font-size: 12px; }
+
+/* ---------- layout ---------- */
+.wrap { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+.section { position: relative; z-index: 1; padding: 96px 0; border-top: 1px solid var(--border-soft); }
+.section-head { margin-bottom: 36px; display: grid; gap: 12px; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.row { display: flex; align-items: center; gap: 10px; } .row.between { justify-content: space-between; } .row.wrap-ok { flex-wrap: wrap; }
+.stack { display: grid; gap: 10px; } .stack.lg { gap: 18px; }
+.spacer { flex: 1; }
+
+/* ---------- panels ---------- */
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+[data-theme="story"] .panel { background: var(--panel-solid); }
+.panel.pad, .pad { padding: 20px 22px; }
+.panel.tight { padding: 14px 16px; }
+.panel.hl { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.panel-head .h3 + .small { margin-top: 2px; }
+.rule { height: 1px; background: var(--border-soft); margin: 14px 0; }
+.callout { display: grid; grid-template-columns: 4px 1fr; gap: 14px; padding: 14px 18px; border-radius: var(--r-md); background: var(--brand-soft); }
+.callout::before { content: ""; border-radius: 4px; background: var(--brand); }
+.callout.warn { background: var(--warn-soft); } .callout.warn::before { background: var(--warn); }
+.callout.ok { background: var(--ok-soft); } .callout.ok::before { background: var(--ok); }
+.callout.bad { background: var(--bad-soft); } .callout.bad::before { background: var(--bad); }
+.callout b { display: block; margin-bottom: 2px; }
+
+/* ---------- KPI tiles ---------- */
+.kpi { padding: 16px 18px 12px; display: grid; gap: 4px; min-height: 150px; }
+.kpi .top { display: flex; justify-content: space-between; align-items: center; }
+.kpi .label { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--dim); }
+.kpi .value { font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+[data-theme="story"] .kpi .value { font-family: var(--font-serif); font-weight: 400; font-size: 44px; }
+.kpi .value small { font-size: 14px; font-weight: 500; color: var(--dim); margin-left: 4px; letter-spacing: 0; font-family: var(--font-sans); }
+.kpi .meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--mute); }
+.delta { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.delta.good { background: var(--ok-soft); color: var(--ok); } .delta.bad { background: var(--bad-soft); color: var(--bad); } .delta.flat { background: var(--bg-2); color: var(--dim); }
+.kpi svg.spark { width: 100%; height: 40px; margin-top: 6px; overflow: visible; }
+.stat { display: grid; gap: 4px; }
+.stat .n { font-family: var(--font-serif); font-size: 46px; line-height: 1; letter-spacing: -.02em; }
+[data-theme="console"] .stat .n { font-family: var(--font-sans); font-weight: 700; font-size: 34px; }
+.stat .l { font-size: 13px; color: var(--dim); }
+
+/* ---------- meters, bars ---------- */
+.meter { height: 6px; border-radius: 6px; background: var(--bg-3); overflow: hidden; }
+.meter > i { display: block; height: 100%; border-radius: 6px; background: var(--brand); width: 0; transition: width 1s var(--ease); }
+.meter.grad > i { background: linear-gradient(90deg, var(--qz-blue), var(--qz-cyan)); }
+.meter.warm > i { background: linear-gradient(90deg, var(--qz-amber), var(--qz-coral)); }
+.meter.ok > i { background: var(--ok); } .meter.warn > i { background: var(--warn); } .meter.bad > i { background: var(--bad); }
+.mrow { display: grid; grid-template-columns: 130px 1fr 52px; gap: 12px; align-items: center; font-size: 13px; }
+.mrow b { text-align: right; font-variant-numeric: tabular-nums; }
+.hbar { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr); gap: 14px; align-items: center; font-size: 13px; padding: 5px 0; }
+.hbar .bar { height: 22px; border-radius: 5px; background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 60%, var(--qz-violet)));
+  color: #fff; font-size: 11px; font-family: var(--font-mono); display: flex; align-items: center; justify-content: flex-end; padding: 0 8px; min-width: 34px;
+  transform-origin: left; animation: grow .9s var(--ease) both; }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.segbar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; font-size: 12px; font-weight: 700; color: #fff; }
+.segbar > div { display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--dim); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.ring { position: relative; display: grid; place-items: center; }
+.ring svg { transform: rotate(-90deg); }
+.ring .ring-n { position: absolute; text-align: center; }
+.ring .ring-n b { font-family: var(--font-serif); font-size: 52px; font-weight: 400; line-height: 1; display: block; }
+
+/* ---------- tables ---------- */
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); font-weight: 700; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.table td { padding: 11px 12px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+.table tr:last-child td { border-bottom: 0; }
+.table td.r, .table th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.table tbody tr { transition: background .15s; } .table tbody tr:hover { background: var(--panel-2); }
+
+/* ---------- feed ---------- */
+.feed { display: grid; gap: 2px; }
+.feed .item { display: grid; grid-template-columns: 62px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--border-soft); font-size: 13px; animation: slidein .5s var(--ease) both; }
+.feed .item:last-child { border-bottom: 0; }
+.feed .when { font-size: 12px; color: var(--mute); margin-top: 2px; }
+@keyframes slidein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- segmented control, tabs ---------- */
+.seg { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.seg button { height: 32px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--panel-solid); font-size: 13px; font-weight: 500; }
+.seg button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.tabs { display: flex; gap: 4px; padding: 4px; border-radius: var(--r-md); background: var(--bg-2); width: max-content; }
+.tabs button { padding: 6px 14px; border-radius: 8px; font-size: 13px; color: var(--dim); }
+.tabs button.on { background: var(--panel-solid); color: var(--text); box-shadow: var(--shadow); }
+[data-theme="story"] .tabs button.on { background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* ---------- stepper (stage tracker) ---------- */
+.stepper { display: grid; gap: 2px; }
+.step { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 9px; font-size: 14px; color: var(--dim); }
+.step .dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+.step.done { color: var(--text); } .step.done .dot { background: var(--ok); border-color: var(--ok); color: #fff; }
+.step.now { color: var(--text); background: var(--brand-soft); } .step.now .dot { border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
+.step.gated .dot { border-color: var(--warn); color: var(--warn); }
+
+/* ---------- gate card ---------- */
+.gate { border: 1px solid var(--warn); background: var(--warn-soft); border-radius: var(--r-md); padding: 14px 16px; display: grid; gap: 10px; animation: slidein .4s var(--ease) both; }
+.gate .row .btn { height: 32px; }
+
+/* ---------- section dot nav ---------- */
+.dotnav { position: fixed; right: 22px; top: 50%; transform: translateY(-50%); display: grid; gap: 10px; z-index: 40; }
+.dotnav a { width: 16px; height: 8px; border-radius: 8px; background: var(--border-strong); transition: all .3s var(--ease); }
+.dotnav a.on { width: 22px; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+
+/* ---------- reveal ---------- */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } * { animation-duration: .01ms !important; } }
+
+/* ---------- console shell ---------- */
+.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: calc(100vh - var(--nav-h)); background: linear-gradient(90deg, var(--bg-1) 248px, transparent 248px); }
+.shell > .side { border-right: 0; box-shadow: inset -1px 0 0 var(--border); }
+.side { border-right: 1px solid var(--border); background: var(--bg-1); padding: 18px 0; position: sticky; top: var(--nav-h); height: calc(100vh - var(--nav-h)); overflow: auto; }
+.side .grp { padding: 14px 20px 6px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); font-weight: 700; }
+.side a { display: flex; justify-content: space-between; align-items: center; padding: 9px 20px; color: var(--text); font-size: 14px; border-left: 3px solid transparent; }
+.side a:hover { background: var(--bg-2); text-decoration: none; }
+.side a.on { background: var(--brand-soft); color: var(--brand); border-left-color: var(--brand); font-weight: 600; }
+.main { padding: 26px 32px 60px; min-width: 0; }
+.pagehead { display: grid; gap: 6px; margin-bottom: 18px; }
+.toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+
+/* ---------- footer, toast, modal ---------- */
+.foot { position: relative; z-index: 1; padding: 28px 0 40px; border-top: 1px solid var(--border-soft); font-family: var(--font-mono); font-size: 12px; color: var(--mute); }
+.foot .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.demo-by { display: inline-flex; align-items: center; gap: 8px; }
+.demo-by img { height: 18px; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0; z-index: 90; padding: 10px 18px; border-radius: var(--r-md);
+  background: var(--qz-navy); color: #fff; font-size: 14px; box-shadow: var(--shadow); transition: all .3s var(--ease); pointer-events: none; }
+.toast.in { opacity: 1; transform: translateX(-50%); }
+.modal { position: fixed; inset: 0; z-index: 80; display: none; place-items: center; background: rgba(6, 12, 28, .55); backdrop-filter: blur(4px); padding: 24px; }
+.modal.in { display: grid; }
+.modal > .panel { width: min(760px, 100%); max-height: 84vh; overflow: auto; background: var(--panel-solid); }
+.drawer { position: fixed; top: var(--nav-h); right: 0; bottom: 0; width: min(520px, 92vw); z-index: 70; background: var(--panel-solid); border-left: 1px solid var(--border);
+  box-shadow: var(--shadow); transform: translateX(100%); transition: transform .35s var(--ease); overflow: auto; padding: 22px; }
+.drawer.in { transform: none; }
+pre.code { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; background: var(--bg-2); border-radius: var(--r-md); padding: 14px 16px; overflow: auto; white-space: pre-wrap; }
+pre.code .add { color: var(--ok); } pre.code .del { color: var(--bad); }
+mark.hit { background: var(--warn-soft); color: inherit; border-radius: 3px; padding: 0 2px; }
+.cite { display: inline-grid; place-items: center; min-width: 22px; height: 18px; padding: 0 5px; margin: 0 2px; border-radius: 5px; font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700; background: var(--warn-soft); color: var(--warn); vertical-align: 2px; cursor: pointer; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  .g4, .g5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split { grid-template-columns: 1fr; }
+  .topbar nav { display: none; }
+}
+@media (max-width: 760px) {
+  [data-theme="story"] :is(.xs, .tag, .chip, .src, .eyebrow, .mono, small, .statusbar .chip, .hbar .bar) { font-size: 12px; }
+  body { font-size: 14px; }
+  .wrap { padding: 0 18px; } .section { padding: 64px 0; }
+  .g2, .g3, .g4, .g5 { grid-template-columns: 1fr; }
+  .shell { grid-template-columns: 1fr; } .side { display: none; } .main { padding: 18px; }
+  .topbar { padding: 0 16px; gap: 10px; } .topbar .product, .topbar .divider { display: none; }
+  .dotnav { display: none; }
+  .mrow { grid-template-columns: 100px 1fr 44px; }
+}
+
+</style>
+<style>
+  .persona { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+  .avatar { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+  .kgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .two { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; }
+  .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .acc { display: grid; gap: 14px; }
+  .acc .rowl { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
+  .tri { display: flex; height: 8px; border-radius: 6px; overflow: hidden; background: var(--bg-3); }
+  .cyc-legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 14px; font-size: 13px; }
+  .cyc-legend b { display: block; font-size: 18px; margin-top: 2px; }
+  .cyc-legend .ok { font-size: 12px; font-weight: 600; }
+  .prow { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+  .prow:last-child { border-bottom: 0; }
+  .prow .row { justify-content: space-between; font-size: 14px; }
+  .view { display: none; } .view.on { display: block; }
+  .pipeline { margin: 18px 16px 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); font-size: 12px; }
+  @media (max-width: 1100px) { .kgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .two, .three { grid-template-columns: 1fr; } .cyc-legend { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="client" data-brand-logo="clientLogo"><span data-brand="client">Client</span></div>
+  <div class="divider"></div>
+  <div class="product"><b data-brand="product">Telemetry</b><span>Demonstration by QualiZeal</span><span>AI Center of Excellence</span></div>
+  <div class="spacer"></div>
+  <span class="live small" id="clock"></span>
+</header>
+<div class="shell">
+  <aside class="side" id="side"></aside>
+  <main class="main">
+    <div class="pagehead"><div class="eyebrow" id="ph-eyebrow">AI delivery · engineering view</div><h1 class="h1" id="ph-title">Delivery overview</h1>
+      <p class="dim" id="ph-sub" style="max-width:72ch">How AI shows up in day-to-day delivery: authored code, suggestion outcomes, review flow, human gates and the quality of what ships.</p></div>
+    <div class="toolbar"><span class="tag">Period</span><div class="seg" id="periods"></div><button class="btn sm" id="cmp">vs previous period</button><div class="spacer"></div>
+      <span class="statusbar" id="live"><span class="live">Live</span><span>auto-refresh every 15s</span></span><button class="btn sm" id="refresh">Refresh now</button><button class="btn sm primary" id="copy">Copy CSV</button></div>
+    <div class="callout" id="fresh" style="margin-bottom:16px"></div>
+
+    <section class="view" id="v-overview">
+      <div class="panel persona" style="margin-bottom:14px"><div class="avatar" id="p-ini"></div><div><b id="p-name"></b><div class="small dim" id="p-sub"></div></div><div class="spacer"></div><div class="row wrap-ok" id="p-chips"></div></div>
+      <div class="kgrid" id="kpis"></div>
+      <div class="two" style="margin-top:14px">
+        <div class="panel pad"><div class="panel-head"><div><div class="h3" id="st-title"></div><div class="small dim" id="st-sub"></div></div><div class="legend" id="st-leg"></div></div><div id="st-chart"></div><div class="row" id="st-stats" style="gap:32px;margin-top:8px"></div></div>
+        <div class="stack lg"><div class="panel pad"><div class="h3" id="ac-title"></div><div class="small dim" id="ac-sub" style="margin-bottom:12px"></div><div class="acc" id="acc"></div><div class="legend" style="margin-top:12px"><span><i style="background:var(--ok)"></i>Accepted</span><span><i style="background:#7B5BFF"></i>Accepted with edits</span><span><i style="background:var(--bg-3)"></i>Rejected</span></div></div>
+          <div class="panel pad"><div class="row between"><div class="h3">Live activity</div><span class="live xs">streaming</span></div><div class="feed" id="feed" style="margin-top:8px"></div></div></div>
+      </div>
+      <div class="panel pad" style="margin-top:14px"><div class="row between" style="align-items:flex-start"><div><div class="h3" id="cy-title"></div><div class="small dim" id="cy-sub"></div></div>
+        <div class="row" style="gap:28px;text-align:right"><div><div class="tag">Current</div><b style="font-size:20px" id="cy-cur"></b></div><div><div class="tag">Pre-AI baseline</div><b style="font-size:20px" class="mute" id="cy-base"></b></div><div><div class="tag">Change</div><b style="font-size:20px" class="ok" id="cy-chg"></b></div></div></div>
+        <div class="segbar" id="cy-bar" style="margin-top:16px"></div><div class="cyc-legend" id="cy-leg"></div></div>
+      <div class="three" id="panels" style="margin-top:14px"></div>
+      <div class="two" style="margin-top:14px"><div class="panel pad"><div class="row"><i style="width:9px;height:9px;border-radius:3px;background:var(--brand)"></i><b>How to read this</b></div><p class="small dim" id="n-read" style="margin-top:8px"></p></div>
+        <div class="panel pad"><div class="row"><i style="width:9px;height:9px;border-radius:3px;background:var(--ok)"></i><b>Suggested next step</b></div><p class="small dim" id="n-next" style="margin-top:8px"></p></div></div>
+    </section>
+
+    <section class="view" id="v-runs"><div class="panel pad"><div class="panel-head"><div class="h3">Agent runs</div><span class="small dim">Every run carries a report card: time, tokens, gates and quality measures</span></div><div style="overflow:auto"><table class="table" id="runs"></table></div></div></section>
+    <section class="view" id="v-teams"><div class="panel pad"><div class="panel-head"><div class="h3">Team view</div><span class="small dim">Trend per team over the selected period</span></div><table class="table" id="teams"></table></div></section>
+    <section class="view" id="v-sources"><div class="grid g2" id="sources"></div></section>
+    <p class="xs mute" id="foot" style="margin-top:26px"></p>
+  </main>
+</div>
+<script>
+/* QualiZeal demo helpers: DOM, formatting, seeded data, small SVG charts, motion. No dependencies. */
+(function () {
+  "use strict";
+  const QZ = {};
+
+  // ---------- DOM ----------
+  QZ.$ = (s, r) => (r || document).querySelector(s);
+  QZ.$$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  QZ.h = function (tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "html") el.innerHTML = v;
+      else if (k === "style" && typeof v === "object") Object.assign(el.style, v);
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(String(k)));
+    return el;
+  };
+  QZ.esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- formatting ----------
+  QZ.fmt = {
+    n: (v, d = 0) => Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }),
+    pct: (v, d = 1) => `${(v * 100).toFixed(d)}%`,
+    money: (v, cur = "$") => cur + Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 }),
+    compact: (v) => Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(v),
+    dur: (h) => (h >= 24 ? `${(h / 24).toFixed(1)}d` : h >= 1 ? `${h.toFixed(1)}h` : `${Math.round(h * 60)}m`),
+    signed: (v, d = 1, unit = "") => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}${unit}`,
+    ago: (sec) => (sec < 60 ? `${Math.round(sec)}s ago` : sec < 3600 ? `${Math.floor(sec / 60)}m ${Math.round(sec % 60)}s ago` : `${Math.floor(sec / 3600)}h ago`),
+  };
+
+  // ---------- seeded data: the same seed always gives the same believable numbers ----------
+  QZ.rng = function (seed) {
+    let a = typeof seed === "number" ? seed : [...String(seed)].reduce((h, c) => (Math.imul(h ^ c.charCodeAt(0), 2654435761) >>> 0), 2166136261);
+    return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  };
+  /** A series that wanders like real telemetry: trend + weekly rhythm + noise, clamped. */
+  QZ.series = function (seed, n, { base = 50, vol = 0.08, trend = 0, weekly = 0, min = -Infinity, max = Infinity, round = 1 } = {}) {
+    const r = QZ.rng(seed); const out = []; let v = base;
+    for (let i = 0; i < n; i++) {
+      v = v * (1 + (r() - 0.5) * vol) + trend * base / n;
+      const w = weekly ? Math.sin((i / 7) * 2 * Math.PI) * weekly * base : 0;
+      const x = Math.min(max, Math.max(min, v + w));
+      out.push(Math.round(x / round) * round);
+    }
+    return out;
+  };
+  QZ.pick = (r, arr) => arr[Math.floor(r() * arr.length)];
+
+  // ---------- SVG charts ----------
+  QZ.spark = function (vals, { w = 240, h = 40, color = "var(--brand)", fill = true, dot = true } = {}) {
+    if (!vals.length) return "";
+    const mn = Math.min(...vals), mx = Math.max(...vals), sp = mx - mn || 1;
+    const pts = vals.map((v, i) => [(i / (vals.length - 1 || 1)) * w, h - 3 - ((v - mn) / sp) * (h - 8)]);
+    const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+    const id = "g" + Math.random().toString(36).slice(2, 8);
+    const last = pts[pts.length - 1];
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".22"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+      ${fill ? `<path d="${d} L ${w} ${h} L 0 ${h} Z" fill="url(#${id})"/>` : ""}
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+      ${dot ? `<circle cx="${last[0]}" cy="${last[1]}" r="3" fill="${color}"/>` : ""}</svg>`;
+  };
+  /** Stacked columns: series = [{name, color, values[]}], labels[] */
+  QZ.stack = function (series, labels, { w = 640, h = 200, pad = 26, max } = {}) {
+    const n = labels.length, tot = labels.map((_, i) => series.reduce((s, x) => s + x.values[i], 0));
+    const top = max || Math.max(...tot) * 1.08, bw = (w - pad) / n;
+    let out = `<svg viewBox="0 0 ${w} ${h + 18}" style="width:100%;height:auto">`;
+    for (const g of [0, 0.5, 1]) { const y = h - g * h; out += `<line x1="${pad}" x2="${w}" y1="${y}" y2="${y}" stroke="var(--border-soft)"/><text x="0" y="${y + 4}" font-size="10" fill="var(--mute)">${Math.round(g * top)}</text>`; }
+    labels.forEach((lb, i) => {
+      let y = h; const x = pad + i * bw + bw * 0.15;
+      series.forEach((s) => { const bh = (s.values[i] / top) * h; y -= bh; out += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw * 0.7).toFixed(1)}" height="${Math.max(0, bh).toFixed(1)}" rx="2" fill="${s.color}"><title>${s.name}: ${s.values[i]}</title></rect>`; });
+      out += `<text x="${(x + bw * 0.35).toFixed(1)}" y="${h + 14}" font-size="10" text-anchor="middle" fill="var(--mute)">${lb}</text>`;
+    });
+    return out + "</svg>";
+  };
+  QZ.ring = function (value, { size = 168, stroke = 14, color = "var(--ok)", track = "var(--bg-3)" } = {}) {
+    const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(1, value)));
+    return `<svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${track}" stroke-width="${stroke}"/>
+      <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c}">
+      <animate attributeName="stroke-dashoffset" from="${c}" to="${off}" dur="1.2s" fill="freeze" calcMode="spline" keySplines=".2 .8 .2 1"/></circle></svg>`;
+  };
+
+  // ---------- motion ----------
+  QZ.countUp = function (el, to, { ms = 900, d = 0, suffix = "" } = {}) {
+    const t0 = performance.now();
+    (function tick(t) { const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = QZ.fmt.n(to * e, d) + suffix; if (k < 1) requestAnimationFrame(tick); })(t0);
+  };
+  QZ.reveal = function (root) {
+    const els = QZ.$$(".reveal", root);
+    if (!("IntersectionObserver" in window)) { els.forEach((e) => e.classList.add("in")); return; }
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: 0.12 });
+    els.forEach((e) => io.observe(e));
+  };
+  QZ.dotnav = function (nav) {
+    const links = QZ.$$("a", nav), secs = links.map((a) => QZ.$(a.getAttribute("href")));
+    const on = () => { let k = 0; secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < innerHeight * 0.45) k = i; }); links.forEach((a, i) => a.classList.toggle("on", i === k)); };
+    addEventListener("scroll", on, { passive: true }); on();
+  };
+  QZ.tabs = function (root, onChange) {
+    QZ.$$("button", root).forEach((b) => b.addEventListener("click", () => { QZ.$$("button", root).forEach((x) => x.classList.toggle("on", x === b)); onChange && onChange(b.dataset.tab); }));
+  };
+  let toastT;
+  QZ.toast = function (msg) {
+    let t = QZ.$(".toast"); if (!t) { t = QZ.h("div", { class: "toast" }); document.body.append(t); }
+    t.textContent = msg; t.classList.add("in"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("in"), 2600);
+  };
+  /** Hash routing that works inside a hosted artifact frame: plain #name only. */
+  QZ.route = function (views, start, onShow) {
+    const show = () => { const k = (location.hash || "#" + start).slice(1); const key = views.includes(k) ? k : start; onShow(key); };
+    addEventListener("hashchange", show); show();
+  };
+  QZ.store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+               set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage may be unavailable */ } } };
+
+  // ---------- branding ----------
+  /** brand = {client, clientLogo (data URI, supplied by the person), product, tagline, qzMark (data URI)} */
+  QZ.brand = function (brand) {
+    if (!brand) return;
+    QZ.$$("[data-brand]").forEach((el) => { const k = el.dataset.brand; if (brand[k] != null) el.textContent = brand[k]; });
+    QZ.$$("[data-brand-logo]").forEach((el) => {
+      const k = el.dataset.brandLogo;
+      if (brand[k]) { el.innerHTML = ""; el.append(QZ.h("img", { src: brand[k], alt: brand.client || "" })); }
+    });
+    if (brand.accent) document.documentElement.style.setProperty("--accent", brand.accent);
+    if (brand.title) document.title = brand.title;
+  };
+
+  window.QZ = QZ;
+})();
+
+</script>
+<script>
+/* Everything the dashboard shows is configured here; app.js renders it. Numbers are generated from seeds,
+   so the same period always shows the same values (a presenter can rehearse).
+   fmt: pct1 | pct0 | int (a count; scales with the period) | num0 | num1 | days | hours. Label the page "illustrative data"
+   in footer unless the person connects real sources. */
+window.QZ_DATA = {
+  brand: { client: "Northwind Logistics", clientLogo: "", product: "AI Delivery Telemetry", title: "AI Delivery Telemetry · Northwind" },
+  footer: "Illustrative data generated for a demonstration by QualiZeal AI Center of Excellence.",
+  nav: [
+    { group: "AI delivery", items: [["overview", "Delivery overview"], ["runs", "Agent runs"], ["teams", "Team view"]] },
+    { group: "Platform", items: [["sources", "Data sources", "LIVE"]] },
+  ],
+  persona: { initials: "PR", name: "Platform Engineering", sub: "Northwind Digital · 4 product teams · 31 engineers", chips: [["violet", "212 agent runs this week"], ["warn", "Top lever: review wait"]] },
+  periods: [["live", "Live · 60 min", 12], ["today", "Today", 24], ["7d", "7 days", 14], ["30d", "30 days", 30], ["q", "Quarter", 13]],
+  freshness: { title: "Jira ingest is running 74s behind", text: "Cycle time, rework and escaped defects inherit that lag. GitHub and agent telemetry are current to under 45 seconds." },
+  kpis: [
+    { id: "aicode", label: "AI-authored code", src: "otel", unit: "% of merged lines", base: 41.7, vol: 0.05, trend: 0.08, fmt: "pct1", good: "up", note: "vs prior period", color: "#5B3FD9" },
+    { id: "accept", label: "Suggestion acceptance", src: "otel", unit: "accepted", base: 64.3, vol: 0.04, trend: 0.03, fmt: "pct1", good: "up", note: "1,284 suggestions", color: "#5B3FD9" },
+    { id: "prs", label: "Pull requests merged", src: "github", unit: "this period", base: 14, vol: 0.18, trend: 0.1, fmt: "int", good: "up", note: "3.4 per active day", color: "#0A6FD6" },
+    { id: "cycle", label: "Cycle time", src: "jira", unit: "idea → prod", base: 1.7, vol: 0.06, trend: -0.12, fmt: "days", good: "down", note: "team median 2.6d", color: "#0A6FD6" },
+    { id: "lead", label: "Lead time for PR", src: "github", unit: "open → merge", base: 11.2, vol: 0.07, trend: -0.1, fmt: "hours", good: "down", note: "p50 · p85 26.4h", color: "#0A6FD6" },
+    { id: "rework", label: "Rework rate", src: "jira", unit: "of merged lines", base: 8.2, vol: 0.08, trend: -0.06, fmt: "pct1", good: "down", note: "2 bugs traced to agents", color: "#E07B00" },
+    { id: "survival", label: "AI code survival", src: "github", unit: "at 30 days", base: 86.9, vol: 0.015, trend: 0.02, fmt: "pct1", good: "up", note: "org median 84.1%", color: "#1F8F5F" },
+    { id: "gates", label: "Human gates honoured", src: "kf", unit: "of decisions", base: 100, vol: 0, trend: 0, fmt: "pct0", good: "up", note: "0 merges without a person", color: "#F43D59" },
+  ],
+  stack: { title: "AI-authored vs human-authored code", sub: "Share of merged lines per day", series: [["AI-authored", "#5B3FD9", 41], ["Human-authored", "#BFD5F7", 59]] },
+  bars: { title: "Acceptance by agent", sub: "Accepted · edited · rejected, from agent telemetry", rows: [["Developer agent", 68.4, 412], ["Test agent", 61.2, 286], ["Doc agent", 71.8, 198], ["Reviewer agent", 52.6, 124], ["IaC agent", 44.1, 76]] },
+  cycle: { title: "Cycle time breakdown", sub: "Median per stage, summed to the cycle time, against the pre-AI baseline", baseline: "58.1h · 2.4d", current: "40.6h · 1.7d", change: "−30%",
+    stages: [["Coding", 17.1, "#5B3FD9", "−23%"], ["PR open → first review", 4.5, "#0A6FD6", "−55%"], ["In review", 7.7, "#007399", "−34%"], ["Approval → merge", 2.0, "#5FA83A", "−21%"], ["Merge → production", 9.3, "#1F2A44", "−20%"]] },
+  panels: [
+    { title: "Quality & security", color: "#F43D59", rows: [["Test coverage delta on AI code", "+2.1 pts", 0.62, "+0.6"], ["Security findings per 1K lines", "0.42", 0.18, "−0.18"], ["Secrets introduced", "0", 0.02, "clean"]] },
+    { title: "Flow & work shape", color: "#0A6FD6", rows: [["Median PR size", "214 LOC", 0.54, "−86"], ["Reviews given per week", "8.1", 0.71, "+1.4"], ["First-time-right merges", "71.4%", 0.71, "+5.2 pts"]] },
+    { title: "Agentic sessions", color: "#5B3FD9", rows: [["Autonomous task completion", "38.2%", 0.38, "+7.1 pts"], ["Human interventions per session", "1.7", 0.34, "−0.5"], ["Tokens per merged PR", "48.2K", 0.48, "−6.4K"]] },
+  ],
+  feed: [
+    ["otel", "Agent session · checkout-api · 8 edits proposed, 6 accepted"], ["github", "PR #4821 opened · membership-web · 62% AI-authored, 2 reviewers requested"],
+    ["jira", "NW-2314 moved to In Review · linked to PR #4821"], ["kf", "Guard blocked a write to .env · rule QZ-SH-ENV-CREDS · reason returned to the agent"],
+    ["github", "PR #4809 approved · 4 review comments resolved"], ["otel", "Suggestion rejected · policy-service · failing contract test"],
+    ["kf", "Gate approved · design for NW-2290 · by a tech lead"], ["github", "Deploy #918 succeeded · membership-web · lead time 9.2h"],
+  ],
+  runs: { cols: ["Run", "Story", "Lane", "Stage", "Tokens", "Agent time", "Gates", "Status"], statuses: [["Merged", "ok"], ["In review", "info"], ["Gate waiting", "warn"], ["Blocked by guard", "bad"]],
+    stories: ["Customer search API", "Rate quote cache", "Carrier scorecard export", "Returns label service", "Dock schedule sync", "Claims intake form", "Lane pricing rules", "Driver app offline mode"] },
+  teams: ["Checkout", "Membership", "Carrier platform", "Warehouse apps"],
+  sources: [["GitHub", "github", "Pull requests, reviews, deploys", 38], ["Agent telemetry (OpenTelemetry)", "otel", "Sessions, suggestions, tokens", 12], ["Jira", "jira", "Stories, cycle time, defects", 74], ["QZ harness audit chain", "kf", "Gates, guard decisions, report cards", 5]],
+  notes: { read: "Acceptance on its own says little. Read it with AI code survival and rework: high acceptance with falling survival means suggestions are being taken and then rewritten. Lead time counts open to merge; if it climbs while throughput holds, the constraint is review capacity.",
+           next: "Review wait is now the largest share of cycle time. A second reviewer rota on Checkout and Membership is the cheapest lever; the IaC agent's acceptance (44%) trails the rest and is worth a scoped prompt template." },
+};
+
+</script>
+<script>
+/* Telemetry console: period-aware seeded series, KPI tiles with deltas and sparklines, live feed, runs, teams, sources. */
+(function () {
+  "use strict";
+  const D = window.QZ_DATA, { h, $, $$, fmt } = QZ;
+  let period = QZ.store.get("qz-period", "7d"), compare = true, tick = 0;
+  const P = () => D.periods.find((p) => p[0] === period) || D.periods[2];
+  const F = { pct1: (v) => [v.toFixed(1), "%"], pct0: (v) => [Math.round(v), "%"], int: (v) => [Math.round(v), ""], days: (v) => [v.toFixed(1), "d"], hours: (v) => [v.toFixed(1), "h"], num0: (v) => [QZ.fmt.n(v), ""], num1: (v) => [v.toFixed(1), ""] };
+  const LAST = {};
+  const scale = { live: 0.18, today: 0.4, "7d": 1, "30d": 4.1, q: 12.5 };
+
+  function kpiSeries(k, salt = 0) {
+    const n = P()[2];
+    if (!k.vol) return Array(n).fill(k.base);
+    const s = QZ.series(`${k.id}-${period}-${salt}`, n, { base: k.base * (k.fmt === "int" ? scale[period] || 1 : 1), vol: k.vol * 2.2, trend: k.trend, min: 0 });
+    return s;
+  }
+  function kpiTile(k) {
+    const s = kpiSeries(k), prev = kpiSeries(k, 1), cur = k.fmt === "int" ? s.reduce((a, b) => a + b, 0) / s.length * (scale[period] > 1 ? 7 : 1) : s[s.length - 1];
+    const pv = k.fmt === "int" ? prev.reduce((a, b) => a + b, 0) / prev.length * (scale[period] > 1 ? 7 : 1) : prev[0];
+    const d = cur - pv, good = (d >= 0) === (k.good === "up"), [v, u] = F[k.fmt](cur);
+    LAST[k.id] = cur;
+    const dTxt = k.fmt.startsWith("pct") ? fmt.signed(d, 1, " pts") : k.fmt === "int" || k.fmt === "num0" ? fmt.signed(d, 0) : fmt.signed(d, 1, k.fmt === "days" ? "d" : k.fmt === "hours" ? "h" : "");
+    return h("div", { class: "panel kpi" },
+      h("div", { class: "top" }, h("span", { class: "label" }, k.label), h("span", { class: "src " + k.src }, k.src === "kf" ? "QZ harness" : k.src)),
+      h("div", { class: "value" }, v + u, h("small", {}, k.unit)),
+      h("div", { class: "meta" }, compare ? h("span", { class: "delta " + (Math.abs(d) < 1e-9 ? "flat" : good ? "good" : "bad") }, Math.abs(d) < 1e-9 ? "steady" : dTxt) : null, h("span", {}, k.note)),
+      h("div", { html: QZ.spark(s, { color: k.color }) }));
+  }
+
+  function overview() {
+    const pr = D.persona;
+    $("#p-ini").textContent = pr.initials; $("#p-name").textContent = pr.name; $("#p-sub").textContent = pr.sub;
+    $("#p-chips").replaceChildren(...pr.chips.map(([c, t]) => h("span", { class: "chip " + c }, t)), h("span", { class: "chip mono" }, "Data current to " + new Date().toTimeString().slice(0, 5)));
+    $("#kpis").replaceChildren(...D.kpis.map(kpiTile));
+    const n = Math.min(14, P()[2]), labels = Array.from({ length: n }, (_, i) => String(n - i)), r = QZ.rng("stack-" + period);
+    const ai = labels.map(() => Math.round(D.stack.series[0][2] + (r() - 0.45) * 14)), series = [{ name: D.stack.series[0][0], color: D.stack.series[0][1], values: ai }, { name: D.stack.series[1][0], color: D.stack.series[1][1], values: ai.map((x) => 100 - x) }];
+    $("#st-title").textContent = D.stack.title; $("#st-sub").textContent = `${D.stack.sub}, last ${n} ${period === "live" ? "intervals" : "days"}`;
+    $("#st-leg").replaceChildren(...D.stack.series.map(([nm, c]) => h("span", {}, h("i", { style: { background: c } }), nm)));
+    $("#st-chart").innerHTML = QZ.stack(series, labels, { max: 100, h: 190 });
+    const avg = ai.reduce((a, b) => a + b, 0) / ai.length;
+    $("#st-stats").replaceChildren(...[["Current", ai[ai.length - 1] + "%"], [`${n}-day avg`, avg.toFixed(1) + "%"], ["Peak day", Math.max(...ai) + "%"]].map(([l, v]) => h("div", {}, h("div", { class: "tag" }, l), h("b", { style: { fontSize: "18px" } }, v))));
+    $("#ac-title").textContent = D.bars.title; $("#ac-sub").textContent = D.bars.sub;
+    $("#acc").replaceChildren(...D.bars.rows.map(([nm, acc, n2]) => { const ed = Math.min(100 - acc, 12 + (nm.length % 7)); return h("div", {},
+      h("div", { class: "rowl" }, h("span", {}, nm), h("span", {}, h("b", {}, acc.toFixed(1) + "%"), h("span", { class: "xs mute" }, `  ${Math.round(n2 * scale[period])} suggestions`))),
+      h("div", { class: "tri" }, h("div", { style: { width: acc - ed + "%", background: "var(--ok)" } }), h("div", { style: { width: ed + "%", background: "#7B5BFF" } }))); }));
+    const C0 = D.cycle, raw = C0.stages.reduce((s, x) => s + x[1], 0), k = LAST.cycle ? (LAST.cycle * 24) / raw : 1, baseH = parseFloat(C0.baseline);
+    const C = { ...C0, stages: C0.stages.map(([nm, v, c, ch]) => [nm, +(v * k).toFixed(1), c, ch]), change: `${(((raw * k) - baseH) / baseH * 100).toFixed(0).replace("-", "−")}%` }, tot = C.stages.reduce((s, x) => s + x[1], 0);
+    $("#cy-title").textContent = C.title; $("#cy-sub").textContent = C.sub; $("#cy-cur").textContent = LAST.cycle ? `${(LAST.cycle * 24).toFixed(1)}h · ${LAST.cycle.toFixed(1)}d` : C.current; $("#cy-base").textContent = C.baseline; $("#cy-chg").textContent = C.change;
+    $("#cy-bar").replaceChildren(...C.stages.map(([nm, v, c]) => h("div", { style: { width: (v / tot) * 100 + "%", background: c } }, v / tot > 0.09 ? nm.split(" ")[0] : "")));
+    $("#cy-leg").replaceChildren(...C.stages.map(([nm, v, c, ch]) => h("div", {}, h("span", { class: "row", style: { gap: "6px" } }, h("i", { style: { width: "9px", height: "9px", borderRadius: "3px", background: c } }), nm), h("b", {}, v + "h"), h("span", { class: "ok" }, ch + " vs baseline"))));
+    $("#panels").replaceChildren(...D.panels.map((p) => h("div", { class: "panel pad" }, h("div", { class: "row", style: { marginBottom: "6px" } }, h("i", { style: { width: "10px", height: "10px", borderRadius: "3px", background: p.color } }), h("b", {}, p.title)),
+      p.rows.map(([l, v, m, d]) => h("div", { class: "prow" }, h("div", { class: "row" }, h("span", {}, l), h("span", { class: "row", style: { gap: "8px" } }, h("b", { class: "mono" }, v), h("span", { class: "delta good" }, d))), h("div", { class: "meter" }, h("i", { style: { width: m * 100 + "%", background: p.color } })))))));
+    $("#n-read").textContent = D.notes.read; $("#n-next").textContent = D.notes.next;
+    feed(true);
+  }
+
+  const FEED = [];
+  function feed(reset) {
+    if (reset) { FEED.length = 0; D.feed.slice(0, 6).forEach((f, i) => FEED.push({ f, t: Date.now() - (i * 41 + 6) * 1000 })); }
+    $("#feed").replaceChildren(...FEED.slice(0, 6).map(({ f, t }) => h("div", { class: "item" }, h("span", {}, h("span", { class: "src " + f[0] }, f[0] === "kf" ? "QZ" : f[0])), h("div", {}, f[1], h("div", { class: "when" }, fmt.ago((Date.now() - t) / 1000))))));
+  }
+  function runs() {
+    const r = QZ.rng("runs-" + period), R = D.runs;
+    const rows = Array.from({ length: 12 }, (_, i) => { const st = i < 2 ? R.statuses[i + 1] : r() < 0.08 ? R.statuses[3] : r() < 0.2 ? R.statuses[2] : R.statuses[0];
+      return [`R-${4120 - i * 7}`, QZ.pick(r, R.stories), QZ.pick(r, ["Deliver", "Deliver", "Deliver", "Demo"]), st[0] === "Merged" ? "complete" : QZ.pick(r, ["code-generation", "build-and-test", "functional-design"]),
+        fmt.compact(180000 + r() * 520000), fmt.dur(1.2 + r() * 5), `${2 + Math.floor(r() * 3)}/${st[0] === "Gate waiting" ? 4 : 2 + Math.floor(r() * 3)}`, st]; });
+    $("#runs").replaceChildren(h("thead", {}, h("tr", {}, R.cols.map((c, i) => h("th", { class: i >= 4 && i <= 6 ? "r" : "" }, c)))),
+      h("tbody", {}, rows.map((x) => h("tr", {}, x.slice(0, 7).map((v, i) => h("td", { class: (i >= 4 && i <= 6 ? "r " : "") + (i === 0 ? "mono" : "") }, v)), h("td", {}, h("span", { class: "chip " + x[7][1] }, x[7][0]))))));
+  }
+  function teams() {
+    $("#teams").replaceChildren(h("thead", {}, h("tr", {}, ["Team", "AI-authored", "Acceptance", "Cycle time", "Trend", "Gates"].map((c, i) => h("th", { class: i && i < 4 ? "r" : "" }, c)))),
+      h("tbody", {}, D.teams.map((t, i) => { const r = QZ.rng(t + period), s = QZ.series(t + period, 14, { base: 35 + i * 4, vol: 0.12, trend: 0.1 });
+        return h("tr", {}, h("td", {}, h("b", {}, t)), h("td", { class: "r" }, s[13].toFixed(1) + "%"), h("td", { class: "r" }, (58 + r() * 14).toFixed(1) + "%"), h("td", { class: "r" }, (1.3 + r() * 1.4).toFixed(1) + "d"),
+          h("td", { style: { width: "220px" }, html: QZ.spark(s, { h: 30, dot: false }) }), h("td", {}, h("span", { class: "chip ok" }, "100% honoured"))); })));
+  }
+  function sources() {
+    $("#sources").replaceChildren(...D.sources.map(([nm, k, what, lag]) => h("div", { class: "panel pad" }, h("div", { class: "row between" }, h("div", { class: "row" }, h("span", { class: "src " + k }, k === "kf" ? "QZ" : k), h("b", {}, nm)), h("span", { class: "chip " + (lag > 60 ? "warn" : "ok") }, lag > 60 ? `${lag}s behind` : `current · ${lag}s`)),
+      h("p", { class: "small dim", style: { margin: "8px 0 10px" } }, what), h("div", { class: "meter " + (lag > 60 ? "warn" : "ok") }, h("i", { style: { width: Math.max(8, 100 - lag) + "%" } })))));
+  }
+
+  function render() { overview(); runs(); teams(); sources(); }
+  function view(k) {
+    $$(".view").forEach((v) => v.classList.toggle("on", v.id === "v-" + k));
+    $$("#side a").forEach((a) => a.classList.toggle("on", a.getAttribute("href") === "#" + k));
+    const it = D.nav.flatMap((g) => g.items).find((x) => x[0] === k); $("#ph-title").textContent = it ? it[1] : "";
+  }
+  function csv() {
+    const rows = [["metric", "unit", "value"]].concat(D.kpis.map((k) => [k.label, k.unit, F[k.fmt](kpiSeries(k).slice(-1)[0]).join("")]));
+    return rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  }
+
+  QZ.brand(D.brand);
+  $("#side").replaceChildren(...D.nav.flatMap((g) => [h("div", { class: "grp" }, g.group), ...g.items.map(([k, l, badge]) => h("a", { href: "#" + k }, l, badge ? h("span", { class: "chip ok xs" }, badge) : null))]),
+    h("div", { class: "pipeline" }, h("div", { class: "tag" }, "Pipeline"), h("div", { class: "live small", style: { marginTop: "6px" } }, "All sources healthy"), h("div", { class: "xs mute" }, "OTel · Jira · GitHub · QZ audit")));
+  $("#periods").replaceChildren(...D.periods.map(([k, l]) => h("button", { class: k === period ? "on" : "", onclick: (e) => { period = k; QZ.store.set("qz-period", k); $$("#periods button").forEach((b) => b.classList.toggle("on", b === e.target)); render(); } }, l)));
+  $("#cmp").addEventListener("click", () => { compare = !compare; $("#cmp").classList.toggle("primary", compare); overview(); }); $("#cmp").classList.add("primary");
+  $("#refresh").addEventListener("click", () => { render(); QZ.toast("Refreshed from all four sources"); });
+  $("#copy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(csv()); QZ.toast("KPIs copied as CSV"); } catch (e) { QZ.toast("Copy is not available in this viewer"); } });
+  $("#fresh").replaceChildren(h("div", {}, h("b", {}, D.freshness.title), h("span", { class: "small" }, D.freshness.text)));
+  $("#foot").textContent = D.footer;
+  const clock = () => ($("#clock").textContent = "Live · " + new Date().toTimeString().slice(0, 8)); clock(); setInterval(clock, 1000);
+  setInterval(() => { tick++; const f = D.feed[(6 + tick) % D.feed.length]; FEED.unshift({ f, t: Date.now() }); feed(); }, 15000);
+  setInterval(() => feed(), 5000);
+  render(); QZ.route(D.nav.flatMap((g) => g.items.map((i) => i[0])), "overview", view);
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="story">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_ds/qz-ds.css">
+<style>
+  .stage { position: relative; z-index: 1; max-width: 1480px; margin: 0 auto; padding: 28px 28px 20px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 14px; flex-wrap: wrap; }
+  @media (max-width: 760px) { .head .h1 { font-size: 30px; } .caption { grid-template-columns: auto 1fr; } .caption .chip { display: none; } }
+  .head .h1 { font-size: 40px; }
+  #arch { width: 100%; height: auto; display: block; }
+  .flow { fill: none; stroke-width: 2; stroke-dasharray: 7 9; animation: dash 1.1s linear infinite; transition: opacity .4s, stroke-width .4s; }
+  @keyframes dash { to { stroke-dashoffset: -32; } }
+  .flow.dim { opacity: .12; animation-play-state: paused; } .flow.on { stroke-width: 3; }
+  .pulse { transition: opacity .4s; } .pulse.dim { opacity: 0; }
+  .flabel { font: 600 11px var(--font-mono); fill: var(--dim); transition: opacity .4s; } .flabel.dim { opacity: 0; }
+  .node rect.box { transition: stroke .3s, filter .3s; } .node.on rect.box { stroke: var(--qz-coral); stroke-width: 2.2; filter: drop-shadow(0 0 12px rgba(244,61,89,.45)); }
+  .node.dim { opacity: .42; } .node { transition: opacity .4s; }
+  .caption { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; margin-top: 12px; padding: 14px 18px; }
+  .caption .n { font-family: var(--font-serif); font-size: 34px; line-height: 1; color: var(--accent); }
+  .caption b { font-size: 17px; } .caption p { color: var(--dim); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="backdrop"></div><div class="texture"></div>
+<div class="stage">
+  <div class="head"><div><div class="eyebrow" id="eyebrow"></div><h1 class="h1" id="title"></h1><p class="dim" id="sub" style="max-width:80ch;margin-top:6px"></p></div>
+    <div class="row"><button class="btn sm" id="prev">◀</button><button class="btn sm primary" id="playb">❚❚ Pause</button><button class="btn sm" id="next">▶</button><button class="btn sm" id="all">Show all</button></div></div>
+  <svg id="arch" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="panel caption" id="cap"><div class="n" id="cap-n"></div><div><b id="cap-t"></b><p id="cap-c"></p></div><span class="chip mono" id="cap-k"></span></div>
+</div>
+<script src="_ds/qz-ds.js"></script>
+<script src="_ds/icons.js"></script>
+<script src="spec.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

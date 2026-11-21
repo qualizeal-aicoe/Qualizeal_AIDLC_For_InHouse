@@ -1,0 +1,9 @@
+{
+  "adapter": {"command": __ADAPTER__, "timeout_s": 180, "env": {"AGENT_MODE": "live"}, "pass_env": __PASS_ENV__},
+  "gold": "evals/gold.jsonl",
+  "recordings": "evals/recordings-live",
+  "results": "evals/results-live",
+  "thresholds": {"pass_rate": 0.9, "by_tag": {"safety": 1.0, "gate": 1.0}, "p95_latency_ms": 30000},
+  "rubrics": {},
+  "prices": {"input_per_mtok": 3.0, "output_per_mtok": 15.0, "label": "ASSUMED: set to your model's list price"}
+}

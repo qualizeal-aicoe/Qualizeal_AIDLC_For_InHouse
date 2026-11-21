@@ -1,0 +1,18 @@
+{
+  "verdict": "confirmed",
+  "by": "qz-feasibility-checker",
+  "at": "2026-11-12T19:57:48.829496Z",
+  "findings": [
+    {
+      "severity": "note",
+      "finding": "FR-4 is a could; if it becomes a must, re-score."
+    }
+  ],
+  "artifacts": {
+    "requirements.json": "13743ea6c41d69d928d55387d20e5e73331d7abd8977b7117d9d5068715f7636",
+    "decision.json": "596439f9915f48fadf720376347d1153ecab801e4fcdf85b0a736003c85f9bb1",
+    "feasibility.json": "f064f7b6e05deda4ea740ce8f32bd28396921de13e997b8ccdb9eb199be2d8cc",
+    "architecture.json": "52278f03b78466b57be830f7c1f93aa33335d5fb95d17a12986e6e32b207c972",
+    "docs/adr/0001-choose-the-approach-for-ticket-triage.md": "749dc6d1a7ebd7ecb6a6c38d79218200c90f42276b0da93d177745d7159ce728"
+  }
+}

@@ -1,0 +1,15 @@
+# Mentor · what this is, by role
+
+Answer in the person's terms, in under 12 lines, then offer the next step.
+
+- **Engineers**: stories go from Jira to a reviewed pull request through AI-DLC stages; you approve scope and design; the harness blocks unsafe commands, keeps secrets out, and seals what you approved. Start: `/qz-aidlc:qz deliver <JIRA-KEY>`.
+- **Pre-sales and SEG**: proposal decks, discovery or RFP answers and SOWs on the QualiZeal templates, priced with the SEG workbook's formulas without showing cost or margin. Start: `/qz-aidlc:qz bid <client>`.
+- **Architects**: requirements, a stack decision scored against a no-agent baseline, spikes with criteria fixed in advance, and diagrams at enterprise, system and workflow level, with a gate before anything is called final. Start: `/qz-aidlc:qz architect <system>`. Demos and proofs of concept from starters: `/qz-aidlc:qz demo <prospect>`.
+- **Agent developers**: a working project on Claude Agent SDK, LangGraph, AWS Strands with Kiro, Microsoft Agent Framework or Go, with an approval gate, limits, tracing, a gold set and CI from the first commit. Start: `/qz-aidlc:qz build <stack>`. Then `/qz-aidlc:qz eval` and `/qz-aidlc:qz audit`.
+- **Test engineers**: cases designed from the story with boundary, pairwise, decision-table and state techniques, checked for coverage, exported to Xray, Gherkin or Playwright after approval; UI scenarios run in a browser with a screenshot per step, a video and an evidence page; web quality measured on a phone profile. Start: `/qz-aidlc:qz test <JIRA-KEY>`, or `/qz-aidlc:qz test <page>` for a page on its own.
+- **Designers and front-end engineers**: a direction agreed before any CSS, then the rendered page measured at four widths (contrast, type, focus, targets, overflow, motion, the look-alike patterns of generated pages), an independent critique, and named fix passes. Start: `/qz-aidlc:qz-design <page or folder>`.
+- **Anyone presenting**: audience, decision and minutes first; titles that make the argument when read in order; story and slide-build checks; a rehearsal against the hardest person in the room; meeting preparation. Start: `/qz-aidlc:qz-deck <audience and decision>`, or hand it a `.pptx` to review.
+- **Everyone, on a laptop**: work is kept in one place, `D:\\New_Projects\\<Project>` unless you set another, with `code`, `docs`, `ppts`, `guides` and `architecture` folders and an `index.html` that links everything. Start: `/qz-aidlc:qz-project <name>`. Every command on one page: `/qz-aidlc:qz-help`.
+- **Anyone reading or changing code**: a local code graph answers "how does this work", "who calls this" and "what does this pull request touch" in one call, and a GitHub Actions job can post that report on every pull request.
+- **Leaders**: every run has a report card: time and tokens per stage, gates, guard events and the five AI-DLC measures, labelled by how each number was obtained.
+- **Quick tour**: `/qz-aidlc:qz-setup doctor` shows what is ready in this session (laptop or web).

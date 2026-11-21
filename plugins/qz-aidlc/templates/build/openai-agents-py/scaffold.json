@@ -1,0 +1,40 @@
+{
+  "title": "OpenAI Agents SDK (Python)",
+  "summary": "An Agent with function tools, needs_approval on the refund, a saved RunState that resumes when the person answers, turn and token limits, OpenTelemetry. The SDK's own trace upload to OpenAI is off.",
+  "verified": "RUN: the scaffold's 12 tests and its gold set (11 of 11) ran here against the offline stub with openai-agents 0.25.0, including the approval interruption, a declined refund and a resume from saved state; the project audit reads READY. Not run against a live model here.",
+  "stack_line": "An OpenAI Agents SDK agent in Python (openai-agents 0.25).",
+  "policy": "agent/policy.py",
+  "agent_dir": "agent/",
+  "adapter": [
+    "uv",
+    "run",
+    "--quiet",
+    "python",
+    "evals/adapter.py"
+  ],
+  "pass_env": [
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "AGENT_MODEL",
+    "AGENT_OPENAI_TRACING"
+  ],
+  "secret_env": [
+    "OPENAI_API_KEY"
+  ],
+  "test_cmd": "uv run -m pytest -q tests",
+  "run_cmd": "uv run -m agent.app \"Where is my order ORD-1001?\"",
+  "setup_steps": [
+    "- uses: astral-sh/setup-uv@v6",
+    "- run: uv sync --locked"
+  ],
+  "live": "Set OPENAI_API_KEY (OPENAI_BASE_URL for a compatible gateway) and AGENT_MODE=live. AGENT_MODEL picks the model.",
+  "next": [
+    "Replace the two tool bodies in agent/tools.py with calls to your systems.",
+    "Store result[\"state\"] while a refund waits (it holds the conversation: treat it like one) and call resume() when the person answers.",
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+  ],
+  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "agent/guardrails.py"], "marking": ["every result carries ai_generated", "agent/guardrails.py"]},
+  "vendors": [],
+  "open_line": "Live runs default to an open-weight model on your own machine (qwen3:8b on Ollama, Apache-2.0); set AGENT_MODEL to an OpenAI model to use OpenAI.",
+  "container_check": "docker run --rm --network none app:ci"
+}

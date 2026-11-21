@@ -1,0 +1,19 @@
+{
+  "title": "Go agent on the Anthropic API",
+  "summary": "A hand-written tool loop on anthropic-sdk-go behind a small Model interface, an approval gate before side-effecting tools, a turn limit, and OpenTelemetry (the SDK emits a span per request).",
+  "verified": "RUN: go vet and go test passed here and the gold set ran against the offline stub with Go 1.26 and anthropic-sdk-go 1.84.0. The live Messages API path compiled against the SDK; no live model call was made here.",
+  "stack_line": "A Go agent on the Anthropic API (anthropic-sdk-go 1.84). There is no official Claude Agent SDK for Go, so the loop is explicit.",
+  "policy": "internal/agent/policy.go", "agent_dir": "internal/agent/",
+  "adapter": ["go", "run", "./cmd/evaladapter"],
+  "pass_env": ["ANTHROPIC_API_KEY", "AGENT_MODEL"],
+  "secret_env": ["ANTHROPIC_API_KEY"],
+  "test_cmd": "go test ./...",
+  "run_cmd": "go run ./cmd/agent \"Where is my order ORD-1001?\"",
+  "setup_steps": ["- uses: actions/setup-go@v5\n        with:\n          go-version-file: go.mod", "- run: go vet ./..."],
+  "live": "Set ANTHROPIC_API_KEY and AGENT_MODE=live.",
+  "next": ["Replace the two Run bodies in internal/agent/tools.go with calls to your systems.", "Replace agent.Fixed with an Approver that asks a real person and persists the waiting call.", "For long-running or multi-step work, put the loop in a durable workflow engine (Temporal) so a restart resumes instead of repeating.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."],
+  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "internal/agent/guardrails.go"], "marking": ["every result carries ai_generated", "internal/agent/agent.go"]},
+  "vendors": ["anthropic"],
+  "open_line": "Anthropic is this stack's model by choice, recorded in `.qz/practices.json`.",
+  "container_check": "docker build --target gold -t app:gold . && docker run --rm --network none app:ci"
+}

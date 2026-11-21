@@ -1,0 +1,59 @@
+{"prompt": "Draft a status update email to the CEO for the refund project", "route": "email-status"}
+{"prompt": "send the weekly status mail to my lead", "route": "email-status"}
+{"prompt": "quick status note for the delivery head about the migration", "route": "email-status"}
+{"prompt": "Make the MoM for today's sprint review with the PMO", "route": "email-mom"}
+{"prompt": "write minutes of the meeting we just had with the client", "route": "email-mom"}
+{"prompt": "Write a detailed status report for the delivery head", "route": "email-detailed"}
+{"prompt": "monthly report for the director on project Atlas", "route": "email-detailed"}
+{"prompt": "Create a technical architecture deck for the payments platform", "route": "deck-arch-tech"}
+{"prompt": "detailed solution architecture slides for the review board", "route": "deck-arch-tech"}
+{"prompt": "Prepare an architecture deck with timeline and resource estimate for Acme", "route": "deck-arch-estimate"}
+{"prompt": "estimate and staffing slides for the insurance portal", "route": "deck-arch-estimate"}
+{"prompt": "Create a deck for the demo on Friday", "route": "deck-demo"}
+{"prompt": "pitch deck for a new insurance prospect", "route": "deck-pitch"}
+{"prompt": "proposal presentation for the retail client", "route": "deck-pitch"}
+{"prompt": "status deck for the steerco", "route": "deck-status"}
+{"prompt": "Plan workbook with Gantt and RAID log for a 10 week project", "route": "plan-workbook"}
+{"prompt": "build a resource plan in excel for the next quarter", "route": "plan-workbook"}
+{"prompt": "update the tracker with this week's progress", "route": "plan-status"}
+{"prompt": "how many engineers and weeks for this scope?", "route": "estimate"}
+{"prompt": "give me a t-shirt sizing for these features", "route": "estimate"}
+{"prompt": "Build a login page and signup API with tests", "route": "fullstack-build"}
+{"prompt": "implement a CRUD service for vendors with a React screen", "route": "fullstack-build"}
+{"prompt": "The checkout fails intermittently in production with a timeout", "route": "bugfix"}
+{"prompt": "this test is failing after the upgrade, here is the stack trace", "route": "bugfix"}
+{"prompt": "refactor the billing module", "route": "refactor"}
+{"prompt": "are we ready to merge? run all the checks", "route": "ship"}
+{"prompt": "where is the refund amount calculated?", "route": "code-find"}
+{"prompt": "how does the token refresh work in this repo", "route": "code-find"}
+{"prompt": "Review this PR before I merge", "route": "review"}
+{"prompt": "write unit tests for the parser", "route": "tests"}
+{"prompt": "e2e test for the onboarding flow with playwright", "route": "ui-test"}
+{"prompt": "threat model for the public API", "route": "security"}
+{"prompt": "which database should we use for audit logs", "route": "architecture"}
+{"prompt": "animated architecture gif for the tour", "route": "motion"}
+{"prompt": "how many orders per region last month from the sales database", "route": "data"}
+{"prompt": "what does our policy on data retention say?", "route": "knowledge"}
+{"prompt": "ingest our confluence space into the knowledge fabric", "route": "ingest"}
+{"prompt": "Pick up NW-214 and implement it", "route": "story"}
+{"prompt": "Draft a proposal for the RFP from Contoso", "route": "bid"}
+{"prompt": "make a clickable prototype for the field app", "route": "demo-app"}
+{"prompt": "Push this to a new repo on GitHub", "route": "publish"}
+{"prompt": "open a pull request for this branch", "route": "publish"}
+{"prompt": "set up the qz studio on my laptop", "route": "setup"}
+{"prompt": "how much usage do I have left?", "route": "budget"}
+{"prompt": "which model should I use for this?", "route": "budget"}
+{"prompt": "hello", "route": null}
+{"prompt": "thanks, that looks good", "route": null}
+{"prompt": "fix a typo in the README", "route": null}
+{"prompt": "Review the design doc for webhooks with fresh eyes before we build it", "route": "spec-review"}
+{"prompt": "can you critique docs/designs/retries.md, is the spec ready to implement", "route": "spec-review"}
+{"prompt": "Write a technical design for the export feature", "route": "spec-draft"}
+{"prompt": "check if our design docs still match the code", "route": "spec-drift"}
+{"prompt": "undo the changes you made in the last turn", "route": "undo"}
+{"prompt": "keep going until the tests pass", "route": "goal"}
+{"prompt": "Write a technical design for partial refunds, then review it with fresh eyes", "route": "spec-draft"}
+{"prompt": "Build a vectorless RAG chatbot over our HR policies", "route": "rag"}
+{"prompt": "We need a knowledge retrieval chatbot for the employee handbook, no vector database", "route": "rag"}
+{"prompt": "Make a chatbot app that answers questions from our PDF manuals", "route": "rag"}
+{"prompt": "Start the live RAG demo from the Jira stories", "route": "rag"}

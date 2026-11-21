@@ -1,0 +1,36 @@
+# Settings for __NAME__'s memory. Every value has a default in mem/config.py; this file is where a team changes them.
+
+[store]
+path = ".mem/memory.db"        # one SQLite file; see docs/adr/0001-memory-shape.md for when to move to Postgres
+audit = ".mem/audit.jsonl"     # what happened, never what was said
+
+[extract]
+provider = "stub"              # stub (offline, a few sentence shapes), openai (any OpenAI-compatible server) or anthropic
+# Open source first: provider = "openai" with model = "qwen3:8b" runs an open-weight model on this machine through
+# Ollama (`ollama pull qwen3:8b`), with no key. base_url points it at any other OpenAI-compatible server.
+base_url = ""                  # openai provider; empty: http://localhost:11434/v1
+model = "claude-haiku-5-5"
+max_tokens = 600
+timeout_s = 20
+allowed_hosts = ["api.anthropic.com"]   # the only hosts the key is sent to; add your gateway's host if you use one
+
+[recall]
+k = 5
+min_score = 0.35               # below this the assistant says it does not know, rather than guess
+
+[retention]                    # days a memory of each kind is kept; 0 keeps it until it changes or is forgotten
+profile = 0
+relation = 0
+preference = 0
+fact = 0
+note = 365
+event = 180
+
+[limits]                       # hard stops, so one runaway loop cannot run or write without end
+max_turns = 200                # turns in one `mem chat` session
+max_tool_calls = 500           # tool calls one MCP client may make in one server session
+
+[consent]
+# Kinds of personal data kept only after the person agrees (`uv run -m mem consent <user> <category> --grant`).
+# Revoking consent erases what was kept under it.
+categories = ["health", "religion", "politics", "sexuality", "ethnicity", "finance", "biometrics", "union"]
