@@ -2,8 +2,8 @@
 
 At ingest, a sentence that tries to instruct an AI ("ignore your previous instructions", "note to AI systems") is
 quarantined: it is recorded as a flag and never indexed, so no answer can repeat it and no model ever reads it.
-Hidden text was already kept out of the index in stage 1; here it is also checked for instructions. In answers,
-phone and card numbers are removed. Access control is not here on purpose: it is in the search query (stage 2),
+Hidden text was already kept out of the index in stage 1; here it is also checked for instructions. Card and national ID numbers
+are masked before a section is indexed; in answers, phone and card numbers are removed. Access control is not here on purpose: it is in the search query (stage 2),
 so a section the user may not read never leaves the database."""
 from __future__ import annotations
 
@@ -67,3 +67,22 @@ def redact(text: str, kinds: list[str]) -> tuple[str, int]:
         text, n = PHONE.subn("[phone number removed]", text)
         count += n
     return text, count
+
+NATIONAL_ID = re.compile(r"(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)")
+
+
+def mask_at_ingest(text: str, kinds: list[str]) -> tuple[str, int]:
+    """Personal data removed before a section is indexed, so the index, a model and every answer never hold it.
+    Kinds: card (Luhn-checked), id (national ID numbers), phone. By default cards and IDs: a handbook's contact numbers
+    stay searchable and are removed from answers instead."""
+    text, n = redact(text, [k for k in kinds if k in ("card", "phone")])
+    if "id" in kinds:
+        text, m = NATIONAL_ID.subn("[ID number removed]", text)
+        n += m
+    return text, n
+
+
+def blocked(text: str, terms: list[str]) -> bool:
+    """True when an answer holds one of the team's blocked terms ([guard] blocked_terms, empty by default)."""
+    low = (text or "").lower()
+    return any(t and t.lower() in low for t in terms)

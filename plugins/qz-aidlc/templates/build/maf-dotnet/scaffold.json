@@ -14,5 +14,6 @@
   "next": ["Replace the two method bodies in src/Agent/Tools.cs with calls to your systems.", "Persist the AgentSession so a waiting approval survives a restart, and route the approval to a real person.", "For multi-agent or long-running work, move to Agent Framework workflows; keep the same tools and approval wrappers.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."],
   "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "src/Agent/Guardrails.cs"], "marking": ["every result carries ai_generated", "src/Agent/OrderSupport.cs"]},
   "vendors": ["anthropic"],
-  "open_line": "Anthropic is the model by choice, recorded in `.qz/practices.json`; Microsoft Agent Framework takes any IChatClient, so OllamaSharp swaps in an open-weight model."
+  "open_line": "Anthropic is the model by choice, recorded in `.qz/practices.json`; Microsoft Agent Framework takes any IChatClient, so OllamaSharp swaps in an open-weight model.",
+  "container_check": "docker build --target gold -t app:gold . && docker run --rm --network none app:ci"
 }

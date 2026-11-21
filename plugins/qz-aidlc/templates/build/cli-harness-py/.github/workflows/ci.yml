@@ -55,3 +55,12 @@ jobs:
           path: |
             evals/results/report.html
             .qz/outputs/project-audit/audit.html
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t app:ci .
+      - name: The gold set inside the container (offline, no key)
+        run: docker run --rm --network none app:ci

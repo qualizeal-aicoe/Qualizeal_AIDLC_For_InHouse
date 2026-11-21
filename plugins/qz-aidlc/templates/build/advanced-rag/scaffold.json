@@ -1,7 +1,7 @@
 {
   "title": "Hybrid RAG knowledge assistant (Python)",
   "summary": "BM25 and dense vectors over only what the asker may read, fused by reciprocal rank and reranked by a cross-encoder (CPU, ONNX, no vector database); cited answers and refusals, a trace of every answer, portable knowledge cores, and a gate against BM25 alone, and web pages fetched into the corpus under an allow-list.",
-  "verified": "RUN: the 59 tests (the crawler's against a local web server) on Python 3.11, 3.12 and 3.13 with the offline embedder and reranker, and the 40 golden questions with bge-small-en-v1.5 and ms-marco-MiniLM-L-6-v2 on a Linux CPU: hybrid 38 of 40 against 35 of 40 for BM25 alone, refusals 5 of 5, 0 safety violations. NOT RUN: a model writing the answers.",
+  "verified": "RUN: the 66 tests (the crawler's against a local web server) on Python 3.11, 3.12 and 3.13 with the offline embedder and reranker, and the 40 golden questions with bge-small-en-v1.5 and ms-marco-MiniLM-L-6-v2 on a Linux CPU: hybrid 38 of 40 against 35 of 40 for BM25 alone, refusals 5 of 5, 0 safety violations. NOT RUN: a model writing the answers.",
   "stack_line": "A hybrid retrieval-augmented assistant in Python 3.11+ (SQLite FTS5, NumPy, fastembed ONNX models).",
   "policy": "arag.toml",
   "agent_dir": "arag/",
@@ -17,5 +17,7 @@
   ],
   "ai_act": {"purpose": "Answers people's questions from the team's documents and cites the sources it used.", "people": true, "generates": true, "notice": ["Answers are written by AI from your documents. Check the cited source before you act on one.", "arag/static/index.html"], "marking": ["every answer carries ai_generated", "arag/answer.py"]},
   "vendors": [],
-  "open_line": "Embeddings and the reranker are open models that run on your machine; answers can come from an open-weight model through any OpenAI-compatible server."
+  "open_line": "Embeddings and the reranker are open models that run on your machine; answers can come from an open-weight model through any OpenAI-compatible server.",
+  "cost_line": "the system block cached on every model call; outline navigation on its own `navigate_model` (a small model is enough) and answers on `answer_model`; repeat questions answered from a cache kept per reader's access and index version; embeddings and reranking on the CPU, so retrieval costs no tokens; at most five sections reach the model.",
+  "container_check": "docker run --rm --network none app:ci uv run -m arag eval --gate"
 }

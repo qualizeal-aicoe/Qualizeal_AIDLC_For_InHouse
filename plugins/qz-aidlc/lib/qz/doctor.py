@@ -282,6 +282,14 @@ def check_harness(rep: Report, proj: Path) -> None:
     except Exception as e:
         rep.add("INFO", f"context footprint not measured ({type(e).__name__})")
     rep.add("INFO", "Jira and Confluence: in Claude Code, run /mcp and sign in to Atlassian once")
+    try:
+        from .auditkit import standards
+        st = standards.run(studio=True)
+        parts = " · ".join(f"{v['title']} {v['result']['verdict'].lower()}" for v in st["standards"].values())
+        rep.add("PASS" if st["ok"] else "WARN", f"QualiZeal standards in the Studio itself: {st['verdict'].lower()} ({parts})",
+                "run `qz standards --studio` to see which standard failed and why")
+    except Exception as e:
+        rep.add("INFO", f"QualiZeal standards not checked ({type(e).__name__})")
 
 
 def fix(rep_missing: list[str]) -> None:

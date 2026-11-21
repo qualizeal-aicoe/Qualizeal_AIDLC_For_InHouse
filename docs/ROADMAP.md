@@ -2,8 +2,9 @@
 
 1.0.0 covers the stacks our projects use today: LangGraph, the OpenAI Agents SDK, the Claude Agent SDK, MCP (Model
 Context Protocol) servers, two RAG (retrieval-augmented generation) kits with web pages, agent memory, text-to-SQL
-and a governed command line for agents to drive a team's tools. This page says what 1.1 adds, why, and what "done"
-means for each. It is a plan, not a promise: each item ships only when its tests and gold set pass in CI on Windows
+and a governed command line for agents to drive a team's tools. Every starter meets the QualiZeal standards (the six
+guardrails, the EU AI Act, open source first and the cost levers) and ships in a container that runs its own gold
+set. This page says what 1.1 adds, why, and what "done" means for each. It is a plan, not a promise: each item ships only when its tests and gold set pass in CI on Windows
 and Linux, like everything in 1.0.0.
 
 ## Why these
@@ -30,10 +31,17 @@ CrewAI rather than later.
 | A front end for agents: CopilotKit | A React page that shows an agent's steps, its approval requests and its answers, for the demo lane and for client prototypes | The approval flow works end to end in a browser test; nothing is rendered as HTML from model or tool output |
 | More retrieval and optimisation: LlamaIndex, Agno, DSPy | LlamaIndex as an alternative ingest and retrieval path in the hybrid kit; an Agno starter; DSPy to tune a prompt against a gold set | Each is measured against what 1.0.0 already does on the same gold set; it ships only if it is at least as good, or it ships as an option with the numbers beside it |
 | Team decisions across branches | When an agent edits a function a teammate's open branch also changes, say so right after the edit and whether the two clash; a team view of the decisions recorded and reused across the CoE's repositories | Two clones in a test see each other's unmerged change to the same function and nothing else; the team view runs on files and git alone, with no server and no data leaving the machines |
-| RAG kits: the last basics | Personal data removed when a document is indexed, not only from answers, so a section sent to a hosted model carries none; near-duplicate sections dropped before reranking; a warning when the corpus changed after the last ingest; a thumbs up or down with a note on each answer, kept locally, and a command that turns them into gold candidates | Gold cases for each: a card number in a document reaches neither the index nor the model; two copies of a section come back once; an edited file makes the next question warn; a thumbs-down becomes a gold case only with personal data removed and a person's yes |
-| Containers and staged release | A container file and health check for every starter, built in CI; a release recipe for shadow, a small share of traffic, then everyone, with the prompt and model versioned so rollback is a switch | Every image builds and passes its gold set inside the container on Linux; the rollback in the recipe is run in a test |
-| Output checks in the guards | A check on what leaves (toxic or off-policy text) beside the personal-data check, off by default | Its safety gold cases pass in every starter that turns it on; a blocked answer says why and is recorded |
 | Cursor and Codex | The lanes and rules for Cursor and the Codex CLI, next to Claude Code | The same starters scaffold and pass their tests from each tool; the guard's rules apply wherever the tool allows hooks, and the README says where it does not |
+
+## Brought forward into 1.0.0
+
+These three were planned for 1.1 and shipped in 1.0.0 instead.
+
+| Item | What shipped | How it is checked |
+|---|---|---|
+| RAG kits: the last basics | Both kits mask card and ID numbers when a document is indexed, so neither the index nor a hosted model ever holds them; near-duplicate sections are dropped before reranking; an answer warns when the corpus changed after the last ingest; the chat page takes a thumbs up or down with a note, kept on the machine with personal data masked, and `feedback --gold` turns thumbs-downs into gold candidates, written only with `--yes` | Tests in both kits for each behaviour; the gates are unchanged (vectorless 35, 39 and 40 of 40; hybrid 38 of 40) |
+| Containers and staged release | A container file, a `.dockerignore` that keeps keys, rates and run ledgers out, and a health check for all 13 starters; each project's CI builds the image and runs its gold set (or the RAG gate) inside it with no network; `docs/release.md` in every project: one image per release tag, shadow, a small share, then everyone, the prompt and limits inside the image and the model named in the release notes, and a rollback that points back at the previous tag | Structural tests for every starter in the Studio's suite; the Studio's CI builds all 13 images on a release branch, a tag or when asked, and runs each check and health check with no network. The rollback is a documented switch: no test runs it, because it depends on where the team deploys |
+| Output checks in the guards | The output filter in every agent starter masks card and ID numbers and withholds a reply that holds a term on the team's blocked list (empty, so off, by default); the RAG kits do the same with `blocked_terms`. A withheld reply is a fixed text no model wrote, marked `ai_generated: false`, and the finding is recorded | Tests in each starter for the mask and the withheld reply. The check is pattern-based: a classifier for toxic text can sit behind the same call, and is not shipped |
 
 ## Not in 1.1
 

@@ -52,6 +52,23 @@ document.getElementById("f").addEventListener("submit", async (e) => {
       n.textContent = "Personal data was removed from this answer.";
       out.appendChild(n);
     }
+    if (!a.refused || a.text) {
+      const bar = document.createElement("div");
+      bar.className = "note";
+      for (const [label, verdict] of [["Helpful", "up"], ["Not helpful", "down"]]) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = label;
+        b.addEventListener("click", async () => {
+          const note = verdict === "down" ? (window.prompt("What was wrong with this answer? (optional)") || "") : "";
+          await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ verdict, note, question, answer: a.text, as: who.value }) });
+          bar.textContent = "Thanks: kept on this computer, to make the next answers better.";
+        });
+        bar.appendChild(b);
+      }
+      out.appendChild(bar);
+    }
     if ((a.flags || []).includes("answered from the cache")) {
       const n = document.createElement("div");
       n.className = "note";

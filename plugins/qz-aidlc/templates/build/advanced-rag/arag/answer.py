@@ -3,6 +3,7 @@ and refuse when those sections do not cover the question. No model is needed. Wi
 writes the answer from the same sections, and its citations are checked before anything is shown."""
 from __future__ import annotations
 
+import calendar
 import json
 import math
 import re
@@ -131,6 +132,35 @@ def generated(llm, cfg, question: str, hits: list[S.Hit]) -> tuple[str, list[dic
     return text, [citation(n, given[sid]) for sid, n in order.items()], ""
 
 
+WITHHELD = "I can't send that answer. A person will follow up."
+
+
+def stale(con: sqlite3.Connection, cfg) -> bool:
+    """True when the manifest or a listed document changed after the index was built: the answer may be out of date."""
+    row = con.execute("SELECT value FROM meta WHERE key = 'built_at'").fetchone()
+    if not row:
+        return False
+    try:
+        built = calendar.timegm(time.strptime(row[0], "%Y-%m-%dT%H:%M:%SZ"))
+        manifest = cfg.path("corpus", "manifest")
+        listed = json.loads(manifest.read_text(encoding="utf-8")).get("documents", {})
+    except (OSError, ValueError):
+        return False
+    files = [manifest] + [cfg.path("corpus", "path") / rel for rel in listed]
+    return any(f.is_file() and f.stat().st_mtime > built + 1 for f in files)
+
+
+def _checks(con: sqlite3.Connection, cfg, ans: "Answer") -> None:
+    """After an answer is written: warn when the documents changed after the last ingest, and withhold an answer that
+    holds one of the team's blocked terms ([guard] blocked_terms; off until the team lists some)."""
+    if stale(con, cfg):
+        ans.flags.append("the documents changed after the last ingest: run ingest")
+    terms = cfg["guard"].get("blocked_terms") or []
+    if guard is not None and terms and not ans.refused and guard.blocked(ans.text, terms):
+        ans.text, ans.refused, ans.reason, ans.ai_generated = WITHHELD, True, "a blocked term", False
+        ans.flags.append("withheld: the answer held a blocked term")
+
+
 def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str | None = None, llm=None) -> Answer:
     start = time.perf_counter()
     strategy = strategy or cfg["answer"]["strategy"]
@@ -147,6 +177,9 @@ def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str
         hits = tree.navigate(con, cfg, question, groups, cs, llm)
     else:
         hits = S.search(con, cfg, question, groups, cs=cs)
+    hits, dupes = S.dedupe(hits)
+    if dupes:
+        flags.append(f"{dupes} near-duplicate section{'s' if dupes > 1 else ''} dropped")
     cov = S.coverage(hits, cs)
     by_model = False
     text, cites, reason = "", [], ""
@@ -168,6 +201,7 @@ def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str
     ans.ai_generated = by_model and bool(text) and not any(f.endswith("extractive answer used") for f in flags)
     if guard is not None and text:
         ans.text, ans.redactions = guard.redact(ans.text, cfg["guard"]["redact"])
+    _checks(con, cfg, ans)
     ans.latency_ms = math.ceil((time.perf_counter() - start) * 1000)
     if audit is not None:
         audit.record(cfg, ans)
@@ -180,12 +214,18 @@ def _hybrid(con, cfg, question: str, user: str, groups: list[str], cs: list[S.Co
     from . import explain, hybrid
     trace = explain.Trace(cfg, question, user)
     trace.add("grounding", concepts=[c.word for c in cs])
-    hits = hybrid.search(con, cfg, question, groups, cs, trace)
+    stats: dict = {}
+    hits = hybrid.search(con, cfg, question, groups, cs, trace, stats)
     ok, why = hybrid.sufficient(hits, cfg, cs)
     text, cites, reason, flags, used = "", [], "" if ok else why, [], None
+    by_model = False
+    if stats.get("near_duplicates"):
+        n = stats["near_duplicates"]
+        flags.append(f"{n} near-duplicate section{'s' if n > 1 else ''} dropped")
     if ok and llm is not None:
         before = dict(getattr(llm, "usage", {}) or {})
         text, cites, reason = generated(llm, cfg, question, hits)
+        by_model = bool(text)
         after = dict(getattr(llm, "usage", {}) or {})
         if "input_tokens" in after:
             used = {"input_tokens": after["input_tokens"] - before.get("input_tokens", 0), "output_tokens": after["output_tokens"] - before.get("output_tokens", 0),
@@ -198,8 +238,10 @@ def _hybrid(con, cfg, question: str, user: str, groups: list[str], cs: list[S.Co
         text, cites = extractive(question, hits, cs, int(cfg["answer"]["max_sentences"]), hybrid.pick(question, hits, cfg, cs, int(cfg["answer"]["max_sentences"])))
         reason = "" if text else "no sentence in the best sections answers the question"
     ans = Answer(question, user, text or REFUSAL, not text, reason, "hybrid", cites, [h.node_id for h in hits], flags)
+    ans.ai_generated = by_model and bool(text) and not any(f.endswith("extractive answer used") for f in flags)
     if guard is not None and text:
         ans.text, ans.redactions = guard.redact(ans.text, cfg["guard"]["redact"])
+    _checks(con, cfg, ans)
     trace.add("synthesis", refused=ans.refused, reason=ans.reason, cites=[c["node_id"] for c in ans.citations], **(used or {}))
     ans.trace = trace.save()
     ans.latency_ms = math.ceil((time.perf_counter() - start) * 1000)

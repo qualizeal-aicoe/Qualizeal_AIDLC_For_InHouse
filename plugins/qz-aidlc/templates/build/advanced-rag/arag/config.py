@@ -11,7 +11,7 @@ DEFAULTS: dict = {
     "index": {"path": ".arag/index.db"},
     "search": {"k": 5, "weights": [4.0, 2.0, 1.0], "synonyms": "", "include_superseded": False},
     "answer": {"strategy": "bm25", "min_coverage": 0.6, "max_sentences": 3},
-    "guard": {"redact": ["phone", "card"]},
+    "guard": {"redact": ["phone", "card"], "mask_at_ingest": ["card", "id"], "blocked_terms": []},
     "llm": {"provider": "none", "navigate_model": "claude-haiku-5-5", "answer_model": "claude-sonnet-5-5",
             "max_tokens": 700, "timeout_s": 30},
     "users": {"employee": ["all"], "manager": ["all", "managers"], "hr": ["all", "hr", "managers"],

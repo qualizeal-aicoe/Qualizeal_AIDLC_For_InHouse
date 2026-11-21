@@ -79,6 +79,7 @@ def new(stack: str, dest: Path, name: str, module: str | None = None, kit: bool 
         "__AGENT_DIR__": meta["agent_dir"], "__TEST_CMD__": meta["test_cmd"], "__RUN_CMD__": meta["run_cmd"], "__ADAPTER__": json.dumps(meta.get("adapter", [])),
         "__PASS_ENV__": json.dumps(meta.get("pass_env", [])), "__SETUP_STEPS__": "\n".join("      " + s for s in meta.get("setup_steps", [])),
         "__SECRET_ENV__": "\n".join(f"          {k}: ${{{{ secrets.{k} }}}}" for k in meta.get("secret_env", [])),
+        "__CONTAINER_CHECK__": meta.get("container_check", "docker run --rm --network none app:ci"),
     }
     for p in dest.rglob("*"):
         if p.is_file() and (p.suffix in TEXT or p.name in ("CODEOWNERS", ".gitignore")) and p.name not in ("go.sum", "packages.lock.json"):
@@ -90,6 +91,8 @@ def new(stack: str, dest: Path, name: str, module: str | None = None, kit: bool 
                 p.write_text(n, encoding="utf-8")
     if not meta.get("own_readme"):
         (dest / "README.md").write_text(readme(name, meta), encoding="utf-8")
+    else:
+        add_house_sections(dest / "README.md", name, meta)
     standards(dest, name, meta)
     vend = None
     if kit and meta.get("kit", True):
@@ -136,6 +139,11 @@ def standards(dest: Path, name: str, meta: dict) -> list[str]:
                     notice=tuple(ai.get("notice") or ("", "")), marking=tuple(ai.get("marking") or ("", "")))
     r["literacy"] = "the README, the runbook and CLAUDE.md say what the system does, where it stops and who approves what"
     written = aiact.write_docs(dest, r)
+    rel = dest / "docs" / "release.md"
+    if not rel.exists():
+        rel.parent.mkdir(parents=True, exist_ok=True)
+        rel.write_text(release_recipe(name, slug(name), meta), encoding="utf-8")
+        written.append("docs/release.md")
     if meta.get("vendors"):
         f = dest / ".qz" / "practices.json"
         cur = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
@@ -145,6 +153,95 @@ def standards(dest: Path, name: str, meta: dict) -> list[str]:
         f.write_text(json.dumps(cur, indent=2) + "\n", encoding="utf-8")
         written.append(".qz/practices.json")
     return written
+
+
+def release_recipe(name: str, sl: str, m: dict) -> str:
+    """How a release moves: one image per tag, three steps to everyone, and a rollback that is one switch."""
+    return f"""# Release: {name}
+
+Semantic-release tags each squash-merge to master (`vMAJOR.MINOR.PATCH`, from the squash commit's type). The image is
+built once per tag, checked in CI (`{m.get('container_check', 'docker run --rm --network none app:ci')}`), and never rebuilt:
+`<registry>/{sl}:<tag>`.
+
+| Environment | How a release gets there | Who |
+|---|---|---|
+| dev0 | deploys automatically when a release is tagged | the pipeline |
+| qa0 | a change request | a person |
+| prod0 | a change request, then the three steps below | a person |
+
+## Three steps to everyone
+
+1. **Shadow.** The new tag runs beside the live one on copies of real requests; its replies are compared and never
+   sent. Gate: the live gold set passes, no new kind of guard finding, tokens per run within a fifth of the live tag.
+2. **A small share.** 5% of requests for a day, then 25%. Gate: errors and declined approvals no worse than the live
+   tag, and no serious incident (`docs/ai-act/incident-runbook.md`).
+3. **Everyone.**
+
+## What is versioned
+
+The code, the system prompt and the limits live in `{m.get('policy', 'the settings file')}`, so they ship inside the
+image. The model is set per environment (`AGENT_MODEL`, or the settings file's model) and written in the release notes
+beside the tag. A prompt or model change is a release like any other: the gold set runs first.
+
+## Rollback: one switch
+
+Point the environment back at the previous tag, with the model it ran:
+
+- Docker: `docker run ... <registry>/{sl}:<previous tag>`
+- Kubernetes: `kubectl rollout undo deployment/{sl}`
+- A managed runtime (AgentCore, a PaaS): redeploy the previous image tag.
+
+Nothing is rebuilt: the previous image is exactly what ran before. Record why in `docs/decisions/`.
+"""
+
+
+AGENT_COST = ("prompt caching on the fixed prefix, easy turns routed to `AGENT_MODEL_SMALL` when it is set, and capped "
+              "turns, tokens and output.")
+
+
+def house_sections(name: str, m: dict) -> str:
+    """The two sections every project's README carries: the QualiZeal standards and how its image is released."""
+    kit = m.get("kit", True)
+    qz = "python3 .claude/qz/scripts/qz.py" if kit else "qz"
+    lead = (f"CI checks every change against four standards; `{qz} standards` shows the scorecard here." if kit else
+            "Four standards apply to every change: the Studio's `qz standards` shows the scorecard, and the Deliver lane "
+            "runs it before a change is called done.")
+    ai = m.get("ai_act") or {}
+    marks = [x for x, on in (("`ai_notice` (show it before the first reply)", ai.get("people")),
+                             ("`ai_generated` (a machine-readable mark)", ai.get("generates"))) if on]
+    act = (f"Every result carries {' and '.join(marks)}." if marks else
+           "No person talks to it and it makes no content of its own, so Article 50 asks nothing of it; the record says why.")
+    check = m.get("container_check", "docker run --rm --network none app:ci")
+    staged = f" A staged project builds it from stage {m['stages']}, once every stage is in." if m.get("stages") else ""
+    return f"""## QualiZeal standards
+
+{lead}
+
+- **Six guardrails:** input filter, output filter, tool allowlist, human approval, step limits and sandboxed execution.
+- **EU AI Act:** the record in `docs/ai-act/` gives the risk class, the role and the obligations. {act} The class is a draft until a person confirms it: `{qz} aiact confirm --yes`.
+- **Open source first:** {m.get('open_line', 'open-source options first at every layer.')}
+- **Cost levers:** {m.get('cost_line', AGENT_COST)}
+
+## Container and release
+
+`docker build -t {slug(name)} .` builds the image.{staged} CI builds it on every push and runs `{check}`, with no network and no key.
+
+`docs/release.md` is the recipe: one image per release tag, shadow, a small share, then everyone, and a rollback that is one switch.
+
+"""
+
+
+def add_house_sections(path: Path, name: str, m: dict) -> None:
+    """A kit with its own README gets the same two sections, before its production notes."""
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+    if "## QualiZeal standards" in text:
+        return
+    block = house_sections(name, m)
+    at = text.find("\n## Before ")
+    text = text.rstrip("\n") + "\n\n" + block.rstrip("\n") + "\n" if at < 0 else text[:at + 1] + block + text[at + 1:]
+    path.write_text(text, encoding="utf-8")
 
 
 def readme(name: str, m: dict) -> str:
@@ -161,19 +258,7 @@ def readme(name: str, m: dict) -> str:
 - A gold set of 11 cases in `evals/gold.jsonl`: lookups, the approval gate, injection attempts and the input filter.
 - Tracing with OpenTelemetry, a CI workflow, a runbook and rules for coding agents (`CLAUDE.md`).
 
-## QualiZeal standards
-
-CI checks every change against four standards; `python3 .claude/qz/scripts/qz.py standards` shows the scorecard here.
-
-- **Six guardrails:** input filter, output filter, tool allowlist, human approval, step limits and sandboxed execution.
-- **EU AI Act:** the record in `docs/ai-act/` gives the risk class, the role and the obligations. Every result carries
-  `ai_notice` (show it before the first reply) and `ai_generated` (a machine-readable mark). The class is a draft until a
-  person confirms it: `python3 .claude/qz/scripts/qz.py aiact confirm --yes`.
-- **Open source first:** {m.get('open_line', 'open-source options first at every layer.')}
-- **Cost levers:** prompt caching on the fixed prefix, easy turns routed to `AGENT_MODEL_SMALL` when it is set, and
-  capped turns, tokens and output.
-
-## Run it
+{house_sections(name, m)}## Run it
 
 Offline: `{m['run_cmd']}`
 

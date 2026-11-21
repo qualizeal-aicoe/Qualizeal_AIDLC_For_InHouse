@@ -112,3 +112,16 @@ def search(con: sqlite3.Connection, cfg, question: str, groups: list[str], k: in
     for h in hits:
         h.covered = covered(con, h.rowid, cs)
     return hits
+
+def dedupe(hits: list[Hit], threshold: float = 0.9) -> tuple[list[Hit], int]:
+    """Near-duplicate sections (the same text in two documents, a copied page) come back once: the best-ranked copy is
+    kept. Sections whose words overlap by 90% or more count as the same."""
+    kept: list[Hit] = []
+    seen: list[set[str]] = []
+    for h in hits:
+        words = set(TOKEN.findall((h.text or "").lower()))
+        if words and any(len(words & s) / len(words | s) >= threshold for s in seen):
+            continue
+        kept.append(h)
+        seen.append(words)
+    return kept, len(hits) - len(kept)

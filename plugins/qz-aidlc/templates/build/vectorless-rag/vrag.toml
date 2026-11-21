@@ -21,6 +21,8 @@ cache = 256                         # repeat questions answered from memory by t
 
 [guard]
 redact = ["phone", "card"]          # personal data removed from answers (stage 4)
+mask_at_ingest = ["card", "id"]     # masked before a section is indexed: the index and any model never hold them
+blocked_terms = []                  # an answer holding one is withheld (an output check, off until the team lists terms)
 
 [llm]
 provider = "none"                   # none, stub (offline, scripted), anthropic (needs ANTHROPIC_API_KEY)

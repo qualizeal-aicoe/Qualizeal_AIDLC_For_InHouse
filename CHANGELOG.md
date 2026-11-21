@@ -12,7 +12,8 @@ way on every laptop and to be taught in a live session.
 
 - **The QualiZeal standards, one scorecard (`qz standards`).** Everything the Studio builds, and the Studio itself,
   meets four standards; every starter's CI fails without them and the scorecard lands on the pull request's checks
-  page. All 13 starters meet all four as they are created.
+  page. All 13 starters meet all four as they are created. Every run's report card shows the project's scorecard with
+  what is worth knowing (an unconfirmed classification, a deadline coming up), and the doctor shows the Studio's own.
 - **The six guardrails (`qz guardrails`).** Input filter, output filter, tool allowlist, human approval, step limits
   and sandboxed execution, each with the file and line that shows it. Agent starters refuse instruction-like input,
   mask card and ID numbers both ways and withhold blocked terms; a guard case joins every gold set (11 cases). A
@@ -41,6 +42,17 @@ way on every laptop and to be taught in a live session.
 - **A shared AI-DLC workspace (`/qz-aidlc:qz-setup team`, `qz aidlc check`).** One repository for the `aidlc/`
   records with the service repositories beside it, per-user cursors and runtime files ignored, records delivered by
   merge request, and a check that says where each output goes.
+- **A container for every starter, and a release recipe.** Each of the 13 starters ships a container file, a health
+  check and a `.dockerignore` that keeps keys, rates and run ledgers out of the image; the image runs as a non-root
+  user, and by default it runs the project's own gold set (the knowledge kits: their gate) with no network and no
+  key. Each project's CI builds the image and runs that check; the Studio's CI builds all 13 on a release branch.
+  `docs/release.md` in every project: one image per release tag, shadow, a small share, then everyone, the prompt and
+  limits inside the image, the model named beside the tag, and a rollback that is one switch.
+- **The knowledge kits' last basics.** Card and ID numbers are masked when a document is indexed, so neither the index
+  nor a hosted model holds them; near-duplicate sections are dropped before reranking; an answer warns when the
+  documents changed after the last ingest; the chat page takes a thumbs up or down with a note (kept on the machine,
+  personal data masked), and `feedback --gold --yes` turns thumbs-downs into gold candidates for a person to finish.
+  An answer holding a term on the team's `blocked_terms` list is withheld, like the agent starters' output filter.
 
 - **A bootstrap for every laptop.** `setup\bootstrap.cmd` on Windows, `sh setup/bootstrap.sh` on macOS and Linux. It
   installs Claude Code, uv and Python when they are missing, needs no administrator rights, adds the Studio to Claude

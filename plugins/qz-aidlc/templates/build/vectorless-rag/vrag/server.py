@@ -8,6 +8,7 @@ import dataclasses
 import json
 import re
 import threading
+import time
 from collections import OrderedDict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -50,6 +51,56 @@ class AnswerCache:
                 self.items.popitem(last=False)
 
 
+FEEDBACK_LOCK = threading.Lock()
+
+def _feedback_file(cfg) -> Path:
+    return cfg.path("index", "path").parent / "feedback.jsonl"
+
+
+def record_feedback(cfg, data: dict) -> dict:
+    """A thumbs up or down on one answer, with an optional note, kept on this machine only. Personal data is masked
+    before it is written, so the file can become gold cases without carrying any."""
+    verdict = str(data.get("verdict", ""))
+    user = str(data.get("as", ""))
+    if verdict not in ("up", "down") or user not in cfg["users"]:
+        raise ValueError("send {\"verdict\": \"up\" or \"down\", \"as\": a known user, \"question\", \"answer\", \"note\"}")
+    g = getattr(A, "guard", None)
+    clean = (lambda t: g.mask_at_ingest(g.redact(t, ["phone", "card"])[0], ["card", "id"])[0]) if g is not None else (lambda t: t)
+    row = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "as": user, "verdict": verdict,
+           "question": clean(str(data.get("question", ""))[:500]), "answer": clean(str(data.get("answer", ""))[:2000]),
+           "note": clean(str(data.get("note", ""))[:500])}
+    f = _feedback_file(cfg)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    with FEEDBACK_LOCK, f.open("a", encoding="utf-8") as out:
+        out.write(json.dumps(row) + "\n")
+    return row
+
+
+def feedback(cfg, gold: bool = False, yes: bool = False) -> dict:
+    """What people said about the answers. With gold, every thumbs-down becomes a gold candidate (the question, who
+    asked, the answer they rejected and their note) in evals/candidates.jsonl, written only with yes: a person then
+    fills in what the right answer cites before it joins the golden set."""
+    f = _feedback_file(cfg)
+    rows = [json.loads(line) for line in f.read_text(encoding="utf-8").splitlines() if line.strip()] if f.is_file() else []
+    out = {"up": sum(r["verdict"] == "up" for r in rows), "down": sum(r["verdict"] == "down" for r in rows), "candidates": [], "written": 0}
+    if gold:
+        target = cfg.path("eval", "golden").parent / "candidates.jsonl"
+        have = {json.loads(line)["question"] for line in target.read_text(encoding="utf-8").splitlines() if line.strip()} if target.is_file() else set()
+        seen = set(have)
+        for i, r in enumerate(rows):
+            if r["verdict"] == "down" and r["question"] and r["question"] not in seen:
+                seen.add(r["question"])
+                out["candidates"].append({"id": f"fb-{len(have) + len(out['candidates']) + 1:03d}", "type": "feedback", "as": r["as"],
+                                          "question": r["question"], "rejected_answer": r["answer"][:300], "note": r["note"], "expect": None})
+        if yes and out["candidates"]:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open("a", encoding="utf-8") as w:
+                for c in out["candidates"]:
+                    w.write(json.dumps(c) + "\n")
+            out["written"] = len(out["candidates"])
+    return out
+
+
 def make_handler(cfg, con, llm):
     cache = AnswerCache(int(cfg["answer"].get("cache", 256)))
 
@@ -84,13 +135,16 @@ def make_handler(cfg, con, llm):
                 self._json(404, {"error": "not found"})
 
         def do_POST(self):
-            if self.path != "/api/ask":
+            if self.path not in ("/api/ask", "/api/feedback"):
                 return self._json(404, {"error": "not found"})
             size = int(self.headers.get("Content-Length") or 0)
             if size <= 0 or size > MAX_BODY:
                 return self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE if size > MAX_BODY else 400, {"error": "bad request size"})
             try:
                 data = json.loads(self.rfile.read(size))
+                if self.path == "/api/feedback":
+                    record_feedback(cfg, data)
+                    return self._json(200, {"ok": True})
                 question = str(data.get("question", "")).strip()
                 user = str(data.get("as", "employee"))
             except (ValueError, AttributeError):

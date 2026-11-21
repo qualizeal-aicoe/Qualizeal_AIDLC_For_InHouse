@@ -41,13 +41,16 @@ def _withheld(con: sqlite3.Connection, cfg, cs: list[S.Concept], groups: list[st
     return sum(1 for r in rows if r[0] not in ok)
 
 
-def search(con: sqlite3.Connection, cfg, question: str, groups: list[str], cs: list[S.Concept], trace=None) -> list[S.Hit]:
+def search(con: sqlite3.Connection, cfg, question: str, groups: list[str], cs: list[S.Concept], trace=None,
+           stats: dict | None = None) -> list[S.Hit]:
     k, fetch = int(cfg["search"]["k"]), int(cfg["hybrid"]["fetch_k"])
     weights = [float(w) for w in cfg["hybrid"]["weights"]]
     sparse = S.search(con, cfg, question, groups, k=fetch, cs=cs)
     dense = vectors.search(con, cfg, embed.get(cfg), question, groups, fetch)
     fused = rrf([[h.rowid for h in sparse], [r for r, _ in dense]], weights, fetch)
-    hits = [_hit(con, rowid, s, cs) for rowid, s in fused]
+    hits, dupes = S.dedupe([_hit(con, rowid, s, cs) for rowid, s in fused])     # near-duplicates go before the reranker spends on them
+    if stats is not None:
+        stats["near_duplicates"] = dupes
     rr = rerank.get(cfg)
     if rr is not None and hits:
         scores = rr.score(question, [f"{h.doc_title} > {h.section}\n{h.text}" for h in hits])

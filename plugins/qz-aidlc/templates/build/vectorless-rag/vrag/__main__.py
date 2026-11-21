@@ -95,6 +95,9 @@ def main(argv: list[str] | None = None) -> int:
     w = sp.add_parser("crawl", help="fetch the web pages listed in web.toml into the corpus")
     w.add_argument("--prune", action="store_true", help="mark pages that are gone from the site as superseded")
     w.add_argument("--dry-run", action="store_true", help="say what would be fetched; fetch nothing")
+    fb = sp.add_parser("feedback", help="thumbs up and down from the chat page; --gold proposes gold candidates (--yes writes them)")
+    fb.add_argument("--gold", action="store_true")
+    fb.add_argument("--yes", action="store_true")
     v = sp.add_parser("serve", help="chat page and JSON API on this computer")
     v.add_argument("--port", type=int, default=8765)
     v.add_argument("--host", default="127.0.0.1")
@@ -165,6 +168,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "eval":
         ev = need("evaluate")
         return ev.main(cfg, args.strategy, provider(cfg, args.llm), args.metric, args.gate, args.json)
+    if args.cmd == "feedback":
+        r = need("server").feedback(cfg, args.gold, args.yes)
+        print(f"{r['up']} helpful, {r['down']} not helpful.")
+        for c in r["candidates"]:
+            print(f"  candidate {c['id']}: {c['question']}" + (f"  ({c['note']})" if c["note"] else ""))
+        if args.gold and r["candidates"] and not args.yes:
+            print("Nothing written. With --yes these go to evals/candidates.jsonl; a person adds what the right answer cites.")
+        elif r["written"]:
+            print(f"Wrote {r['written']} candidate(s) to evals/candidates.jsonl.")
+        return 0
     if args.cmd == "serve":
         return need("server").serve(cfg, args.host, args.port, provider(cfg, args.llm))
     return 2

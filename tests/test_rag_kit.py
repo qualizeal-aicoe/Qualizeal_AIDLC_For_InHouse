@@ -45,13 +45,13 @@ def test_a_checkpoint_plans_first_and_only_replaces_stage_files(tmp_path):
     assert (p / "README.md").read_text() == "# KB\n\nOur own notes.\n"
     assert json.loads((p / ".qz-build.json").read_text())["stage"] == 3
     out = run(p, "-m", "pytest", "-q", "tests")
-    assert out.returncode == 0 and "25 passed" in out.stdout, out.stdout + out.stderr
+    assert out.returncode == 0 and "27 passed" in out.stdout, out.stdout + out.stderr
 
 
 def test_the_full_kit_passes_its_tests_and_its_gate(tmp_path):
     p = Path(build.new("vectorless-rag", tmp_path / "kb", "KB")["dest"])
     out = run(p, "-m", "pytest", "-q", "tests")
-    assert out.returncode == 0 and "57 passed" in out.stdout, out.stdout[-800:] + out.stderr[-800:]
+    assert out.returncode == 0 and "62 passed" in out.stdout, out.stdout[-800:] + out.stderr[-800:]
     assert run(p, "-m", "vrag", "ingest").returncode == 0
     gate = run(p, "-m", "vrag", "eval", "--gate")
     assert gate.returncode == 0 and "40 of 40 golden questions pass" in gate.stdout, gate.stdout

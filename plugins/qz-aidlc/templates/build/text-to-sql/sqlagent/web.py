@@ -20,6 +20,7 @@ THREAD = re.compile(r"^[A-Za-z0-9-]{8,64}$")
 
 PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="QualiZeal AI-DLC Studio (AI-assisted engineering)">
 <title>__NAME__</title>
 <style nonce="{nonce}">
 :root {{ --ink:#1d2433; --muted:#5b6475; --line:#dde1e8; --bg:#f7f8fa; --accent:#2f5bd3; --warn:#9a5b00; }}
@@ -39,7 +40,7 @@ input {{ flex:1; font:inherit; padding:10px 12px; border:1px solid var(--line); 
 button {{ font:inherit; padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; }}
 button:disabled {{ opacity:.6; cursor:wait; }}
 </style></head>
-<body><main><h1>__NAME__</h1><p class="role">Asking as <b id="role"></b>. Read-only: nothing here can change the data.</p><p class="role" role="note">Answers are written by AI from the data. Check the SQL shown with each answer before you rely on it.</p>
+<body><main><h1>__NAME__</h1><p class="role">Asking as <b id="role"></b>. Read-only: nothing here can change the data.</p><p class="role" role="note">Answers are written by AI from the data. Check the SQL shown with each answer before you rely on it.</p><p class="role">Built with the QualiZeal AI-DLC Studio.</p>
 <div id="log"></div></main>
 <form id="f"><div><input id="q" maxlength="1000" autocomplete="off" placeholder="Ask about the data, e.g. What is the revenue by region?" required>
 <button id="b">Ask</button></div></form>

@@ -1,7 +1,7 @@
 {
   "title": "MCP server (Python)",
   "summary": "A read-only MCP server on the official SDK (mcp 2.3): checked arguments, customer text marked untrusted, capped results, pinned tool descriptions, a chained audit file.",
-  "verified": "RUN: the scaffold's 6 tests and its 8 contract cases ran here through a real MCP client in memory with mcp 2.3.0, including the argument checks, the untrusted envelope, the tool pins and the audit chain; the project audit reads READY. Not run against a live client session or over HTTP.",
+  "verified": "RUN: the scaffold's 8 tests and its 8 contract cases ran here through a real MCP client in memory with mcp 2.3.0, including the argument checks, the untrusted envelope, the tool pins and the audit chain; the project audit reads READY. Not run against a live client session or over HTTP.",
   "stack_line": "A read-only MCP server in Python (mcp 2.3).",
   "policy": "server/policy.py",
   "agent_dir": "server/",
@@ -30,5 +30,7 @@
   ],
   "ai_act": {"purpose": "Gives AI agents read access to orders, and a refund tool that waits for a person's approval, over the Model Context Protocol.", "people": false, "generates": false},
   "vendors": [],
-  "open_line": "No model and no vendor SDK: the server is plain Python on the open MCP standard."
+  "open_line": "No model and no vendor SDK: the server is plain Python on the open MCP standard.",
+  "cost_line": "it calls no model, so there is no token spend to cut; `python3 .claude/qz/scripts/qz.py cost` reads not applicable on all six.",
+  "container_check": "docker run --rm --network none app:ci"
 }

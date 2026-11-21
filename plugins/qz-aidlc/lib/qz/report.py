@@ -4,6 +4,7 @@ MEASURED (from the records), ESTIMATED (computed from measured numbers with a st
 assumption), ASSUMED (a configured value) or NOT KNOWN. No model writes any of it."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from . import audit, ledger, redteam
@@ -58,9 +59,35 @@ def summarise(proj: Path, run_id: str | None = None) -> dict:
         "agents": dict(sorted((led.get("agents") or {}).items(), key=lambda kv: -kv[1])),
     }
     out["advice"] = footprint.advice(out, out["context"])
+    out["standards"] = standards_of(proj)
     out["window"] = window(proj, led, cfg)
     out["routing"] = routing(led)
     return out
+
+
+def standards_of(proj: Path) -> dict | None:
+    """The QualiZeal standards as they stand when the card is made: the Studio's own in the Studio, else the project's."""
+    try:
+        from .auditkit import standards
+        studio = (proj / "plugins" / "qz-aidlc" / "scripts" / "qz.py").is_file()
+        st = standards.run(None if studio else proj, studio=studio)
+    except Exception:
+        return None
+    parts = [{"title": v["title"], "ok": v["result"]["ok"], "verdict": v["result"]["verdict"]} for v in st["standards"].values()]
+    notes = [str(i) for v in st["standards"].values() for i in (v["result"].get("insights") or [])]
+    return {"verdict": st["verdict"], "ok": st["ok"], "parts": parts, "insights": notes[:4]}
+
+
+def render_standards(st: dict | None) -> str:
+    if not st:
+        return ""
+    rows = "".join(f"<tr><td>{esc(x['title'])}</td><td>{'MET' if x['ok'] else '<b>NOT MET</b>'}</td><td class='s'>{esc(x['verdict'])}</td></tr>" for x in st["parts"])
+    code = lambda s: re.sub(r"`([^`]+)`", r"<code>\1</code>", esc(s))
+    notes = "".join(f"<li>{code(n)}</li>" for n in st["insights"])
+    return (f"<section><h2>QualiZeal standards: {esc(st['verdict'].lower())} {label('MEASURED')}</h2>"
+            f"<p class='s'>Read from the files when this card was made: static checks, not a review. <code>qz standards</code> shows the evidence for each.</p>"
+            f"<table><tr><th>Standard</th><th>Result</th><th>Verdict</th></tr>{rows}</table>"
+            + (f"<h3>Worth knowing</h3><ul>{notes}</ul>" if notes else "") + "</section>")
 
 
 TIER_RANK = {"light": 1, "standard": 2, "heavy": 3, "deep": 4}
@@ -136,6 +163,9 @@ def render(s: dict) -> str:
              f'<span class="chip {"ok" if s["redteam"]["passed"] == s["redteam"]["total"] else "bad"}">Guard red-team {s["redteam"]["passed"]}/{s["redteam"]["total"]}</span>',
              f'<span class="chip {"warn" if s["gates"]["pending"] else "ok"}">Gates pending {s["gates"]["pending"]}</span>',
              f'<span class="chip">Lane {esc(r["lane"])}</span>']
+    if s.get("standards"):
+        st = s["standards"]
+        chips.insert(3, f'<span class="chip {"ok" if st["ok"] else "bad"}">Standards {esc(st["verdict"].split(" STANDARDS")[0].lower())}</span>')
     deny = sum(s["guard"]["deny"].values())
     asks = sum(s["guard"]["ask"].values())
     tiles = [
@@ -187,6 +217,7 @@ def render(s: dict) -> str:
 {ctx}
 {render_window(s.get("window") or {})}
 {render_routing(s.get("routing"))}
+{render_standards(s.get("standards"))}
 <section><h2>The five AI-DLC measures</h2><table>{meas}</table></section>
 <section><h2>Human gates</h2><table><tr><th>When</th><th>Stage</th><th>Gate</th><th>Outcome</th><th>Detail</th></tr>{gates}</table></section>
 <section><h2>Governance and security</h2><table><tr><th>Rule</th><th>Action</th><th>Count</th></tr>{guard_rows}</table>

@@ -31,3 +31,14 @@ jobs:
         with:
           name: eval-results
           path: evals/results/latest.json
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        if: hashFiles('vrag/server.py') != ''
+        run: docker build -t app:ci .
+      - name: The gold set inside the container (offline, no key)
+        if: hashFiles('vrag/server.py') != ''
+        run: docker run --rm --network none app:ci uv run -m vrag eval --gate

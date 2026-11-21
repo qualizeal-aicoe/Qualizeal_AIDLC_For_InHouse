@@ -62,3 +62,24 @@ def test_the_page_tells_people_the_answers_are_written_by_ai(url):
     with urllib.request.urlopen(url + "/", timeout=5) as r:
         assert b"Answers are written by AI from your documents" in r.read()
 
+
+def test_thumbs_down_becomes_a_gold_candidate_only_with_a_yes_and_without_personal_data(url, indexed):
+    cfg, _ = indexed
+    req = urllib.request.Request(url + "/api/feedback", method="POST", headers={"Content-Type": "application/json"},
+                                 data=json.dumps({"verdict": "down", "as": "employee", "question": "Refund to card 4111 1111 1111 1111?",
+                                                  "answer": "Wrong answer.", "note": "call me on 555-123-4567"}).encode())
+    with urllib.request.urlopen(req, timeout=5) as r:
+        assert json.loads(r.read()) == {"ok": True}
+    bad = urllib.request.Request(url + "/api/feedback", method="POST", headers={"Content-Type": "application/json"},
+                                 data=json.dumps({"verdict": "sideways", "as": "employee"}).encode())
+    with pytest.raises(urllib.error.HTTPError) as e:
+        urllib.request.urlopen(bad, timeout=5)
+    assert e.value.code == 400
+    preview = server.feedback(cfg, gold=True)
+    assert preview["down"] == 1 and preview["written"] == 0 and len(preview["candidates"]) == 1
+    assert not (cfg.path("eval", "golden").parent / "candidates.jsonl").exists()
+    done = server.feedback(cfg, gold=True, yes=True)
+    rows = (cfg.path("eval", "golden").parent / "candidates.jsonl").read_text(encoding="utf-8")
+    assert done["written"] == 1 and "4111" not in rows and "555-123-4567" not in rows and "[card number removed]" in rows
+    assert server.feedback(cfg, gold=True, yes=True)["written"] == 0                 # the same question is not proposed twice
+

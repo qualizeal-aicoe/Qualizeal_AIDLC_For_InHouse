@@ -129,3 +129,19 @@ def test_every_studio_page_is_marked_as_made_with_an_ai_assisted_system():
     html = brand.page("t", "", "<p>x</p>", "note")
     assert '<meta name="generator" content="QualiZeal AI-DLC Studio (AI-assisted engineering)">' in html
     assert "an AI-assisted engineering system" in html
+
+
+def test_the_report_card_and_the_doctor_carry_the_standards(tmp_path):
+    dest = tmp_path / "shop"
+    assert qz(tmp_path, "build", "new", "langgraph", str(dest), "--name", "Order Support").returncode == 0
+    assert qz(dest, "run", "start", "deliver", "--key", "QZ-1").returncode == 0
+    assert qz(dest, "report").returncode == 0
+    card = next((dest / ".qz" / "runs").glob("*/report-card.html")).read_text(encoding="utf-8")
+    assert "QualiZeal standards: 4 of 4 standards met" in card and "Standards 4 of 4" in card and "<code>qz aiact confirm --yes</code>" in card
+    data = json.loads(next((dest / ".qz" / "runs").glob("*/report-card.json")).read_text(encoding="utf-8"))
+    assert data["standards"]["ok"] and [p["title"] for p in data["standards"]["parts"]] == ["Six guardrails", "EU AI Act", "Open source first", "Cost levers"]
+    from qz import doctor
+    rep = doctor.Report()
+    doctor.check_harness(rep, dest)
+    row = next(r for r in rep.rows if r["check"].startswith("QualiZeal standards in the Studio itself"))
+    assert row["level"] == "PASS" and "4 of 4 standards met" in row["check"]

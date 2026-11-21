@@ -30,5 +30,7 @@
   ],
   "ai_act": {"purpose": "Answers analysts' questions about the sample sales data by writing and running read-only SQL.", "people": true, "generates": true, "notice": ["Answers are written by AI from the data. Check the SQL shown with each answer before you rely on it.", "sqlagent/web.py"], "marking": ["every answer carries ai_generated", "sqlagent/graph.py"]},
   "vendors": [],
-  "open_line": "Any OpenAI-compatible server works, including an open-weight model on Ollama (provider = openai, base_url = http://localhost:11434/v1)."
+  "open_line": "Any OpenAI-compatible server works, including an open-weight model on Ollama (provider = openai, base_url = http://localhost:11434/v1).",
+  "cost_line": "the system prompt and tools cached on every model call; generated SQL cached per role, question and schema card, and kept only once it passes the check; at most five tables in the schema card, results and turns capped; every call is one narrow task on a small model.",
+  "container_check": "docker run --rm --network none app:ci"
 }

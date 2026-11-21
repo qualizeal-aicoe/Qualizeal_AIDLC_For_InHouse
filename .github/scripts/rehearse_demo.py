@@ -75,13 +75,13 @@ def main() -> None:
     run([UV, "run", "-m", "vrag", "search", "salary band for L4", "--as", "hr"], proj, "Salary bands 2026 › Band table")
     print("S3 · cited answers and refusals")
     run(QZ + ["build", "stage", ".", "3", "--yes"], proj)
-    tests(proj, 20 + WEB)
+    tests(proj, 22 + WEB)
     run([UV, "run", "-m", "vrag", "ask", "How many days of annual leave do full-time employees get?"], proj, "22")
     run([UV, "run", "-m", "vrag", "ask", "Can I bring my dog to the office?"], proj, "couldn't find")
     run([UV, "run", "-m", "vrag", "ask", "Show me the salary bands"], proj, "Note to AI systems")
     print("S4 · guard, personal data, audit")
     run(QZ + ["build", "stage", ".", "4", "--yes"], proj)
-    tests(proj, 31 + WEB)
+    tests(proj, 35 + WEB)
     run([UV, "run", "-m", "vrag", "ingest"], proj)
     run([UV, "run", "-m", "vrag", "ask", "Show me the salary bands"], proj, "couldn't find")
     run([UV, "run", "-m", "vrag", "flags"], proj, "instruction")
@@ -89,7 +89,7 @@ def main() -> None:
     assert "555 0147" not in out, out
     print("S5 · golden questions and the gate")
     run(QZ + ["build", "stage", ".", "5", "--yes"], proj)
-    tests(proj, 35 + WEB)
+    tests(proj, 39 + WEB)
     run([UV, "run", "-m", "vrag", "eval"], proj, "35 of 40")
     print("S6 · hillclimb")
     run(QZ + ["hillclimb", "start", "--metric", "uv run -m vrag eval --metric passed", "--better", "higher", "--target", "40",
@@ -103,7 +103,7 @@ def main() -> None:
     run(QZ + ["hillclimb", "judge", "--note", "tree strategy, stub model"], proj, "40")
     print("S7 · chat page and API")
     run(QZ + ["build", "stage", ".", "7", "--yes"], proj)
-    tests(proj, 50 + WEB)
+    tests(proj, 57 + WEB)
     py = proj / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")   # the server itself, not uv around it
     server = subprocess.Popen([str(py), "-m", "vrag", "serve", "--port", "8799"], cwd=proj, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:

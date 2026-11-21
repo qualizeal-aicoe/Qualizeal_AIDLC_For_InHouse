@@ -62,8 +62,8 @@ of evaluation cases gates each change, and CI and a runbook come with it.
 | `claude-agent-sdk-py` | Claude Agent SDK (Python) | 9 tests and 11 gold cases; Windows and Linux |
 | `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 7 tests and 11 gold cases; Linux |
 | `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 8 tests and 8 contract cases through a real MCP client; Windows and Linux |
-| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 61 tests; 38 of 40 golden questions with the real models, against 35 for keyword search alone; no safety violations; Windows and Linux |
-| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 57 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
+| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 66 tests; 38 of 40 golden questions with the real models, against 35 for keyword search alone; no safety violations; Windows and Linux |
+| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 62 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
 | `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 18 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
 | `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 42 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
 | `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 31 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
@@ -75,6 +75,12 @@ The Python starters use uv with a lock file, so a laptop gets the versions CI te
 requirements file). Only the TypeScript starter needs
 Node.js (22); `maf-dotnet` needs the .NET 10 SDK and `go-anthropic` Go 1.26. Every gold set runs against the offline
 stub, so none of these numbers involves a live model.
+
+Every starter also ships a container. `docker build` gives an image that runs the project's own gold set (the RAG kits:
+their gate) with no network and no key, runs as a non-root user, has a health check, and never holds keys, rates or
+run ledgers (its `.dockerignore` keeps them out). Each project's `docs/release.md` is the release recipe: one image per
+release tag, shadow, a small share of traffic, then everyone, and a rollback that points back at the previous tag. The
+Studio's CI builds all 13 images on a release branch, on a tag, or when asked, and runs each check inside the image.
 
 ## The QualiZeal standards
 
@@ -175,13 +181,14 @@ The video (under a minute, no sound) is made from real output of the commands in
 ## What was run, and what was not
 
 Run on 20 and 21 November 2026:
-- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 302 tests (300 passed and 2 skipped
-  on Linux, the two that need the internal pricing workbook; 299 passed and 3 skipped on Windows, where the runner
-  also lacks Chrome for one visual check); the guard's red-team, 147 of 147; the doctor, and the bootstrap in
-  check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the handbook demo
-  rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code
-  from its native installer. The numbers are from Actions run 44855153990, on the release branch; every pull request
-  and every push to main runs the same checks, and the Actions tab shows the latest.
+- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 398 tests (396 passed and 2 skipped
+  on Linux, the two that need the internal pricing workbook; on Windows one more is skipped, where the runner lacks
+  Chrome for one visual check); the guard's red-team, 147 of 147; the doctor, and the bootstrap in check-only mode,
+  started the way an attendee starts them, both ending `ready for a live session`; the handbook demo rehearsed stage
+  by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code from its native
+  installer. Every pull request and every push to main runs the same checks, and the Actions tab shows the latest.
+- **Containers**: on the release branch, CI builds all 13 starters' images and runs each one's gold set (the RAG
+  kits: their gate) and health check inside the image with no network.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
   ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety
   violations. The command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail

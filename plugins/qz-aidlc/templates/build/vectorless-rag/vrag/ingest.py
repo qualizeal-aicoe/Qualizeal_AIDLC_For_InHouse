@@ -347,7 +347,7 @@ def _clean(text: str) -> tuple[str, int]:
     return HIDDEN_CHARS.sub("", text), found
 
 
-def build(doc_id: str, meta: dict, sections: list[Section]) -> tuple[list[Node], list[dict]]:
+def build(doc_id: str, meta: dict, sections: list[Section], mask: tuple | list = ("card", "id")) -> tuple[list[Node], list[dict]]:
     title = meta.get("title") or doc_id
     tops = [s for s in sections if s.level == 1]
     if sections and sections[0].level == 1 and len(tops) == 1:
@@ -372,6 +372,9 @@ def build(doc_id: str, meta: dict, sections: list[Section]) -> tuple[list[Node],
         if guard is not None:
             node.text, found = guard.quarantine(node.text)
             flags += [{"node_id": node.node_id, "kind": "instruction", "detail": f} for f in found]
+            node.text, n_pii = guard.mask_at_ingest(node.text, list(mask))
+            if n_pii:
+                flags.append({"node_id": node.node_id, "kind": "personal-data", "detail": f"{n_pii} masked before indexing"})
         for h in s.hidden:
             kind = "hidden-instruction" if guard is not None and guard.is_instruction(h) else "hidden-text"
             flags.append({"node_id": node.node_id, "kind": kind, "detail": h[:300]})
@@ -417,7 +420,7 @@ def ingest(cfg) -> Result:
         except IngestError as e:
             problems.append(f"{rel}: {e}")
             continue
-        nodes, flags = build(rel, meta, sections)
+        nodes, flags = build(rel, meta, sections, cfg["guard"].get("mask_at_ingest", ["card", "id"]))
         docs.append(Doc(rel, path, meta, hashlib.sha256(path.read_bytes()).hexdigest(), nodes, flags))
     for p in sorted(corpus.rglob("*")):
         rel = p.relative_to(corpus).as_posix()
