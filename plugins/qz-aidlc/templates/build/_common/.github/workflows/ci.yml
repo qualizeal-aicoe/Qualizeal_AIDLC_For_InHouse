@@ -19,6 +19,8 @@ __SETUP_STEPS__
         run: python3 .claude/qz/scripts/qz.py eval run --label ci
       - name: Agentic project audit
         run: python3 .claude/qz/scripts/qz.py audit-project scan
+      - name: The six guardrails (input, output, tools, approval, limits, sandbox)
+        run: python3 .claude/qz/scripts/qz.py guardrails --gate
       - name: Team decisions (docs/decisions/) against this pull request
         if: github.event_name == 'pull_request'
         run: python3 .claude/qz/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci

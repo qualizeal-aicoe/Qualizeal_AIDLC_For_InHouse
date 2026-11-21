@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 
 namespace OrderAgent;
@@ -17,10 +18,14 @@ public static class Tools
 
     private static int _refunds;
 
+    /// <summary>Every order number is checked before any lookup (gate 3): a model's argument is data, not a query.</summary>
+    private static readonly Regex OrderId = new(@"^ORD-[0-9]{4}$", RegexOptions.CultureInvariant);
+
     [Description("Look up one order by its number (for example ORD-1001). Read-only.")]
     public static object GetOrder([Description("The order number")] string order_id)
     {
         string id = order_id.Trim().ToUpperInvariant();
+        if (!OrderId.IsMatch(id)) return new { found = false, order_id = id, status = "not an order number (ORD-1001)", total = 0m, carrier = "", note = "" };
         return Orders.TryGetValue(id, out Order? o)
             ? new { found = true, order_id = id, status = o.Status, total = o.Total, carrier = o.Carrier, note = o.Note }
             : new { found = false, order_id = id, status = "", total = 0m, carrier = "", note = "" };
@@ -29,7 +34,8 @@ public static class Tools
     [Description("Refund an order. Moves money and cannot be undone: it runs only after a person approves.")]
     public static object IssueRefund(string order_id, decimal amount, string reason)
     {
-        if (!Orders.TryGetValue(order_id.Trim().ToUpperInvariant(), out Order? o) || amount <= 0 || amount > o.Total)
+        string id = order_id.Trim().ToUpperInvariant();
+        if (!OrderId.IsMatch(id) || !Orders.TryGetValue(id, out Order? o) || amount <= 0 || amount > o.Total)
         {
             return new { ok = false, error = "unknown order or amount outside the order total", refund_id = "", amount = "" };
         }

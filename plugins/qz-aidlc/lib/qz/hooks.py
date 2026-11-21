@@ -136,6 +136,14 @@ def user_prompt(p: dict) -> dict | None:
         ledger.save(proj, led)
         audit.append(proj, "PROMPT_BLOCKED", rule=sec[0].rule, run=led["run_id"])
         return {"decision": "block", "reason": f"{tag('qz-guard')} your message contains what looks like a secret ({sec[0].rule}), so it was not sent. Store tokens in /plugin > qz-aidlc > Configure, then ask again without the token."}
+    pii = guard.scan_pii(text)                         # gate 1: card and national ID numbers never reach a model
+    if pii:
+        led["guard"]["prompt_blocked"] += 1
+        ledger.save(proj, led)
+        audit.append(proj, "PROMPT_BLOCKED", rule=pii[0].rule, run=led["run_id"])
+        what = "a payment card number" if "CARD" in pii[0].rule else "a national ID number"
+        return {"decision": "block", "reason": f"{tag('qz-guard')} your message contains what looks like {what} ({pii[0].rule}), so it was not sent: "
+                                               "the Studio never sends it to a model. Ask again without it, or with the number masked."}
     ledger.on_prompt(led)
     from . import snapshot
     _quiet(snapshot.begin, proj, led)

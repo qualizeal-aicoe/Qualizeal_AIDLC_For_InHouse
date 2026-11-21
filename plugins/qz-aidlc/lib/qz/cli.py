@@ -209,6 +209,8 @@ def cmd_setup(a):
         print("qz setup workspace|engine|deps [--yes] · qz setup detect|statusline|plan|org (each with --help)")
         return
     a.yes = "--yes" in a.rest
+    if a.what == "sandbox":
+        sys.exit(doctor.setup_sandbox(_proj(), a.yes))
     if a.what == "deps":
         if not a.yes:
             print(f"This installs the Python packages the tools use (office files, PDF, browser checks) into the Studio's own "
@@ -232,13 +234,14 @@ def _lane(mod: str, name: str, rest: list[str]) -> None:
 PASS_THROUGH = {"ship": ("qz.ship", {}), "publish": ("qz.ws.publish", {}), "undo": ("qz.snapshot", {}),
                 "redo": ("qz.snapshot", {"redo": True}), "goal": ("qz.goal", {}), "spec": ("qz.spec.cli", {}),
                 "hillclimb": ("qz.hillclimb", {}), "board": ("qz.board", {}), "decisions": ("qz.decisions", {}),
-                "conventions": ("qz.conventions", {}), "practices": ("qz.practices", {}), "aidlc": ("qz.aidlcws", {})}
+                "conventions": ("qz.conventions", {}), "practices": ("qz.practices", {}), "aidlc": ("qz.aidlcws", {}),
+                "guardrails": ("qz.auditkit.gates", {})}
 # Lane tools by command name -> package under qz/. Each parses its own options.
 LANES = {"kf": "kf", "price": "bid", "sow": "bid", "deck": "bid", "voice": "bid", "demo": "demo", "arch": "arch",
          "build": "buildkit", "eval": "evalkit", "test": "stlc", "audit-project": "auditkit", "craft": "craft",
          "project": "ws", "graph": "graph", "vendor": "vendor", "ctx": "ctx", "data": "data", "office": "office",
          "route": "route"}
-SETUP = ("workspace", "engine", "deps", "detect", "statusline", "plan", "org", "github-agent")
+SETUP = ("workspace", "engine", "deps", "detect", "statusline", "plan", "org", "github-agent", "sandbox")
 
 
 def main(argv=None):

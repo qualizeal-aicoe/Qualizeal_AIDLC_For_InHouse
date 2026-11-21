@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 from . import audit, redteam
-from .util import PLUGIN_ROOT, claude_dir, git, qz_home, user_home
+from .util import PLUGIN_ROOT, claude_dir, git, qz_home, read_json, user_home, write_json
 
 MIN_CLAUDE = (2, 1, 295)          # exec-form hooks and onFailure "block"
 REPO = "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse"
@@ -393,6 +393,32 @@ def setup_workspace(proj: Path) -> int:
     n = apply_roster(proj)
     print(f"Agents: {len(ROSTER)} AWS AI-DLC agents are shown under QualiZeal names (QZ Architect, QZ Developer, ...)" + (f"; {n} updated now." if n else "."))
     print("Next: /aidlc starts the AWS AI-DLC workflow; /qz-aidlc:qz starts a QualiZeal lane.")
+    return 0
+
+
+def setup_sandbox(proj: Path, yes: bool = False) -> int:
+    """Claude Code's own sandbox for Bash (gate 6): commands write only inside the project and reach only the hosts a
+    person allows. macOS, Linux and WSL2; not native Windows, where the guard still reads every command before it runs.
+    Written to this project's .claude/settings.local.json, which stays on this machine, after the person's yes."""
+    import platform
+    if platform.system() == "Windows":
+        print("Claude Code's sandbox does not run on native Windows; run Claude Code inside WSL2 to use it. "
+              "Here the guard still reads every command before it runs.")
+        return 0
+    f = proj / ".claude" / "settings.local.json"
+    cur = read_json(f, {}) or {}
+    if (cur.get("sandbox") or {}).get("enabled"):
+        print(f"The sandbox is already on for this project ({f}).")
+        return 0
+    if not yes:
+        print("This turns on Claude Code's sandbox for Bash in this project: commands write only inside the project and reach only "
+              f"the network hosts you allow (Claude Code asks the first time a new host is needed). It goes in {f}, which stays on "
+              "this machine. Run again with --yes to turn it on.")
+        return 0
+    cur.setdefault("sandbox", {})["enabled"] = True
+    f.parent.mkdir(parents=True, exist_ok=True)
+    write_json(f, cur)
+    print(f"Sandbox on in {f}. It applies from the next Claude Code session; /sandbox shows its state.")
     return 0
 
 

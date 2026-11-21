@@ -25,7 +25,7 @@ from pathlib import Path
 
 import click
 
-from . import __version__, config
+from . import __version__, config, untrusted
 from .backend import Backend, auth_note, secret_values
 from .errors import EXIT, HarnessError
 from .store import Store
@@ -144,6 +144,9 @@ def run(ctx: click.Context, fn, *, as_json: bool, kind: str, dry_run: bool = Fal
         else:
             data = fn(app)
         out = {"ok": True, "command": name, "data": data}
+        flagged = untrusted.flags(data)
+        if flagged:                                   # gate 1 for the agent reading this: server text is data
+            out["untrusted"] = {"notice": untrusted.NOTICE, "flagged": flagged[:5]}
     except HarnessError as e:
         out = {"ok": False, "command": name, "error": e.as_dict()}
     except Exception as e:                            # a bug still answers in the contract, loudly

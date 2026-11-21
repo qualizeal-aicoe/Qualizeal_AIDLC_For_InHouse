@@ -7,6 +7,7 @@ MAX_BUDGET_USD = 0.50        # per run
 SERVER = "orders"            # name of the in-process MCP server that carries the tools
 READ_ONLY = ["get_order"]    # run without asking
 NEEDS_APPROVAL = {"issue_refund"}   # every tool that writes, sends, pays or deletes
+BLOCKED_TERMS: list[str] = []   # words or phrases a reply must never contain (gate 2); empty: off
 
 SYSTEM = """You are the order support assistant for __NAME__.
 You can look up an order and request a refund. A refund is only issued after a person approves it.

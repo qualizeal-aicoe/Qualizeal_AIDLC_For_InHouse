@@ -48,6 +48,13 @@ type Result struct {
 	ToolCalls        []Call `json:"tool_calls"`
 	Usage            Usage  `json:"usage"`
 	AwaitingApproval bool   `json:"awaiting_approval"`
+	Guard            *Guard `json:"guard,omitempty"`
+}
+
+// Guard says what the input and output filters found.
+type Guard struct {
+	Input  []string `json:"input"`
+	Output []string `json:"output"`
 }
 
 // Usage counts tokens across the run.
@@ -64,8 +71,22 @@ func NewModel() Model {
 	return StubModel{}
 }
 
-// Run drives the loop: model decides, the gate checks, tools run, until the model answers or a limit is reached.
+// Run drives the loop behind the two filters: the input is checked before the model reads it (gate 1), the reply
+// before it is returned (gate 2).
 func Run(ctx context.Context, model Model, message string, approve Approver) (Result, error) {
+	in := ScreenInput(message)
+	if in.Blocked {
+		return Result{Output: in.Text, ToolCalls: []Call{}, Guard: &Guard{Input: in.Findings, Output: []string{}}}, nil
+	}
+	res, err := run(ctx, model, in.Text, approve)
+	out := ScreenOutput(res.Output)
+	res.Output = out.Text
+	res.Guard = &Guard{Input: in.Findings, Output: out.Findings}
+	return res, err
+}
+
+// run drives the loop: model decides, the gate checks, tools run, until the model answers or a limit is reached.
+func run(ctx context.Context, model Model, message string, approve Approver) (Result, error) {
 	ctx, span := otel.Tracer("__SLUG__").Start(ctx, "agent.run")
 	defer span.End()
 	tools := Tools()

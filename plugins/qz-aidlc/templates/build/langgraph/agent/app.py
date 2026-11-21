@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
-from . import policy
+from . import guardrails, policy
 from .telemetry import tracer
 from .tools import TOOLS
 
@@ -28,6 +28,7 @@ def build(checkpointer=None):
                         middleware=[HumanInTheLoopMiddleware(interrupt_on=policy.NEEDS_APPROVAL), ModelCallLimitMiddleware(run_limit=policy.MAX_MODEL_CALLS, exit_behavior="end")])
 
 
+@guardrails.guarded
 def run(message: str, approve: bool | None = None, thread_id: str | None = None, agent=None) -> dict:
     """approve: True or False answers the approval request; None leaves it waiting (resume later with the same thread_id)."""
     agent = agent or build()

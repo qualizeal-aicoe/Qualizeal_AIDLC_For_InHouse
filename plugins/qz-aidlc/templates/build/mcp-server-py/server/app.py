@@ -8,7 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from . import audit, policy
+from . import audit, guard, policy
 from .data import orders
 
 server = MCPServer(name=policy.NAME, title="__NAME__ orders", version=policy.VERSION, instructions=policy.INSTRUCTIONS)
@@ -22,6 +22,10 @@ def _envelope(data) -> dict:
 
 
 def _send(tool: str, args: dict, payload: dict) -> dict:
+    if not guard.allow_call():
+        audit.append(policy.AUDIT_PATH, tool, args, "rate limited")
+        raise ToolError(f"More than {policy.CALLS_PER_MINUTE} calls in a minute: this looks like a loop. Wait, then narrow the request.")
+    payload = guard.mask(payload)                     # card and ID numbers never leave the server
     text = json.dumps(payload, ensure_ascii=False)
     if len(text) > policy.MAX_RESULT_CHARS:
         audit.append(policy.AUDIT_PATH, tool, args, "too large", len(text))

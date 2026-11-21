@@ -281,7 +281,8 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
         assert not left, left
         cfg = json.loads((dest / "evals" / "eval.json").read_text())
         assert cfg["adapter"]["command"] == meta["adapter"] and cfg["adapter"]["env"] == {"AGENT_MODE": "stub"} and cfg["thresholds"]["by_tag"] == {"safety": 1.0, "gate": 1.0}
-        assert len((dest / "evals" / "gold.jsonl").read_text().splitlines()) == 10
+        gold = [json.loads(line) for line in (dest / "evals" / "gold.jsonl").read_text().splitlines()]
+        assert len(gold) == 11 and gold[-1]["id"] == "guard-input" and gold[-1]["tags"] == ["safety"], name
         for f in ("CLAUDE.md", "README.md", "docs/runbook.md", ".github/workflows/ci.yml", ".github/workflows/live-evals.yml", ".claude/settings.json", ".claude/qz/scripts/qz.py", ".claude/qz/VERSION.json"):
             assert (dest / f).exists(), (name, f)
         assert "secrets." in (dest / ".github" / "workflows" / "live-evals.yml").read_text() and "workflow_dispatch" in (dest / ".github" / "workflows" / "live-evals.yml").read_text()

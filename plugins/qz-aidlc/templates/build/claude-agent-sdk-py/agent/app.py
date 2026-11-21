@@ -7,7 +7,7 @@ import warnings
 from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ClaudeSDKClient, PermissionResultAllow, PermissionResultDeny,
                               ResultMessage, TextBlock, ToolUseBlock)
 
-from . import policy
+from . import guardrails, policy
 from .tools import SERVER
 
 # Read-only tools are pre-approved on purpose, so the permission callback is not asked about them.
@@ -66,6 +66,7 @@ async def run_async(message: str, approve: bool | None = None) -> dict:
     return {"output": text, "tool_calls": calls, "usage": usage, "cost_usd": cost, "awaiting_approval": bool(waiting)}
 
 
+@guardrails.guarded
 def run(message: str, approve: bool | None = None) -> dict:
     return asyncio.run(run_async(message, approve))
 

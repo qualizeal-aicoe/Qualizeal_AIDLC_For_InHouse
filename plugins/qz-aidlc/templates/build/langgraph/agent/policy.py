@@ -7,6 +7,7 @@ RECURSION_LIMIT = 25         # graph steps per run
 MAX_OUTPUT_TOKENS = 1024     # per model call
 REQUEST_TIMEOUT_S = 60
 NEEDS_APPROVAL = {"issue_refund": True}   # every tool that writes, sends, pays or deletes
+BLOCKED_TERMS: list[str] = []   # words or phrases a reply must never contain (gate 2); empty: off
 
 SYSTEM = """You are the order support assistant for __NAME__.
 You can look up an order and request a refund. A refund is only issued after a person approves it.

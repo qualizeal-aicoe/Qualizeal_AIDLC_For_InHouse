@@ -33,6 +33,7 @@ from .audit import AuditLog
 from .telemetry import tracer
 
 READ_ONLY = "I can only read this database, so nothing was changed."
+INSTRUCTED = "I can't act on that: it reads like an instruction to change how I work. Ask a question about the data."
 WRITE = re.compile(
     r"^\s*(please\s+|can you\s+|could you\s+|kindly\s+)?(delete|remove|drop|truncate|insert|alter|grant|revoke|rename|wipe|"
     r"erase|purge|modify|overwrite|cancel|update(?!\s+me\b)|change(?!\s+(in|over|of|from|between)\b)|set(?!\s+of\b))\b"
@@ -161,6 +162,10 @@ class Agent:
             return {**fresh, "outcome": "refused", "answer": f"Keep a question under {limit} characters.", "path": _step(fresh, "understand", "too_long"), "next": "end"}
         if WRITE.search(q):
             return {**fresh, "outcome": "refused", "answer": READ_ONLY, "path": _step(fresh, "understand", "write"), "next": "end"}
+        if checks.looks_like_instruction(q):                  # gate 1: an instruction is refused before the model sees it
+            return {**fresh, "outcome": "refused", "answer": INSTRUCTED, "path": _step(fresh, "understand", "instruction"), "next": "end"}
+        q, _ = checks.mask(q)                                 # card and ID numbers never reach the model, the trace or the audit
+        fresh["question"] = q
         low = f" {q.lower()} "
         for a in self.sem["ambiguous"].values():
             if any(w in low for w in a.get("words", [])) and not any(u in low for u in a.get("unless", [])):

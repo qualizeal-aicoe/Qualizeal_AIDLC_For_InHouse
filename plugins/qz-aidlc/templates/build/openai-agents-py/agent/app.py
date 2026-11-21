@@ -8,7 +8,7 @@ from agents.exceptions import MaxTurnsExceeded
 from agents.items import ToolCallItem, ToolCallOutputItem
 from agents.run_state import RunState
 
-from . import policy
+from . import guardrails, policy
 from .telemetry import tracer
 from .tools import TOOLS
 
@@ -65,6 +65,7 @@ async def resume(saved: str, approve: bool, agent: Agent | None = None) -> dict:
     return _result(await Runner.run(agent, state, max_turns=policy.MAX_TURNS), "ok" if approve else "denied")
 
 
+@guardrails.guarded
 def run(message: str, approve: bool | None = None, agent: Agent | None = None) -> dict:
     return asyncio.run(arun(message, approve, agent))
 

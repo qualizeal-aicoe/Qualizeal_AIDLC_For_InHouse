@@ -1,12 +1,14 @@
 /** The agent: Claude Agent SDK with in-process tools, a permission callback as the approval gate, and hard limits. */
 import { query, type CanUseTool, type Options } from "@anthropic-ai/claude-agent-sdk";
 import { SpanStatusCode } from "@opentelemetry/api";
+import { screenInput, screenOutput } from "./guardrails.ts";
 import { policy } from "./policy.ts";
 import { tracer } from "./telemetry.ts";
 import { server } from "./tools.ts";
 
 export type ToolCall = { name: string; args: Record<string, unknown>; status: "ok" | "pending" | "denied" };
-export type RunResult = { output: string; tool_calls: ToolCall[]; usage: { input_tokens: number; output_tokens: number }; cost_usd: number | null; awaiting_approval: boolean };
+export type RunResult = { output: string; tool_calls: ToolCall[]; usage: { input_tokens: number; output_tokens: number }; cost_usd: number | null; awaiting_approval: boolean;
+  guard?: { input: string[]; output: string[] } };
 
 /** The approval gate. Read-only tools are pre-approved in allowedTools; everything else lands here.
  *  approve: true or false is the person's answer; undefined means nobody has answered, so the action waits. */
@@ -35,9 +37,15 @@ export function options(gate: CanUseTool): Options {
 }
 
 export async function run(message: string, approve?: boolean): Promise<RunResult> {
+  const input = screenInput(message);   // gate 1: checked before the agent reads it
+  if (input.blocked) return { output: input.text, tool_calls: [], usage: { input_tokens: 0, output_tokens: 0 }, cost_usd: null, awaiting_approval: false, guard: { input: input.findings, output: [] } };
   return tracer().startActiveSpan("agent.run", async (span) => {
     try {
-      const r = await runOnce(message, approve);
+      const r = await runOnce(input.text, approve);
+      const out = screenOutput(r.output);  // gate 2: checked before anyone sees it
+      r.output = out.text;
+      r.guard = { input: input.findings, output: out.findings };
+      span.setAttributes({ "guard.input": input.findings.join(","), "guard.output": out.findings.join(",") });
       span.setAttributes({ "agent.mode": process.env.AGENT_MODE ?? "stub", "agent.awaiting_approval": r.awaiting_approval, "agent.tool_calls": r.tool_calls.length,
         "gen_ai.usage.input_tokens": r.usage.input_tokens, "gen_ai.usage.output_tokens": r.usage.output_tokens });
       for (const c of r.tool_calls) span.addEvent("tool_call", { "tool.name": c.name, "tool.status": c.status });

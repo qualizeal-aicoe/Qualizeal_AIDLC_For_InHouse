@@ -21,6 +21,37 @@ def looks_like_instruction(text: str) -> bool:
     return bool(INSTRUCTION.search(str(text or "")))
 
 
+CARD = re.compile(r"\b(?:\d[ -]?){12,18}\d\b")
+NATIONAL_ID = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+
+
+def _luhn(digits: str) -> bool:
+    total, alt = 0, False
+    for d in reversed(digits):
+        n = int(d) * (2 if alt else 1)
+        total += n - 9 if n > 9 else n
+        alt = not alt
+    return total % 10 == 0
+
+
+def mask(text: str) -> tuple[str, int]:
+    """Payment card numbers and national ID numbers out of a question before the model, the trace or the audit see it
+    (gate 1). A number that fails the card checksum stays: it is an order total, not a card."""
+    n = 0
+
+    def card(m: re.Match) -> str:
+        nonlocal n
+        digits = re.sub(r"\D", "", m.group(0))
+        if 13 <= len(digits) <= 19 and _luhn(digits):
+            n += 1
+            return "[card number removed]"
+        return m.group(0)
+
+    text = CARD.sub(card, str(text or ""))
+    text, k = NATIONAL_ID.subn("[ID number removed]", text)
+    return text, n + k
+
+
 def withhold(rows: list[list]) -> tuple[list[list], int]:
     """Replace any cell that reads like an instruction to an AI. The person can still see it in the database; the
     model writing the answer never does."""

@@ -5,7 +5,7 @@ import os
 from strands import Agent
 from strands.hooks import BeforeToolCallEvent, HookProvider, HookRegistry
 
-from . import policy
+from . import guardrails, policy
 from .tools import TOOLS
 
 _telemetry = False
@@ -44,6 +44,7 @@ def build() -> Agent:
     return Agent(model=_model(), tools=TOOLS, system_prompt=policy.SYSTEM, hooks=[ApprovalGate()], callback_handler=None, name="__NAME__")
 
 
+@guardrails.guarded
 def run(message: str, approve: bool | None = None, agent: Agent | None = None) -> dict:
     """approve: True or False answers the approval request; None leaves it waiting (keep the agent, or a session manager, to resume)."""
     agent = agent or build()

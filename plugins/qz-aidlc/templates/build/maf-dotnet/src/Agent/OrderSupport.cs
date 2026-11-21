@@ -6,7 +6,7 @@ namespace OrderAgent;
 
 public sealed record ToolCall(string name, IDictionary<string, object?>? args, string status);
 
-public sealed record RunResult(string output, List<ToolCall> tool_calls, Dictionary<string, long> usage, bool awaiting_approval);
+public sealed record RunResult(string output, List<ToolCall> tool_calls, Dictionary<string, long> usage, bool awaiting_approval, Dictionary<string, List<string>>? guard = null);
 
 /// <summary>The agent: Microsoft Agent Framework with approval-required tools, a session, limits and OpenTelemetry.</summary>
 public static class OrderSupport
@@ -31,6 +31,10 @@ public static class OrderSupport
     /// <summary>approve: true or false answers the approval request; null leaves it waiting (keep the session to resume).</summary>
     public static async Task<RunResult> RunAsync(string message, bool? approve = null, AIAgent? agent = null)
     {
+        Guardrails.Screened input = Guardrails.ScreenInput(message);   // gate 1: checked before the agent reads it
+        if (input.Blocked)
+            return new RunResult(input.Text, [], new() { ["input_tokens"] = 0, ["output_tokens"] = 0 }, false, new() { ["input"] = input.Findings, ["output"] = [] });
+        message = input.Text;
         agent ??= Build();
         AgentSession session = await agent.CreateSessionAsync();
         List<ToolCall> calls = [];
@@ -56,7 +60,8 @@ public static class OrderSupport
         string text = waiting
             ? $"This needs approval from a person before it can go ahead: {string.Join(", ", calls.Where(c => c.status == "pending").Select(c => c.name))}. It is waiting; nothing has been changed."
             : response.Text;
-        return new RunResult(text, calls, usage, waiting);
+        Guardrails.Screened output = Guardrails.ScreenOutput(text);   // gate 2: checked before anyone sees it
+        return new RunResult(output.Text, calls, usage, waiting, new() { ["input"] = input.Findings, ["output"] = output.Findings });
     }
 
     private static void Collect(AgentResponse response, List<ToolCall> calls, Dictionary<string, long> usage)

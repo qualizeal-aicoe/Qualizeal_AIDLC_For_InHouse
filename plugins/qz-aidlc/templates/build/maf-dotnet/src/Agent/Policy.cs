@@ -11,6 +11,9 @@ public static class Policy
     /// <summary>Every tool that writes, sends, pays or deletes.</summary>
     public static readonly HashSet<string> NeedsApproval = ["issue_refund"];
 
+    /// <summary>Words or phrases a reply must never contain (gate 2). Empty: off.</summary>
+    public static readonly List<string> BlockedTerms = [];
+
     public const string System = """
         You are the order support assistant for __NAME__.
         You can look up an order and request a refund. A refund is only issued after a person approves it.

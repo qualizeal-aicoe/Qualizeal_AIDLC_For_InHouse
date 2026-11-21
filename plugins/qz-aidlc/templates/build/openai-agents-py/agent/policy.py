@@ -7,6 +7,7 @@ MAX_OUTPUT_TOKENS = 1024      # per model call
 REQUEST_TIMEOUT_S = 60
 TOOL_TIMEOUT_S = 15
 NEEDS_APPROVAL = {"issue_refund"}   # every tool that writes, sends, pays or deletes
+BLOCKED_TERMS: list[str] = []   # words or phrases a reply must never contain (gate 2); empty: off
 # The SDK sends its own traces to OpenAI unless told not to. Off here: spans go to your OpenTelemetry collector.
 SEND_TRACES_TO_OPENAI = os.environ.get("AGENT_OPENAI_TRACING", "off") == "on"
 

@@ -6,6 +6,7 @@ VERSION = "0.1.0"
 ORDER_ID = r"^ORD-\d{4}$"            # every argument is checked against a pattern or a closed list before any lookup
 LIST_LIMIT_MAX = 50
 MAX_RESULT_CHARS = 8_000             # a tool result never floods the client's context
+CALLS_PER_MINUTE = 120               # a client that loops is stopped here (gate 5)
 UNTRUSTED_FIELDS = ("note",)         # written by customers: returned marked as data, never as instructions
 AUDIT_PATH = os.environ.get("MCP_AUDIT_PATH", ".mcp-audit/audit.jsonl")
 
