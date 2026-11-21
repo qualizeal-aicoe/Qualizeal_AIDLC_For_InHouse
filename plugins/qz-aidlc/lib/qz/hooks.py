@@ -11,7 +11,7 @@ import time
 import json
 from pathlib import Path
 
-from . import audit, footprint, guard, ledger
+from . import audit, decisions, footprint, guard, ledger
 from .ctx import hook as ctxhook
 from .names import shown, tag
 from .util import now, project_config, project_dir, qz_dir
@@ -69,6 +69,7 @@ def session_start(p: dict) -> dict:
     proj = project_dir(p)
     led = ledger.load(proj)
     led["sessions"].append({"id": p.get("session_id"), "ts": now(), "source": p.get("source", "startup")})
+    led["decisions_shown"] = []                      # a new context has seen no team decision yet
     st = ledger.aidlc_stage(proj)
     if st:
         ledger.set_stage(led, st)
@@ -87,6 +88,9 @@ def session_start(p: dict) -> dict:
     mem = _quiet(memory.session_text, proj)
     if mem:
         ctx.append(mem)
+    dec = _quiet(decisions.session_text, proj)
+    if dec:
+        ctx.append(f"{tag('qz-decisions')} {dec}")
     changed = _quiet(integrity.changed_once, proj)
     if changed:
         ctx.append(changed)
@@ -193,12 +197,23 @@ def pre_tool(p: dict) -> dict | None:
             ledger.record_gate(led, "ask", d.rule, tool, tid, d.message)
         audit.append(proj, "GUARD_" + d.action.upper(), rule=d.rule, tool=tool, run=led["run_id"], stage=led["stage"])
         out = _pre(d.action, f"{d.message} (rule {d.rule})")
+        if d.action == "ask" and tool in guard.SHELL_TOOLS:
+            dc = _quiet(decisions.hook_check, proj, guard.normalise(str(tin.get("command") or "")))
+            if dc:                                       # a push that already waits for the person shows the conflict too
+                audit.append(proj, "DECISION_CONFLICT", tool=tool, run=led["run_id"], stage=led["stage"])
+                out["hookSpecificOutput"]["permissionDecisionReason"] += f" {tag('qz-decisions')} {dc['message']}"
     elif (x := _quiet(_extra_checks, proj, led, tool, tin, tid, p.get("cwd"), str(p.get("agent_id") or ""))):
         rule, msg = x
         ledger.count(led, "ask", rule)
         ledger.record_gate(led, "ask", rule, tool, tid, msg)
         audit.append(proj, "GUARD_ASK", rule=rule, tool=tool, run=led["run_id"], stage=led["stage"])
         out = _pre("ask", f"{msg} (rule {rule})")
+    elif tool in guard.SHELL_TOOLS and (dc := _quiet(decisions.hook_check, proj, guard.normalise(str(tin.get("command") or "")))):
+        ledger.count(led, "ask", "QZ-ASK-DECISION-CONFLICT")
+        ledger.record_gate(led, "ask", "QZ-ASK-DECISION-CONFLICT", tool, tid, dc["message"])
+        audit.append(proj, "GUARD_ASK", rule="QZ-ASK-DECISION-CONFLICT", tool=tool, run=led["run_id"], stage=led["stage"])
+        out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
+                                      "permissionDecisionReason": f"{tag('qz-decisions')} {dc['message']} (rule QZ-ASK-DECISION-CONFLICT)"}}
     elif tool == "Read" and (msg := _quiet(ctxhook.read_redirect, proj, tin)):
         ledger.count(led, "deny", "QZ-CTX-PEEK")
         out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": f"{tag('qz-context')} {msg}"}}
@@ -293,7 +308,7 @@ def post_tool(p: dict) -> dict | None:
     sa = (led.get("step_asks") or {}).pop(tid, None)
     if sa and sa.get("stage") in led["stages"]:
         led["stages"][sa["stage"]]["step_cap"] = sa["next"]
-    notes, upd, infos = [], None, []
+    notes, upd, infos, dnote = [], None, [], None
     if tool == "AskUserQuestion":
         ans = resp.get("answers") if isinstance(resp, dict) else None
         ledger.record_gate(led, "question", "HITL", tool, tid, json.dumps(ans or tin.get("answers") or {}, ensure_ascii=False), "answered")
@@ -306,6 +321,8 @@ def post_tool(p: dict) -> dict | None:
         if fm:
             infos.append(fm)
     text = _text_of(resp)
+    if tool == "Read":
+        dnote = _quiet(decisions.on_read, proj, led, str(tin.get("file_path") or ""), str(p.get("agent_id") or ""))
     if tool in guard.SHELL_TOOLS and isinstance(resp, dict):
         so, n1 = guard.redact(str(resp.get("stdout", "")))
         se, n2 = guard.redact(str(resp.get("stderr", "")))
@@ -335,12 +352,12 @@ def post_tool(p: dict) -> dict | None:
     if tool in guard.WRITE_TOOLS or tool in guard.SHELL_TOOLS or tool.startswith("mcp__"):
         audit.append(proj, "TOOL", tool=tool, run=led["run_id"], stage=led["stage"], target=str(tin.get("file_path") or tin.get("command", ""))[:160])
     ledger.save(proj, led)
-    if not notes and upd is None and not big and not infos:
+    if not notes and upd is None and not big and not infos and not dnote:
         return None
     hso = {"hookEventName": "PostToolUse"}
-    if notes or big or infos:
+    if notes or big or infos or dnote:
         hso["additionalContext"] = " ".join(([f"{tag('qz-guard')} " + " ".join(notes)] if notes else []) + ([f"{tag('qz-ledger')} {big}"] if big else [])
-                                            + ([f"{tag('qz-format')} " + " ".join(infos)] if infos else []))
+                                            + ([f"{tag('qz-format')} " + " ".join(infos)] if infos else []) + ([f"{tag('qz-decisions')} {dnote}"] if dnote else []))
     if upd is not None:
         hso["updatedToolOutput"] = upd
     return {"hookSpecificOutput": hso}

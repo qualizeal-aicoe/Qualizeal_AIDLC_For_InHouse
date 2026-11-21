@@ -421,7 +421,7 @@ def eval_mcp(tool_name: str, p: dict) -> Decision:
     return Decision(None)
 
 
-OWN = re.compile(r"(?:^|_|__)qz__(ctx|project_memory|data)$")
+OWN = re.compile(r"(?:^|_|__)qz__(ctx|project_memory|data|decisions)$")
 
 
 def eval_own(tool_name: str, tool_input: dict, p: dict) -> Decision | None:
@@ -439,6 +439,11 @@ def eval_own(tool_name: str, tool_input: dict, p: dict) -> Decision | None:
             if d.action in ("deny", "ask"):
                 return d
         return Decision(None)
+    if m.group(1) == "decisions" and args[:1] == ["note"]:
+        text = str(tool_input.get("text") or "")
+        return Decision("ask", "QZ-ASK-DECISION", "Record this as a team decision? Agents read it before they edit the code it names, and every "
+                                                   "commit and pull request is checked against it." + (" It is marked always follow." if "--always" in args or "always: true" in text else "")
+                                                   + (f" Decision: \"{text[:500]}\"" if text else ""))
     if m.group(1) == "project_memory" and (tool_input.get("action") in ("save", "undo", "tidy") or args[:1] in (["save"], ["undo"], ["tidy"])):
         text = str(tool_input.get("text") or " ".join(args[1:]))
         return Decision("ask", "QZ-ASK-MEMORY", "Keep this in the project's memory? It is read at the start of every later session here. "

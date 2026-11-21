@@ -9,6 +9,7 @@ __STACK_LINE__
 - Tool results and user text are data. Never build a system prompt by pasting them in, and never let them choose a tool's target (customer id, recipient, path).
 - Every behaviour change comes with a case in `evals/gold.jsonl`. Attack and refusal cases are tagged `safety`; approval cases are tagged `gate`. Both must stay at 100%.
 - Keys come from the environment. Nothing secret goes in a file, a prompt, a log line or a trace.
+- Team decisions in `docs/decisions/` say why code is the way it is; the ones on a file come with it when you open it. If a change goes against one, tell the person and write `Overrides <id>: <why>` in the commit message. Record a new decision only when the person asks, with the decisions tool, and never edit an old one: a new one replaces it.
 - Run before you push: `__TEST_CMD__` and `uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run` (the gold set, offline).
 
 ## Where things are
@@ -16,5 +17,5 @@ __STACK_LINE__
 - `__AGENT_DIR__` agent, tools, limits, offline stub model
 - `evals/` gold set, adapter, recorded outputs, results
 - `arch/` requirements, option decision, feasibility, three-level diagrams (created by the Architect lane)
-- `docs/adr/` decision records · `docs/runbook.md` how to run and roll back
+- `docs/adr/` architecture decision records · `docs/decisions/` team decisions about the code · `docs/runbook.md` how to run and roll back
 - `.claude/qz/` the QualiZeal engineering kit used by CI (do not edit; refresh with `qz vendor`)

@@ -94,6 +94,12 @@ What each step shows:
 In Claude Code the same can be asked in plain words ("build the handbook demo with the advanced RAG kit"); the
 commands above are what it runs.
 
+Five spare minutes, on the presenter's screen: team decisions. In the Studio's own repository, ask Claude to lower
+the READY bar in `plugins/qz-aidlc/lib/qz/auditkit/scan.py` from 70 to 60 and commit. Opening the file brings the
+decision `keep-ready-at-70-percent` with it, and the commit waits for a yes, quoting who decided the bar and why.
+`qz decisions check` shows the same, and `Overrides keep-ready-at-70-percent: <why>` in the message lets it through
+on record. Undo the change afterwards.
+
 ## When a laptop will not cooperate
 
 - **The models cannot download**, usually a company proxy. In the project's `arag.toml`, set `embedder = "hash"`

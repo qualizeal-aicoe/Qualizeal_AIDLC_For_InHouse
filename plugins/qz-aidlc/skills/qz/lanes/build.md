@@ -10,7 +10,8 @@ passed gate, build what it decided; if not, say that the stack is unconfirmed an
    questions over a database are `text-to-sql`; a command line agents drive a team's tool through (a mock server,
    Jenkins, an internal admin API) is `cli-harness-py`, built by `references/cli-harness.md`. All three carry their
    own README, gold set and CI: scaffold them, then follow their CLAUDE.md (step 2's sample tools and 10-case gold
-   set do not apply to them).
+   set do not apply to them). Team decisions in `docs/decisions/` come with the files they name; record one only when the person
+   asks (`references/decisions.md`).
 2. **Scaffold.** `agent_scaffold [new, <stack>, <dest>, --name NAME]`. It creates: one read tool, one side-effecting
    tool behind a human approval gate, limits in one policy file, tracing, an offline stub model, a 10-case gold set,
    CI, a runbook, rules for coding agents, and the vendored kit under `.claude/qz/` so CI needs nothing installed.

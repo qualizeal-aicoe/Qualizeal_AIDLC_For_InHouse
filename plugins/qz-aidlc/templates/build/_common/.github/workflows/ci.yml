@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 __SETUP_STEPS__
       - name: Unit tests
         run: __TEST_CMD__
@@ -17,6 +19,9 @@ __SETUP_STEPS__
         run: python3 .claude/qz/scripts/qz.py eval run --label ci
       - name: Agentic project audit
         run: python3 .claude/qz/scripts/qz.py audit-project scan
+      - name: Team decisions (docs/decisions/) against this pull request
+        if: github.event_name == 'pull_request'
+        run: python3 .claude/qz/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -3,7 +3,8 @@
 Finds the stacks in a repository (Node or TypeScript, Python, .NET, Go, Java; at the root and one folder down, such
 as web/ and api/), runs each one's own checks (tests, lint, types, build) through the context layer (no
 credentials in the environment, the full output kept, a short view returned), and adds checks every change needs:
-no secrets in changed files, no new debug leftovers, tests touched when source changed. A check that cannot run
+no secrets in changed files, no new debug leftovers, tests touched when source changed, and no conflict with the
+team's decisions in docs/decisions/ when the repository keeps any. A check that cannot run
 is reported as not run, with the reason: never as passed."""
 from __future__ import annotations
 
@@ -164,6 +165,16 @@ def run(root: Path, base: str | None = None, timeout: int = 900, only: list[str]
     tst = [n for n in names if TESTS.search(n)]
     results.append({"stack": "all", "dir": ".", "kind": "tests touched", "cmd": "compare changed files", "status": "warning" if src and not tst else "passed",
                     "why": f"{len(src)} source file(s) changed and no test file" if src and not tst else None})
+    from . import decisions
+    if (root / decisions.FOLDER).is_dir():
+        try:
+            dr = decisions.check(root, base)
+            results.append({"stack": "all", "dir": ".", "kind": "team decisions", "cmd": "qz decisions check",
+                            "status": "failed" if not dr["ok"] else ("warning" if dr["leads"] else "passed"),
+                            "why": "; ".join(f"{x['file']}:{x['line']} {x['what']} [{x['key']}]" for x in dr["conflicts"][:3])
+                                   or (f"{len(dr['leads'])} lead(s) to read: qz decisions check" if dr["leads"] else None)})
+        except Exception as e:                       # a check that cannot run is reported as not run, never as passed
+            results.append({"stack": "all", "dir": ".", "kind": "team decisions", "cmd": "qz decisions check", "status": "not run", "why": f"{type(e).__name__}: {e}"})
     if not checks:
         results.insert(0, {"stack": "?", "dir": ".", "kind": "project checks", "cmd": "-", "status": "not run", "why": "no tests, lint, types or build defined in the repository"})
     failed = [r for r in results if r["status"] == "failed"]

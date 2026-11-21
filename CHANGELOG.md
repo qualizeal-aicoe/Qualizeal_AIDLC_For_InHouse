@@ -34,6 +34,15 @@ way on every laptop and to be taught in a live session.
   hold are caught and fixed, ambiguous words get a question back, instructions found in the data are withheld,
   follow-ups work on a thread, and a model's answer is kept only if its numbers are in the rows. Measured by
   execution accuracy; Anthropic or any OpenAI-compatible API (OpenAI, Groq, vLLM, LiteLLM).
+- **Team decisions**, after the method of Trail-code (trailhq): a short file in `docs/decisions/` per decision,
+  about the code it names, with what was decided and why, what was ruled out and what to watch out for. When an
+  agent opens one of those files, the decisions on it come first, once per session. A commit, a push or a pull
+  request that changes a number a decision fixed, or brings back an approach it ruled out, waits for a person, with
+  who decided it and why; CI and `ship_check` run the same check. Only a decision already on the base branch, about
+  the exact file, can fail a check, and `Overrides <id>: <why>` lets a deliberate change through, on record.
+  Decisions are never edited, only replaced; one carrying instructions, a secret or a rate is refused, and a planted
+  one is withheld from agents. The `decisions` tool, `qz decisions`, the starters' CI and the Studio's own first
+  four decisions come with it.
 - **A command-line harness starter, `cli-harness-py`**, after the CLI-Anything method (HKUDS): agents drive a team's
   tool through its real API instead of its screen. Every command answers in JSON with one exit code per kind of
   failure, declares whether it reads, writes or destroys, plans with `--dry-run`, and needs `--yes`, added only after a

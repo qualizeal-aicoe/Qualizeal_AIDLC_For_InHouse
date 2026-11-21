@@ -121,6 +121,20 @@ jobs:
             doctor-report.json
           if-no-files-found: ignore
 
+  decisions:
+    # The Studio's own team decisions (docs/decisions/) against each pull request: dogfooding the decision trail.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Team decisions against this pull request
+        run: python -I -X utf8 plugins/qz-aidlc/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci
+
   starters:
     strategy:
       fail-fast: false

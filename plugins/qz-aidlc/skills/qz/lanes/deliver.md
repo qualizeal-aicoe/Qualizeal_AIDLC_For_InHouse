@@ -27,7 +27,8 @@ Reading needs no approval. Every write waits for the person's yes, and agents ne
    user can see, `ui_run` it, and run `design_review` on the changed page.
 6. **Prove the change.** `code_graph [pr, --base, origin/<default branch>, --out, code-impact.md, --fail-on, high]`:
    changed symbols with their risk, callers, the tests that call each, changes nothing tests, and the merge danger. A changed symbol with no test gets
-   one, or a sentence saying why not. Run the tests it lists.
+   one, or a sentence saying why not. Run the tests it lists. `decisions [check]` holds the branch against the team's
+   decisions: fix a conflict, or, if the person agrees, say why with `Overrides <id>: <why>` in the commit message.
 7. **Seal outputs.** `output_seal` each approved artefact: requirements, design, test design, the pull-request text.
 8. **Pull request.** Draft the title and body: what changed, why, how it was tested, the code-impact summary, the
    evidence page and report-card paths. Save the text as `pull-request.md` and `project_file` it (kind

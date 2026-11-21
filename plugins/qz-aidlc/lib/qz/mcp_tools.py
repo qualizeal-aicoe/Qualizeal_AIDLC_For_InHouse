@@ -270,6 +270,22 @@ def t_project_memory(a):
             "note": "Draft what is worth keeping, show it to the person, and save only the text they approved."}
 
 
+def t_decisions(a):
+    from . import decisions
+    args = [str(x) for x in a.get("args") or []]
+    if args[:1] == ["note"]:
+        flags = args[1:]
+        rep = flags[flags.index("--replaces") + 1] if "--replaces" in flags and flags.index("--replaces") + 1 < len(flags) else ""
+        return decisions.note(_proj(a), str(a.get("text") or ""), rep, "--always" in flags, "--anyway" in flags)
+    cwd = os.getcwd()
+    os.chdir(_proj(a))
+    os.environ["CLAUDE_PROJECT_DIR"] = str(_proj(a))
+    try:
+        return _capture(lambda: sys.exit(decisions.main(args or ["list"])))
+    finally:
+        os.chdir(cwd)
+
+
 def t_audit_verify(a): return dict(zip(("intact", "detail"), audit.verify(_proj(a))))
 def t_redteam(a):
     r = redteam.run()
@@ -352,7 +368,7 @@ TOOLS = {
               S(args=ARR, project_dir=STR), ["args"]),
     "publish": (t_publish, "Put a project on GitHub after its local copy is saved: target new (private), existing or team (fork when you cannot push). plan screens secrets, rates and other clients' names and runs ship_check; prepare branches and commits locally; the push and the pull request are separate asked steps. Never main, never merged. flags: fork, no-checks, internal-ok, local-sent, draft.",
                 S(action=STR, target=STR, repo=STR, base=STR, branch=STR, **{"with": ARR}, flags=ARR, into=STR, repo_dir=STR, pr=STR, commit=STR, project=STR, project_dir=STR), ["action"]),
-    "ship_check": (t_ship_check, "The definition of done, run and not claimed: each stack's tests, lint, types and build (Node, Python, .NET, Go, Java) without credentials, plus secrets and debug leftovers in changed files. READY, NOT READY or UNVERIFIED. base: compare with a branch; only: tests,lint,types,build.",
+    "ship_check": (t_ship_check, "The definition of done, run and not claimed: each stack's tests, lint, types and build (Node, Python, .NET, Go, Java) without credentials, plus secrets, debug leftovers and team decisions in changed files. READY, NOT READY or UNVERIFIED. base: compare with a branch; only: tests,lint,types,build.",
                    S(path=STR, base=STR, only=STR, out=STR, project_dir=STR), []),
     "office": (t_office, "Decks, plans, estimates and e-mails for a named reader. args: [estimate, wbs.json] (13 weeks and 6 people at most; more becomes phases) | [plan, new|status|read, ...] | [deck, new, arch-tech|arch-estimate|demo|pitch|status, ...] | [deck, check|build, spec, --out F] | [email, status|mom|detailed, --audience cxo|director|delivery-head|pmo|architect|lead|client, --facts F]. Saved, never sent.",
                S(args=ARR, project_dir=STR), ["args"]),
@@ -362,6 +378,8 @@ TOOLS = {
                                          "the exact text first) | history | undo | search (query; everywhere: every workspace project, each hit names its project).",
                        S(action={"type": "string", "enum": ["show", "save", "history", "undo", "search"]}, text=STR, mode={"type": "string", "enum": ["replace", "append", "tidy"]},
                          query=STR, everywhere=BOOL, project_dir=STR), []),
+    "decisions": (t_decisions, "Team decisions tied to code (docs/decisions/). args: [list] | [show, ID] | [for, PATH] | [check] | [stale] | [template] | [note, --replaces ID] with text (the person approves it first).",
+                  S(args=ARR, text=STR, project_dir=STR), []),
     "redteam": (t_redteam, "Run the guard's red-team suite.", S(), []),
 }
 
@@ -369,7 +387,7 @@ TOOLS = {
 # Which tools a session lists. Every tool still runs when called; a profile only decides what is listed up front.
 GROUPS = {
     "core": ["run_start", "stage", "output_seal", "takeover", "review", "report_card", "audit_verify", "doctor",
-             "kf_search", "kf_get", "kf_status", "project_new", "project_file", "project_status", "project_sync", "house_style", "code_explore", "ctx", "project_memory", "route", "office"],
+             "kf_search", "kf_get", "kf_status", "project_new", "project_file", "project_status", "project_sync", "house_style", "code_explore", "ctx", "project_memory", "decisions", "route", "office"],
     "kf": ["kf_add", "kf_sync", "kf_report", "kf_compile"],
     "bid": ["price_roles", "price_run", "price_patch", "price_parity", "sow_build", "deck_build", "voice_check", "deck_review"],
     "demo": ["demo_list", "demo_new", "demo_check", "demo_bundle", "demo_record", "design_review", "web_audit"],

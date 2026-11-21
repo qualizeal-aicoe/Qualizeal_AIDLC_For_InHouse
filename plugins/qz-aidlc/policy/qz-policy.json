@@ -506,6 +506,27 @@
       "message": ".qz/config.json decides what the tools may reach: the hosts a browser may click through (ui_hosts) and the variables a scenario may read (ui_env). A person confirms each change."
     },
     {
+      "id": "QZ-ASK-DECISION",
+      "tool": "write",
+      "match": "(^|/)docs/decisions/[^/]+\\.md$",
+      "flags": "i",
+      "message": "A team decision tells every later agent why this code is the way it is, and every commit and pull request is checked against it. A person confirms each one. Decisions are never edited: a new one replaces an old one (the decisions tool, note --replaces)."
+    },
+    {
+      "id": "QZ-ASK-DECISION",
+      "tool": "shell",
+      "flags": "i",
+      "match": "(?:>{1,2}\\|?\\s*['\"]?[^\\s'\"|;&]*docs[\\\\/]decisions[\\\\/])|\\b(?:tee|mv|cp|rm|truncate|install|ln|dd)\\b[^\\n;&|]*docs[\\\\/]decisions[\\\\/]|\\b(?:sed|perl)\\b[^\\n;&|]*\\s-[a-zA-Z]*i[^\\n;&|]*docs[\\\\/]decisions[\\\\/]|docs[\\\\/]decisions[\\\\/][^\\n]*(?:write_text|writefile|\\bopen\\s*\\()|(?:write_text|writefile|\\bopen\\s*\\()[^\\n]*docs[\\\\/]decisions[\\\\/]",
+      "message": "A team decision tells every later agent why this code is the way it is, and every commit and pull request is checked against it. A person confirms each one. Decisions are never edited: a new one replaces an old one (the decisions tool, note --replaces)."
+    },
+    {
+      "id": "QZ-ASK-DECISION-CONFLICT",
+      "tool": "any",
+      "match": "(?!)",
+      "note": "Emitted from code (decisions.hook_check): a git commit, a git push or a GitHub pull request created from the command line whose change goes against a team decision in docs/decisions/ that is already on the base branch and names the changed file, with no Overrides line for it.",
+      "message": "This change goes against a team decision. The person decides; the commit message or the pull request says why with \"Overrides <id>: <why>\"."
+    },
+    {
       "id": "QZ-ASK-SETTINGS",
       "tool": "shell",
       "beforeAllow": true,

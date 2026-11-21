@@ -106,8 +106,8 @@ def test_mcp_server_lists_tools():
             "arch", "agent_scaffold", "eval_run", "eval", "test_design", "project_audit", "kit_vendor", "doctor",
             "design_review", "web_audit", "ui_probe", "ui_run", "deck_review",
             "project_new", "project_file", "project_status", "project_sync", "house_style", "code_explore", "code_graph",
-            "route", "office", "ship_check", "publish"} <= {t["name"] for t in tools}
-    assert len(tools) == 54
+            "route", "office", "ship_check", "publish", "decisions"} <= {t["name"] for t in tools}
+    assert len(tools) == 55
     hints = {t["name"]: t["annotations"] for t in tools}
     assert all(set(h) == {"readOnlyHint", "destructiveHint", "openWorldHint"} for h in hints.values())
     assert hints["kf_search"]["readOnlyHint"] and not hints["kf_search"]["openWorldHint"] and hints["kit_vendor"]["destructiveHint"]

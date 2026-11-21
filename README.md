@@ -103,6 +103,14 @@ Several agents on one job keep in step through `qz board`: channels and threads 
 a worker claims a task with a lease, renews it while it works and marks it done, failed or blocked. One board per
 repository, shared by every session and git worktree on the computer; `qz board view` shows it as a page.
 
+Team decisions sit in `docs/decisions/`, one short file each about the code it names: what was decided and why, what
+was ruled out, what to watch out for. When an agent opens one of those files, the decisions on it come first. A
+commit, a push or a pull request that changes a number a decision fixed, or brings back an approach it ruled out,
+waits for a person, with who decided it and why. CI runs the same check on every pull request, and `Overrides <id>:
+<why>` lets a deliberate change through, on record. Decisions are never edited: a new one replaces an old one. The
+Studio keeps its own in [docs/decisions/](docs/decisions/). Method after Trail-code, without its telemetry or its
+cloud workspace.
+
 ## A live session
 
 [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md) is the plan for an instructed session: what everyone does five days and
@@ -123,6 +131,9 @@ The video (under a minute, no sound) is made from real output of the commands in
 - The text-to-SQL starter only reads, and only what the asker's role may read: the SQL is checked as a parsed tree,
   then runs on a read-only connection whose authorizer refuses any write, pragma or restricted column inside SQLite
   itself. Text in the data that reads like instructions to an AI is withheld before the answer is written.
+- A team decision is written only after a person confirms its exact text, and one that carries instructions to agents,
+  a secret or a rate is refused. A planted decision that slips into the repository is withheld from agents, and the
+  line says so.
 - The command-line harness runs a destructive command only with `--yes`, which an agent adds after the person agreed
   to its dry run, and Claude Code asks before each one. No command takes a credential; their values are scrubbed from
   every answer and record, and it talks only to listed hosts.
@@ -150,7 +161,7 @@ The video (under a minute, no sound) is made from real output of the commands in
 Run on 20 November 2026:
 - **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 292 tests (290 passed and 2 skipped
   on Linux, the two that need the internal pricing workbook; 289 passed and 3 skipped on Windows, where the runner
-  also lacks Chrome for one visual check); the guard's red-team, 140 of 140; the doctor, and the bootstrap in
+  also lacks Chrome for one visual check); the guard's red-team, 147 of 147; the doctor, and the bootstrap in
   check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the handbook demo
   rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code
   from its native installer. The numbers are from Actions run 44806606335, on the release branch; every pull request
