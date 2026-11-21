@@ -182,13 +182,14 @@ The video (under a minute, no sound) is made from real output of the commands in
 
 Run on 20 and 21 November 2026:
 - **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 398 tests (396 passed and 2 skipped
-  on Linux, the two that need the internal pricing workbook; on Windows one more is skipped, where the runner lacks
-  Chrome for one visual check); the guard's red-team, 147 of 147; the doctor, and the bootstrap in check-only mode,
-  started the way an attendee starts them, both ending `ready for a live session`; the handbook demo rehearsed stage
-  by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude Code from its native
-  installer. Every pull request and every push to main runs the same checks, and the Actions tab shows the latest.
-- **Containers**: on the release branch, CI builds all 13 starters' images and runs each one's gold set (the RAG
-  kits: their gate) and health check inside the image with no network.
+  on Linux, the two that need the internal pricing workbook; 394 passed and 4 skipped on Windows, where the runner
+  also lacks Chrome for one visual check and Claude Code's sandbox does not run natively); the guard's red-team, 147
+  of 147; the doctor, and the bootstrap in check-only mode, started the way an attendee starts them, both ending
+  `ready for a live session`; the handbook demo rehearsed stage by stage; and Claude Code's own plugin check on the
+  marketplace and both plugins, with Claude Code from its native installer. Every pull request and every push to main
+  runs the same checks, and the Actions tab shows the latest.
+- **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
+  their gate) and health check inside the image with no network: 13 of 13 passed.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
   ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety
   violations. The command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail
@@ -205,7 +206,12 @@ Not run:
 - **macOS in CI.** It runs on a release tag, or by hand from the Actions tab.
 - **A live model.** No starter, kit or agent here called one: the gold sets run against offline stubs, and the demo's
   answers are sentences taken from the documents, so the session needs no API key. A starter's first call with a real
-  key is the first time that path runs.
+  key, or to an open-weight model on Ollama (the default for LangGraph and the OpenAI Agents SDK), is the first time
+  that path runs.
+- **A rollback.** The release recipe's rollback is a documented switch to the previous tag; no test runs it, because it
+  depends on where a team deploys.
+- **A person's confirmation of the EU AI Act class**, for the Studio and for each new project. Until someone confirms
+  it, the record is a draft and the scorecard says so.
 - **A person working in a live Claude Code session with the hooks.** The hooks were started exactly as Claude Code
   starts them, with the input it sends, but no interactive session was recorded.
 - The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
