@@ -154,7 +154,7 @@ def test_nothing_the_plugins_ship_is_ignored_by_git(tmp_path):
 
 def test_a_release_builds_from_the_repository_with_its_own_notes(tmp_path):
     script = REPO / ".github" / "scripts" / "build_release.py"
-    run = lambda *a: subprocess.run([sys.executable, "-I", str(script), *a], capture_output=True, text=True, encoding="utf-8")
+    run = lambda *a: subprocess.run([sys.executable, "-I", "-X", "utf8", str(script), *a], capture_output=True, text=True, encoding="utf-8")
     ver = json.loads((PLUG / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
     assert run("version").stdout.strip() == ver
     r = run("notes", ver, str(tmp_path / "notes.md"))

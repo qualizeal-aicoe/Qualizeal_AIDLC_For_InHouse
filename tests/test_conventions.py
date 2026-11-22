@@ -155,6 +155,7 @@ def test_without_a_jira_key_nothing_is_checked_but_master(tmp_path, monkeypatch)
     g(p, "checkout", "-qb", "tidy")
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(p))
     monkeypatch.setenv("QZ_HOME", str(tmp_path / ".qz-home"))
+    monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)     # in CI this names the pull request's branch, not this repo's
     assert pre(p, 'git commit -m "tidy things"') is None
     assert not C.gate(p, online=False)["applies"]
     g(p, "checkout", "-q", "main")
