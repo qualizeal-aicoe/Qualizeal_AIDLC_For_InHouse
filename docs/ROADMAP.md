@@ -21,16 +21,20 @@ MCP and A2A (Agent2Agent) now sit together under the Agentic AI Foundation, and 
 speaks A2A can be called by other teams' agents without a custom integration. That is why A2A comes in 1.1 alongside
 CrewAI rather than later.
 
-Two items come from watching the Studio work rather than from the chart: people add or change things while a stage
-is still running, and teams decide things on branches that have not met yet. The method for both is from
-git-ontology-agent (gogoymh, MIT): every result is a typed entry that knows the request it came from and what it
-depends on. We take the method only and write our own code, with no second model and no new vendor.
+Four items come from watching the Studio work rather than from the chart. People add or change things while a stage
+is still running, and teams decide things on branches that have not met yet: the method for both is from
+git-ontology-agent (gogoymh, MIT), where every result is a typed entry that knows the request it came from and what
+it depends on. Work also gets interrupted: a process restarts while an approval waits, or a stage is redone after a
+session dies. The answer is durable execution, as week 1 of The Neural Maze's Substack Brain course lays it out:
+every step is a checkpoint, a restart carries on past the steps already done, and nothing is written twice. In each
+case we take the method only and write our own code, with no second model, no new vendor and no server to run.
 
 ## 1.0.1
 
 | Item | What we build | Done means |
 |---|---|---|
 | Why a change was made, in its commit | Every commit an agent makes carries trailers beside Claude Code's own: `Request:` (the story key and which of the person's messages asked for it), `Stage:` (the AI-DLC stage) and `Base:` (the commit the work started from). 1.1 adds `Relation:` and `Invalidates:` with the changes mid-run | `qz conventions` checks the trailers on agent commits; a test answers "why did this file change, and at whose request" from git history alone |
+| No write twice within a run | Every Jira, Confluence and GitHub write the Studio makes is recorded in the run's ledger with what it created: the issue key, the page, the pull request or the comment. Before a write, the hook looks for the same write (the same tool, target and content, compared by fingerprint) already done in this run. If it finds one, it says so ("already done: QZ-12 at 10:03") instead of asking again, and a person can still say "do it again" | A test redoes a stage after a simulated crash: no second story, page or comment is created, and the earlier one is named; a write that differs (a new summary, another target) is asked about as usual; the record holds keys and links, never tokens or page bodies |
 
 ## 1.1
 
@@ -43,6 +47,7 @@ depends on. We take the method only and write our own code, with no second model
 | More retrieval and optimisation: LlamaIndex, Agno, DSPy | LlamaIndex as an alternative ingest and retrieval path in the hybrid kit; an Agno starter; DSPy to tune a prompt against a gold set | Each is measured against what 1.0.0 already does on the same gold set; it ships only if it is at least as good, or it ships as an option with the numbers beside it |
 | Changes in the middle of a run | When the person adds or changes something while a stage is running, the message is labelled one of five ways: an addition, a correction, a separate request, a cancel or a progress question. The labels have neutral names, and below 80% confidence the Studio asks instead of guessing. Every AI-DLC record a stage writes (requirements, the architecture decision, test cases, code) carries the story it came from and the records it was built from, so a correction marks exactly the work built on it as stale and only that is redone. The board, the console band and the report card word each record by its status: settled work plainly, running work as ongoing, discarded work never, replaced work with who changed it. The rule reaches the conductor through the prompt hook, and only while a run is open | A gold set of 20 mid-run messages, each labelled right or asked about, none acted on with the wrong label; a test where a corrected requirement marks exactly its dependents stale and nothing else; the board never shows work in progress as done; the always-loaded context stays under its 8,000-token cap; no model call beyond the session's own |
 | Team decisions across branches | When an agent edits a function a teammate's open branch also changes, say so right after the edit and whether the two clash; a team view of the decisions recorded and reused across the CoE's repositories. Decision records from parallel branches are reconciled entry by entry, each by a rule for its type: constraints add up, a correction wins, a decision is worked out again when something it rests on changed, the later finding wins, progress notes stay on their own branch, and anything else goes to a person. The team view lives on its own branch, written with git plumbing (no checkout, no working tree), and travels through GitHub | Two clones in a test see each other's unmerged change to the same function and nothing else; a test merges two branches' decision records and settles each case by its rule, asking only where no rule applies; the team view runs on files and git alone, with no server and no data leaving the machines |
+| Durable runs in every starter | A run waiting for a person's approval is saved, so a restart, a deploy or a rollback does not lose it. LangGraph uses its SQLite saver and the OpenAI Agents SDK keeps its saved run text; the Claude Agent SDK, Strands, Microsoft Agent Framework and Go starters save the paused call and its state in a SQLite table. Postgres is the step up when a team needs it, and DBOS (an MIT library on Postgres) when the team already runs Postgres. Every tool that changes something gets a key per call, so a step retried after a crash never does it twice. Temporary errors are retried after a short wait, permanent ones stop the run with the reason, and both show in the trace. The hybrid kit re-embeds only the documents whose fingerprint changed, and `qz stack` names the open options when a project adds a durable-execution service | In every agent starter, a gold case restarts the process between the approval request and the answer, and the run carries on where it stopped; a crash right after a refund leads to exactly one refund on retry; re-indexing an unchanged set of documents embeds nothing; SQLite by default and no new server; `qz stack` flags a source-available service and names the open option |
 | Cursor and Codex | The lanes and rules for Cursor and the Codex CLI, next to Claude Code | The same starters scaffold and pass their tests from each tool; the guard's rules apply wherever the tool allows hooks, and the README says where it does not |
 
 ## Brought forward into 1.0.0
@@ -61,6 +66,9 @@ These three were planned for 1.1 and shipped in 1.0.0 instead.
   client's volume says otherwise.
 - AutoGPT-style open-ended agents: no item here runs without limits and an approval gate.
 - Hosting: the Studio stays a set of tools a team runs; nothing here needs a server we pay for.
+- A durable-execution service such as Inngest or Temporal: the starters get the guarantees they need from SQLite
+  and their frameworks' own savers, with nothing extra to run. Inngest's server is source-available (each
+  version turns Apache 2.0 three years later), so a team that picks it records it as a vendor choice.
 
 ## How to ask for something
 
