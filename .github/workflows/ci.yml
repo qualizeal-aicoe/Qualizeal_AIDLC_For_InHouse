@@ -1,5 +1,6 @@
-# Checks the Studio on every pull request and every push to main, on Windows and Linux (and macOS on a release tag or
-# when asked); a release branch is checked through its pull request, so no push runs twice. It runs:
+# Checks the Studio on every pull request and every push to main, on Windows and Linux (and macOS on a release branch's
+# pull request, a release tag or when asked); a release branch is checked through its pull request, so no push runs
+# twice. When it passes on main, the release workflow publishes any version that has no release yet. It runs:
 # the test suite, with every hook and the tool server started exactly as Claude Code starts them;
 # the guard red-team; the doctor; Claude Code's own plugin check; the bootstrap attendees run (check only);
 # the RAG demo rehearsed stage by stage;
@@ -37,10 +38,15 @@ jobs:
     steps:
       - id: m
         shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           m='{"os":"windows-latest","python":"3.12"},{"os":"ubuntu-latest","python":"3.11"},{"os":"ubuntu-latest","python":"3.13"}'
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.macos }}" = "true" ]; then m="$m,{\"os\":\"macos-latest\",\"python\":\"3.12\"}"; fi
-          case "${{ github.ref }}" in refs/tags/*) m="$m,{\"os\":\"macos-latest\",\"python\":\"3.12\"}" ;; esac
+          mac=no
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.macos }}" = "true" ]; then mac=yes; fi
+          case "${{ github.ref }}" in refs/tags/*) mac=yes ;; esac
+          case "$HEAD_REF" in release/*) mac=yes ;; esac    # a release is checked on macOS before it is merged and published
+          if [ "$mac" = yes ]; then m="$m,{\"os\":\"macos-latest\",\"python\":\"3.12\"}"; fi
           echo "matrix={\"include\":[$m]}" >> "$GITHUB_OUTPUT"
 
   studio:

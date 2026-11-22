@@ -217,6 +217,14 @@ Not run:
 - The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
 - Cursor and Codex. 1.0.0 is for Claude Code; they are planned for 1.1.
 
+## How a release ships
+
+Nobody tags or uploads anything by hand. A release branch's pull request runs every check, macOS and the 13
+containers included. Once it is merged and the checks pass again on main, the release workflow builds the plugin zips
+from that commit, tags it `v<version>` and publishes the release, with that version's section of the changelog as its
+notes. A merge that does not change the version publishes nothing. Merged branches go the same way: the tidy workflow
+deletes a branch once its head is the head of a merged pull request, and keeps any branch with later work.
+
 ## Where things are
 
 | | |
@@ -227,7 +235,7 @@ Not run:
 | [docs/QUICK-GUIDE.md](docs/QUICK-GUIDE.md) | Every command, the QualiZeal names, and how to spend fewer tokens |
 | [docs/DEMO-VECTORLESS-RAG.md](docs/DEMO-VECTORLESS-RAG.md) | A longer session that builds the vectorless kit live, one story at a time |
 | [docs/GITHUB-AGENT.md](docs/GITHUB-AGENT.md) | The GitHub agent, set up from the website |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.1 adds and why: LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.0.1 and 1.1 add and why: durable runs, changes mid-run, LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
 | [docs/HISTORY.md](docs/HISTORY.md) | Releases 0.4.0 to 0.10.0, as described at the time |
 | [LAYERS.md](LAYERS.md) | What is AWS AI-DLC and what is ours |
 | [CREDITS.md](CREDITS.md) | The projects that shaped the Studio, and their licences |

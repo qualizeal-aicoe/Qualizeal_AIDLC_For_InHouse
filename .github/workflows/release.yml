@@ -1,0 +1,57 @@
+# Publishes each release by itself. When the checks pass on main for a commit whose plugin version has no release yet,
+# this builds the plugin zips from that commit, tags it v<version>, publishes the release with that version's section
+# of CHANGELOG.md as its notes, and starts the tag's full check (macOS and every container). A version that already
+# has a release is left alone, so a merge that does not change the version publishes nothing.
+name: release
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency: release
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Is this version released yet?
+        id: v
+        run: |
+          v=$(python3 -I .github/scripts/build_release.py version)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"; echo "v$v is already released: nothing to do"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: The notes and the plugin zips
+        if: steps.v.outputs.new == 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          python3 -I .github/scripts/build_release.py notes "$VERSION" "$RUNNER_TEMP/notes.md"
+          python3 -I .github/scripts/build_release.py build "$RUNNER_TEMP/dist"
+      - name: Publish the release
+        if: steps.v.outputs.new == 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: gh release create "v$VERSION" --target "$SHA" --title "QualiZeal AI-DLC Studio $VERSION" --notes-file "$RUNNER_TEMP/notes.md" "$RUNNER_TEMP"/dist/*.zip
+      - name: The tag's full check (macOS and every container)
+        if: steps.v.outputs.new == 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: gh workflow run ci.yml --ref "v$VERSION" -f macos=true -f containers=true

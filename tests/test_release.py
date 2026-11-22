@@ -150,3 +150,40 @@ def test_nothing_the_plugins_ship_is_ignored_by_git(tmp_path):
     r = subprocess.run(["git", "-c", "core.excludesFile=", f"--git-dir={tmp_path / 'g' / '.git'}", f"--work-tree={REPO}", "check-ignore", "--no-index", "--stdin"],
                        input="\n".join(sorted(files)) + "\n", capture_output=True, text=True, timeout=60)
     assert r.stdout.strip() == "", f"git ignores files the plugin ships:\n{r.stdout}"
+
+
+def test_a_release_builds_from_the_repository_with_its_own_notes(tmp_path):
+    script = REPO / ".github" / "scripts" / "build_release.py"
+    run = lambda *a: subprocess.run([sys.executable, "-I", str(script), *a], capture_output=True, text=True, encoding="utf-8")
+    ver = json.loads((PLUG / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+    assert run("version").stdout.strip() == ver
+    r = run("notes", ver, str(tmp_path / "notes.md"))
+    assert r.returncode == 0, r.stderr
+    notes = (tmp_path / "notes.md").read_text(encoding="utf-8")
+    assert notes.strip() and "\n## " not in notes, "one version's section, and nothing after it"
+    assert run("notes", "99.0.0", str(tmp_path / "none.md")).returncode != 0, "no release without its changelog section"
+    r = run("build", str(tmp_path / "dist"))
+    assert r.returncode == 0, r.stdout + r.stderr
+    with zipfile.ZipFile(tmp_path / "dist" / f"qz-aidlc-{ver}.zip") as z:
+        names = z.namelist()
+    assert [n for n in names if n.endswith(".claude-plugin/plugin.json")] == [".claude-plugin/plugin.json"]
+    assert {"MANIFEST.sha256", "CREDITS.md"} <= set(names)
+    assert not [n for n in names if "__pycache__" in n or n.endswith((".pyc", ".env")) or n.startswith(("docs/internal/", ".qz/"))]
+    assert (tmp_path / "dist" / "qz-console-{}.zip".format(json.loads(
+        (REPO / "plugins" / "qz-console" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"])).is_file()
+
+
+def test_releases_and_tidying_run_by_themselves_and_only_after_the_checks():
+    wf = REPO / ".github" / "workflows"
+    rel = (wf / "release.yml").read_text(encoding="utf-8")
+    assert "workflow_run:" in rel and "workflows: [ci]" in rel and "branches: [main]" in rel
+    assert "github.event.workflow_run.conclusion == 'success'" in rel and "github.event.workflow_run.event == 'push'" in rel
+    assert rel.index('gh release view "v$v"') < rel.index("gh release create"), "a version is released once"
+    assert rel.index("build_release.py notes") < rel.index("gh release create"), "no release without its notes"
+    assert "macos=true -f containers=true" in rel
+    tidy = (wf / "tidy.yml").read_text(encoding="utf-8")
+    assert 'select(.name != "main" and (.protected | not))' in tidy
+    assert '.merged_at != null and .base.ref == \\"main\\" and .head.sha == \\"$sha\\"' in tidy, "only a merged pull request's own head goes"
+    ci = (wf / "ci.yml").read_text(encoding="utf-8")
+    assert 'HEAD_REF: ${{ github.head_ref }}' in ci and 'case "$HEAD_REF" in release/*) mac=yes' in ci
+    assert "${{ github.head_ref }}" not in ci.replace("HEAD_REF: ${{ github.head_ref }}", ""), "branch names reach the shell as data"
