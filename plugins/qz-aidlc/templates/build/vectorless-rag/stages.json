@@ -1,0 +1,23 @@
+{
+  "about": "Which story of the live build each file belongs to. Files not listed are stage 0: the corpus, the golden questions, the stories, the tests and the settings. An overlay replaces a stage-0 file from that stage on.",
+  "files": {
+    "vrag/ingest.py": 1,
+    "vrag/index.py": 2,
+    "vrag/search.py": 2,
+    "vrag/answer.py": 3,
+    "vrag/guard.py": 4,
+    "vrag/audit.py": 4,
+    "vrag/evaluate.py": 5,
+    "vrag/llm.py": 6,
+    "vrag/tree.py": 6,
+    "vrag/server.py": 7,
+    "vrag/static/index.html": 7,
+    "vrag/static/app.js": 7
+  },
+  "overlays": {
+    "6": [
+      "vrag.toml",
+      "evals/thresholds.json"
+    ]
+  }
+}

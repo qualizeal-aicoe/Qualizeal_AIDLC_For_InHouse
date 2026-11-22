@@ -1,0 +1,24 @@
+{
+  "about": "Every document the assistant may answer from is listed here with its owner, version, status and the groups that may read it. A file that is not listed is not ingested. All documents describe Northwind Freight, a fictional company.",
+  "groups": {
+    "all": "every employee",
+    "managers": "people managers",
+    "hr": "the People team",
+    "finance": "the finance team"
+  },
+  "documents": {
+    "hr/leave-policy.md": {"title": "Leave policy", "owner": "People team", "version": "3.1", "effective": "2026-04-01", "status": "current", "acl": ["all"]},
+    "hr/leave-policy-2025.md": {"title": "Leave policy (2025 edition)", "owner": "People team", "version": "2.4", "effective": "2025-01-01", "status": "superseded", "superseded_by": "hr/leave-policy.md", "acl": ["all"]},
+    "hr/remote-work.md": {"title": "Remote and hybrid work", "owner": "People team", "version": "1.3", "effective": "2026-01-15", "status": "current", "acl": ["all"]},
+    "hr/benefits-faq.html": {"title": "Benefits FAQ", "owner": "People team", "version": "2026.1", "effective": "2026-01-01", "status": "current", "acl": ["all"]},
+    "hr/salary-bands.md": {"title": "Salary bands 2026", "owner": "People team", "version": "2026.1", "effective": "2026-01-01", "status": "current", "acl": ["hr", "managers"]},
+    "finance/travel-expense.md": {"title": "Travel and expense policy", "owner": "Finance", "version": "4.0", "effective": "2026-02-01", "status": "current", "acl": ["all"]},
+    "finance/procurement.docx": {"title": "Procurement policy", "owner": "Finance", "version": "2.2", "effective": "2025-10-01", "status": "current", "acl": ["all"]},
+    "it/security-policy.md": {"title": "Information security policy", "owner": "IT security", "version": "5.1", "effective": "2026-03-01", "status": "current", "acl": ["all"]},
+    "it/acceptable-use.md": {"title": "Acceptable use of company systems", "owner": "IT security", "version": "3.0", "effective": "2025-06-01", "status": "current", "acl": ["all"]},
+    "it/incident-response.pdf": {"title": "Incident response playbook", "owner": "IT operations", "version": "1.8", "effective": "2026-05-01", "status": "current", "acl": ["all"]},
+    "ops/onboarding.md": {"title": "New joiner onboarding", "owner": "People team", "version": "1.1", "effective": "2026-02-01", "status": "current", "acl": ["all"]},
+    "legal/data-retention.md": {"title": "Data retention schedule", "owner": "Legal", "version": "2.0", "effective": "2025-11-01", "status": "current", "acl": ["all"]},
+    "vendors/supplier-faq.md": {"title": "Supplier onboarding FAQ", "owner": "Procurement team", "version": "0.9", "effective": "2026-06-01", "status": "current", "acl": ["all"], "source": "sent in by a supplier, not reviewed"}
+  }
+}

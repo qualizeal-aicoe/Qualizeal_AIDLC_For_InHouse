@@ -1,0 +1,9 @@
+.arag/
+evals/results/
+__pycache__/
+.venv/
+.env
+.env.*
+!.env.example
+.qz/scratch/
+.qz/internal/

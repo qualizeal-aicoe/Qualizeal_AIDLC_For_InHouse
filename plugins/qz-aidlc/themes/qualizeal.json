@@ -1,0 +1,8 @@
+{
+  "name": "QualiZeal",
+  "base": "dark",
+  "overrides": {
+    "claude": "#0096FF",
+    "error": "#F43D59"
+  }
+}

@@ -1,2 +1,233 @@
-# Qualizeal_AIDLC_For_InHouse
-AIDLC using Claude for all AI Engineers
+# QualiZeal AI-DLC Studio · 1.0.0
+
+How the QualiZeal AI Center of Excellence (AI CoE) builds with Claude Code, in one install. An AI full-stack developer
+or a generative AI (GenAI) engineer gets tested starters for the stacks our projects use, lanes that carry a piece of
+work from a decision to a reviewed pull request, and a harness that keeps prompts, keys and pricing where they belong.
+AI-DLC is the AI-Driven Development Life Cycle.
+
+Prepared by the QualiZeal AI Center of Excellence (AI CoE). Internal to QualiZeal.
+
+| Plugin | What it is |
+|---|---|
+| `qz-aidlc` | Lanes, starters and tools, and the harness around them: a policy guard on every tool call, an audit chain, a run ledger and report cards |
+| `qz-console` | A live map of the harness at work, in a pane beside the conversation (Claude Code only) |
+
+## Start here
+
+About 15 minutes, no administrator rights. The repository is private, so accept the invitation to the
+`qualizeal-aicoe` organisation on GitHub first.
+
+Windows, in PowerShell:
+
+```powershell
+winget install --id Git.Git -e        # only if Git is missing; then open a new terminal
+git clone https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse.git
+cd Qualizeal_AIDLC_For_InHouse
+setup\bootstrap.cmd
+```
+
+macOS or Linux:
+
+```sh
+git clone https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse.git    # macOS without Git: xcode-select --install
+cd Qualizeal_AIDLC_For_InHouse
+sh setup/bootstrap.sh
+```
+
+The first clone opens a browser to sign in to GitHub. The bootstrap installs what is missing into your user folder
+(Claude Code, uv, and Python 3.12 when no Python 3.11 to 3.13 is found), adds the Studio to Claude Code and runs the
+doctor. Its last line should read `Result: ready for a live session`. A line marked FAIL says how to fix it: fix it
+and run the bootstrap again, which is safe to repeat. The doctor writes `doctor-report.json` beside the bootstrap;
+send that file to the AI CoE when something will not pass. `-CheckOnly` on Windows, `--check-only` elsewhere, checks
+without installing anything.
+
+Then restart Claude Code, sign in with the Claude account you use for work, type `/qz-aidlc:qz-setup` once, and from
+then on `/qz-aidlc:qz` followed by what you want to do. `/qz-aidlc:qz-help` lists every command; the same page is
+[docs/QUICK-GUIDE.md](docs/QUICK-GUIDE.md).
+
+Other ways in (an organisation that turns the Studio on for everyone, the Claude app, many laptops at once,
+continuous integration (CI)): [docs/SETUP-GUIDE.md](docs/SETUP-GUIDE.md).
+
+## Starters
+
+`/qz-aidlc:qz-build <starter>` in Claude Code, or say what you want in plain words. Each starter is a small project
+that runs on the first day and already has the parts teams tend to skip: a person approves anything with side effects,
+limits sit in one policy file, every step is traced, an offline stub model lets the tests run with no key, a gold set
+of evaluation cases gates each change, and CI and a runbook come with it.
+
+| Starter | What it is | Checked in CI on every push |
+|---|---|---|
+| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 10 tests and 11 gold cases, with interrupt and resume; Windows and Linux |
+| `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 12 tests and 11 gold cases, with an approval, a declined refund and a resume from saved state; Windows and Linux |
+| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 9 tests and 11 gold cases; Windows and Linux |
+| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 7 tests and 11 gold cases; Linux |
+| `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 8 tests and 8 contract cases through a real MCP client; Windows and Linux |
+| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 66 tests; 38 of 40 golden questions with the real models, against 35 for keyword search alone; no safety violations; Windows and Linux |
+| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 62 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
+| `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 18 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
+| `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 42 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
+| `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 31 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
+| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 10 tests and 11 gold cases; Linux |
+| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 9 tests and 11 gold cases; Linux |
+| `go-anthropic` | Go on the Anthropic API | vet, tests and 11 gold cases; Linux |
+
+The Python starters use uv with a lock file, so a laptop gets the versions CI tested (the Strands starter keeps a
+requirements file). Only the TypeScript starter needs
+Node.js (22); `maf-dotnet` needs the .NET 10 SDK and `go-anthropic` Go 1.26. Every gold set runs against the offline
+stub, so none of these numbers involves a live model.
+
+Every starter also ships a container. `docker build` gives an image that runs the project's own gold set (the RAG kits:
+their gate) with no network and no key, runs as a non-root user, has a health check, and never holds keys, rates or
+run ledgers (its `.dockerignore` keeps them out). Each project's `docs/release.md` is the release recipe: one image per
+release tag, shadow, a small share of traffic, then everyone, and a rollback that points back at the previous tag. The
+Studio's CI builds all 13 images on a release branch, on a tag, or when asked, and runs each check inside the image.
+
+## The QualiZeal standards
+
+Everything the Studio builds, and the Studio itself, meets four standards. `qz standards` prints one scorecard, every
+starter's CI fails without it, and on GitHub it lands on the pull request's checks page.
+
+| Standard | What it checks |
+|---|---|
+| Six guardrails | Input filter, output filter, tool allowlist, human approval, step limits and sandboxed execution, each with the file and line that shows it |
+| EU AI Act | A record in `docs/ai-act/`: the risk class (prohibited, high-risk, limited or minimal), the role, the EU link, and evidence for every obligation that brings. Every agent result carries `ai_notice` and a machine-readable `ai_generated`; the knowledge kits show the notice on the page. The Studio builds to the Act whether or not a system reaches the EU, and the class is a draft until a person confirms it |
+| Open source first | Each AI layer (model, runtime, framework, vector store, evals, tracing) is open, or tied to a vendor by a recorded choice. The framework-neutral starters run live on an open-weight model on your own machine by default (`qwen3:8b` on Ollama); picking a vendor starter records the vendor |
+| Cost levers | Prompt caching on the fixed prefix, easy turns routed to a smaller model (`AGENT_MODEL_SMALL`), batch where work can wait, a cache for repeat questions that never crosses an access boundary, capped context, and smaller models for narrow work |
+
+All 13 starters meet all four the moment they are created; `tests/test_standards.py` creates each one and checks.
+
+## Lanes
+
+| Lane | Start it with | What you get |
+|---|---|---|
+| Project | `/qz-aidlc:qz-project` | A home for the work on your own computer: one folder per project with `code`, `docs`, `ppts`, `guides` and `architecture`, every result filed as it is produced, and an index page that links it all |
+| Architect | `/qz-aidlc:qz-architect` | Testable requirements; options scored against a no-agent baseline on locked criteria; spikes with criteria fixed in advance; diagrams at enterprise, system and workflow level; an independent review; a gate before anything is called final. Motion diagrams from one reviewed spec: a page that plays, a looping GIF, an MP4 and an animated PowerPoint |
+| Spec | `/qz-aidlc:qz-spec` | A design document drafted section by section in `docs/designs/`, reviewed in stages by reviewers that see only the document and the files it links, never the conversation; findings merged; the author's resolution checked; your approval; then writes held to the spec's file boundary |
+| Build | `/qz-aidlc:qz-build` | A project from one of the starters above, with its approval gate, limits, tracing, offline stub, gold set, CI and runbook |
+| RAG | `/qz-aidlc:qz-rag` | A knowledge assistant over documents from a tested kit, vectorless or hybrid: cited answers or a refusal, access control inside the search query, planted instructions quarantined, 40 golden questions and a gate. The vectorless kit is built live one stage per story; the hybrid kit keeps a trace of every answer and packs its index into portable knowledge cores |
+| Eval | `/qz-aidlc:qz-eval` | Gold set runner with record and replay, pass rate with a 95% interval, regression gate, model judge calibrated against people |
+| Test | `/qz-aidlc:qz-test` | Test cases designed from a story with named techniques, coverage check, traceability, export to Xray, Gherkin or Playwright after approval. UI scenarios that leave a screenshot per step, a captioned video and an evidence page; a packaged suite to hand over |
+| Design | `/qz-aidlc:qz-design` | A direction agreed before any styling; the rendered page measured at four widths for contrast, type, focus, touch targets, overflow and motion; an independent critique; named fix passes |
+| Deck | `/qz-aidlc:qz-deck` | Audience, decision and minutes first; titles that make the argument when read in order; story and slide-build checks; a rehearsal against the most sceptical person in the room |
+| Audit | `/qz-aidlc:qz-audit` | Readiness score for an agentic repository across six pillars, mapped to the OWASP (Open Worldwide Application Security Project) Top 10 lists for large language model (LLM) and agentic applications |
+| Deliver | `/qz-aidlc:qz-deliver` | A Jira story to a reviewed pull request through AWS AI-DLC stages, with the story, design, test evidence, code-impact report and pull request text kept in the project folder |
+| Demo | `/qz-aidlc:qz-demo` | Prospect demos and recorded walkthroughs from starters |
+| Bid | `/qz-aidlc:qz-bid` | Proposal decks, RFP (request for proposal) answers, SOW (statement of work) and pricing from the SEG workbook. Rates, cost and margin never reach the client view |
+| Knowledge | `/qz-aidlc:qz-kf` | Trust-scored, cited answers from Confluence, GitHub and files; client-facing work reads only documents cleared for clients; golden questions catch a drop in search quality |
+| Office | `/qz-aidlc:qz-office` | Five decks, planning and status workbooks, estimates within 13 weeks and 6 people, and status mail, minutes and reports shaped for each reader, from a lead to a CEO or a client |
+| Publish | `/qz-aidlc:qz-publish` | The work on GitHub after the local copy is saved: a new private repository, an existing one or the team's, through a branch and a pull request a person merges |
+
+`/qz-aidlc:qz` picks the lane from what you ask.
+
+Several agents on one job keep in step through `qz board`: channels and threads for messages, and a task board where
+a worker claims a task with a lease, renews it while it works and marks it done, failed or blocked. One board per
+repository, shared by every session and git worktree on the computer; `qz board view` shows it as a page.
+
+Team decisions sit in `docs/decisions/`, one short file each about the code it names: what was decided and why, what
+was ruled out, what to watch out for. When an agent opens one of those files, the decisions on it come first. A
+commit, a push or a pull request that changes a number a decision fixed, or brings back an approach it ruled out,
+waits for a person, with who decided it and why. CI runs the same check on every pull request, and `Overrides <id>:
+<why>` lets a deliberate change through, on record. Decisions are never edited: a new one replaces an old one. The
+Studio keeps its own in [docs/decisions/](docs/decisions/). Method after Trail-code, without its telemetry or its
+cloud workspace.
+
+## A live session
+
+[docs/LIVE-SESSION.md](docs/LIVE-SESSION.md) is the plan for an instructed session: what everyone does five days and
+one day before, the 75 minutes, and the fallback when a laptop will not cooperate. The use case is deliberately
+small: a knowledge assistant over a fictional company's handbook, built with the hybrid kit. It answers from the
+documents with the section it used, and refuses when the handbook does not say or the person asking may not read it.
+
+[![The handbook demo, under a minute](docs/media/handbook-demo-poster.jpg)](docs/media/handbook-demo.mp4)
+
+The video (under a minute, no sound) is made from real output of the commands in the plan; nothing in it was mocked.
+
+## How it keeps prompts, keys and pricing safe
+
+- Every tool call passes a policy guard (deny, ask, allow), and the guard reads every command on a shell line, not
+  only the first. Writes to Jira, Confluence and GitHub wait for a person. Agents never merge.
+- Content from tickets, pages, files and tools is data. Text that addresses the model is flagged: documents that carry
+  it are quarantined from the Knowledge Fabric, and both RAG kits quarantine such sentences when they read a document.
+- The text-to-SQL starter only reads, and only what the asker's role may read: the SQL is checked as a parsed tree,
+  then runs on a read-only connection whose authorizer refuses any write, pragma or restricted column inside SQLite
+  itself. Text in the data that reads like instructions to an AI is withheld before the answer is written.
+- A team decision is written only after a person confirms its exact text, and one that carries instructions to agents,
+  a secret or a rate is refused. A planted decision that slips into the repository is withheld from agents, and the
+  line says so.
+- The command-line harness runs a destructive command only with `--yes`, which an agent adds after the person agreed
+  to its dry run, and Claude Code asks before each one. No command takes a credential; their values are scrubbed from
+  every answer and record, and it talks only to listed hosts.
+- The RAG kits' crawler fetches only hosts a person listed, over https, obeys robots.txt, and refuses private and
+  cloud-metadata addresses on every redirect.
+- The RAG kits apply access control inside the search query, before anything is ranked, and never answer without a
+  citation. The MCP starter marks every result as untrusted data and pins its tool descriptions, so a changed
+  description fails the tests.
+- Credentials are blocked from files and commands (cloud, source control, Atlassian and model-provider key formats),
+  redacted from evaluation recordings, and any evaluation case whose output contains one fails. Tokens the plugin
+  needs are marked sensitive, so Claude Code keeps them with its own credentials (the system keychain where there is
+  one), not in a settings file.
+- The Studio's own tools call no model. Model traffic stays on the hosts your Claude plan already uses; a starter calls
+  a model only when you give it a key. The hybrid kit downloads two small open models once (about 150 MB) and runs them
+  on your CPU, so documents never leave the laptop.
+- Pricing cost, pay rates and margin stay in `.qz/internal/`. Client documents are checked for them before they leave,
+  and nothing enters a project's memory without a person approving the exact words.
+- The browser checks open local files by default; another host is used only after a person lists it, internal and
+  cloud-metadata addresses are refused, and steps that delete, pay or send are refused outside a test environment.
+- A prompt carrying a payment card number (Luhn-checked) or a national ID number is never sent to a model, and every
+  agent starter masks both on the way in and on the way out.
+- Each release ships a list of its files' hashes. A skill, hook or policy file edited after release is named at the
+  next session start, and the doctor shows it.
+
+## What was run, and what was not
+
+Run on 20 and 21 November 2026:
+- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 398 tests (396 passed and 2 skipped
+  on Linux, the two that need the internal pricing workbook; 394 passed and 4 skipped on Windows, where the runner
+  also lacks Chrome for one visual check and Claude Code's sandbox does not run natively); the guard's red-team, 147
+  of 147; the doctor, and the bootstrap in check-only mode, started the way an attendee starts them, both ending
+  `ready for a live session`; the handbook demo rehearsed stage by stage; and Claude Code's own plugin check on the
+  marketplace and both plugins, with Claude Code from its native installer. Every pull request and every push to main
+  runs the same checks, and the Actions tab shows the latest.
+- **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
+  their gate) and health check inside the image with no network: 13 of 13 passed.
+- **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
+  ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety
+  violations. The command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail
+  rather than skip if the server were missing.
+- **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
+  and both plugins installed at 1.0.0 by Claude Code 2.1.329, in a clean configuration.
+- **The handbook demo end to end**, which is where the video comes from, and its offline fallback, which answers 35 of
+  40 and is described in the session plan.
+
+Not run:
+- **An attendee's own laptop.** The first bootstrap on a QualiZeal machine is the real test; the doctor's report says
+  what is missing. The likely surprises are a company proxy or a network that re-signs HTTPS, and the doctor checks
+  for both.
+- **macOS in CI.** It runs on a release tag, or by hand from the Actions tab.
+- **A live model.** No starter, kit or agent here called one: the gold sets run against offline stubs, and the demo's
+  answers are sentences taken from the documents, so the session needs no API key. A starter's first call with a real
+  key, or to an open-weight model on Ollama (the default for LangGraph and the OpenAI Agents SDK), is the first time
+  that path runs.
+- **A rollback.** The release recipe's rollback is a documented switch to the previous tag; no test runs it, because it
+  depends on where a team deploys.
+- **A person's confirmation of the EU AI Act class**, for the Studio and for each new project. Until someone confirms
+  it, the record is a draft and the scorecard says so.
+- **A person working in a live Claude Code session with the hooks.** The hooks were started exactly as Claude Code
+  starts them, with the input it sends, but no interactive session was recorded.
+- The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
+- Cursor and Codex. 1.0.0 is for Claude Code; they are planned for 1.1.
+
+## Where things are
+
+| | |
+|---|---|
+| [CHANGELOG.md](CHANGELOG.md) | What changed in 1.0.0 |
+| [docs/SETUP-GUIDE.md](docs/SETUP-GUIDE.md) | Every way to install: one person, many laptops, a whole organisation |
+| [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md) | Running an instructed session |
+| [docs/QUICK-GUIDE.md](docs/QUICK-GUIDE.md) | Every command, the QualiZeal names, and how to spend fewer tokens |
+| [docs/DEMO-VECTORLESS-RAG.md](docs/DEMO-VECTORLESS-RAG.md) | A longer session that builds the vectorless kit live, one story at a time |
+| [docs/GITHUB-AGENT.md](docs/GITHUB-AGENT.md) | The GitHub agent, set up from the website |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.1 adds and why: LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
+| [docs/HISTORY.md](docs/HISTORY.md) | Releases 0.4.0 to 0.10.0, as described at the time |
+| [LAYERS.md](LAYERS.md) | What is AWS AI-DLC and what is ours |
+| [CREDITS.md](CREDITS.md) | The projects that shaped the Studio, and their licences |

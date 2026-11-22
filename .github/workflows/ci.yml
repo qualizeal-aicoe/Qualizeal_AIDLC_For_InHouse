@@ -1,0 +1,267 @@
+# Checks the Studio on every pull request and every push to main, on Windows and Linux (and macOS on a release tag or
+# when asked); a release branch is checked through its pull request, so no push runs twice. It runs:
+# the test suite, with every hook and the tool server started exactly as Claude Code starts them;
+# the guard red-team; the doctor; Claude Code's own plugin check; the bootstrap attendees run (check only);
+# the RAG demo rehearsed stage by stage;
+# and each starter built and tested with the offline stub (no keys, no model spend). On a release branch's pull request,
+# a tag, or when asked, each starter's image is built too and its gold set run inside it with no network.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: "Also run on macOS (macOS minutes cost ten times as much)"
+        type: boolean
+        default: false
+      containers:
+        description: "Also build every starter's image and run its checks inside it (a few minutes per image)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PYTHONUTF8: "1"
+  UV_NO_PROGRESS: "1"
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        shell: bash
+        run: |
+          m='{"os":"windows-latest","python":"3.12"},{"os":"ubuntu-latest","python":"3.11"},{"os":"ubuntu-latest","python":"3.13"}'
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.macos }}" = "true" ]; then m="$m,{\"os\":\"macos-latest\",\"python\":\"3.12\"}"; fi
+          case "${{ github.ref }}" in refs/tags/*) m="$m,{\"os\":\"macos-latest\",\"python\":\"3.12\"}" ;; esac
+          echo "matrix={\"include\":[$m]}" >> "$GITHUB_OUTPUT"
+
+  studio:
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Python and the Studio's own packages
+        shell: bash
+        run: |
+          uv python install ${{ matrix.python }}
+          uv venv .venv-ci --python ${{ matrix.python }}
+          uv pip install --python .venv-ci -r plugins/qz-aidlc/requirements.txt "pytest>=8,<10"
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "PY=$(cygpath -w "$PWD/.venv-ci/Scripts/python.exe")" >> "$GITHUB_ENV"; else echo "PY=$PWD/.venv-ci/bin/python" >> "$GITHUB_ENV"; fi
+      - name: Browser for the design, web and UI checks
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then "$PY" -m playwright install --with-deps chromium; else "$PY" -m playwright install chromium; fi
+      - name: Test suite
+        shell: bash
+        run: '"$PY" -m pytest -q -rs -p no:cacheprovider tests'
+      - name: Guard red-team
+        if: always()
+        shell: bash
+        run: '"$PY" -I -X utf8 plugins/qz-aidlc/scripts/qz.py redteam'
+      - name: Doctor, started the way an attendee starts it (PowerShell)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py doctor --ci --json "doctor-report-${{ matrix.os }}-${{ matrix.python }}.json"
+      - name: Doctor, started the way an attendee starts it
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py doctor --ci --json "doctor-report-${{ matrix.os }}-${{ matrix.python }}.json"
+      - name: RAG demo rehearsed stage by stage, as the presenter runs it
+        if: always()
+        shell: bash
+        run: '"$PY" -I -X utf8 .github/scripts/rehearse_demo.py "$RUNNER_TEMP/handbook-assistant"'
+      - name: Claude Code's plugin check, with the native installer (PowerShell)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://claude.ai/install.ps1 | iex
+          $env:Path += ";$env:USERPROFILE\.local\bin"
+          claude --version
+          claude plugin validate .
+          claude plugin validate plugins/qz-aidlc
+          claude plugin validate plugins/qz-console
+      - name: Claude Code's plugin check, with the native installer
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          export PATH="$HOME/.local/bin:$PATH"
+          claude --version
+          claude plugin validate .
+          claude plugin validate plugins/qz-aidlc
+          claude plugin validate plugins/qz-console
+          if [ "$RUNNER_OS" = "Linux" ]; then claude plugin test plugins/qz-console; fi
+      # The script an attendee runs, end to end except the installs: it must find Claude Code, uv and Python, read this
+      # repository without a prompt (the checkout's own credentials), and get "ready for a live session" from the doctor.
+      - name: The bootstrap an attendee runs, check only (PowerShell)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:Path += ";$env:USERPROFILE\.local\bin"
+          .\setup\bootstrap.cmd -CheckOnly -Repo "${{ github.repository }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: The bootstrap an attendee runs, check only
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: sh setup/bootstrap.sh --check-only "${{ github.repository }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: doctor-${{ matrix.os }}-${{ matrix.python }}
+          path: |
+            doctor-report-*.json
+            doctor-report.json
+          if-no-files-found: ignore
+
+  decisions:
+    # The Studio's own team decisions (docs/decisions/) against each pull request: dogfooding the decision trail.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Team decisions against this pull request
+        run: python -I -X utf8 plugins/qz-aidlc/scripts/qz.py decisions check --base origin/${{ github.base_ref }} --ci
+
+  starters:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { stack: langgraph, os: ubuntu-latest }
+          - { stack: langgraph, os: windows-latest }
+          - { stack: openai-agents-py, os: ubuntu-latest }
+          - { stack: openai-agents-py, os: windows-latest }
+          - { stack: mcp-server-py, os: ubuntu-latest }
+          - { stack: mcp-server-py, os: windows-latest }
+          - { stack: advanced-rag, os: ubuntu-latest }
+          - { stack: advanced-rag, os: windows-latest }
+          - { stack: agent-memory-py, os: ubuntu-latest }
+          - { stack: agent-memory-py, os: windows-latest }
+          - { stack: text-to-sql, os: ubuntu-latest }
+          - { stack: text-to-sql, os: windows-latest }
+          - { stack: cli-harness-py, os: ubuntu-latest }
+          - { stack: cli-harness-py, os: windows-latest }
+          - { stack: claude-agent-sdk-py, os: ubuntu-latest }
+          - { stack: claude-agent-sdk-py, os: windows-latest }
+          - { stack: strands-agentcore, os: ubuntu-latest }
+          - { stack: claude-agent-sdk-ts, os: ubuntu-latest }
+          - { stack: go-anthropic, os: ubuntu-latest }
+          - { stack: maf-dotnet, os: ubuntu-latest }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        if: matrix.stack == 'claude-agent-sdk-ts'
+        with:
+          node-version: "22"
+      - uses: actions/setup-go@v5
+        if: matrix.stack == 'go-anthropic'
+        with:
+          go-version: "1.26"
+      - uses: actions/setup-dotnet@v4
+        if: matrix.stack == 'maf-dotnet'
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-java@v4
+        if: matrix.stack == 'cli-harness-py'
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Create the project from the starter
+        shell: bash
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py build new ${{ matrix.stack }} "$RUNNER_TEMP/proj" --name "Order Support"
+      - name: The WireMock jar the command-line harness is tested against, checked against its SHA-256
+        if: matrix.stack == 'cli-harness-py'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv sync --locked --python 3.12 && uv run python scripts/fetch_wiremock.py
+      - name: Install, build and test
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        env:
+          MOCKCTL_REQUIRE_WIREMOCK: ${{ matrix.stack == 'cli-harness-py' && '1' || '' }}
+        run: |
+          case "${{ matrix.stack }}" in
+            claude-agent-sdk-ts) npm ci && npm run typecheck && npm test ;;
+            go-anthropic) go vet ./... && go test ./... ;;
+            maf-dotnet) dotnet build src/Agent && dotnet test tests/Agent.Tests ;;
+            *) if [ -f uv.lock ]; then uv sync --locked --python 3.12 && uv run -m pytest -q tests;
+               else uv venv --python 3.12 && uv pip install -r requirements.txt pytest && .venv/bin/python -m pytest -q tests; fi ;;
+          esac
+      - name: The hybrid kit's two models, downloaded once and kept between runs
+        if: matrix.stack == 'advanced-rag'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/qz-aidlc/models
+          key: models-bge-small-en-v1.5-ms-marco-MiniLM-L-6-v2
+      - name: The hybrid kit's gates with the real models
+        if: matrix.stack == 'advanced-rag'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv run -m arag ingest && uv run -m arag eval --gate && uv run -m arag compare --gate
+      - name: The memory's gold set with its gate
+        if: matrix.stack == 'agent-memory-py'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv run -m mem eval --gate
+      - name: The text-to-SQL gold set with its gate (execution accuracy and safety)
+        if: matrix.stack == 'text-to-sql'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv run -m sqlagent eval --gate
+      - name: The command-line harness standard and its skill file
+        if: matrix.stack == 'cli-harness-py'
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: uv run python -m mockctl.standard && uv run mockctl skill --check
+      - name: Gold set and audit through the vendored kit
+        shell: bash
+        working-directory: ${{ runner.temp }}/proj
+        run: |
+          if [ -f .claude/qz/scripts/qz.py ]; then
+            uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run --label ci
+            uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
+          fi
+
+  containers:
+    # Each starter's image, built and checked the way the project's own CI checks it: the gold set (or the RAG gate)
+    # inside the image with no network, then the image's health check. Images take minutes each, so this runs where it
+    # decides something: a release branch's pull request, a tag, or when asked.
+    if: startsWith(github.head_ref, 'release/') || startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.containers)
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [langgraph, openai-agents-py, claude-agent-sdk-py, claude-agent-sdk-ts, mcp-server-py, agent-memory-py, text-to-sql,
+                cli-harness-py, strands-agentcore, vectorless-rag, advanced-rag, go-anthropic, maf-dotnet]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Create the project from the starter
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py build new ${{ matrix.stack }} "$RUNNER_TEMP/proj" --name "Order Support"
+      - name: Build the image
+        working-directory: ${{ runner.temp }}/proj
+        run: docker build -t app:ci .
+      - name: The project's container check and the image's health check, with no network
+        run: python3 -I -X utf8 .github/scripts/container_check.py ${{ matrix.stack }} "$RUNNER_TEMP/proj"

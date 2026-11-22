@@ -1,0 +1,36 @@
+# Publish or update the plugin from the GitHub website: upload a release zip (and optionally DELETE.txt,
+# one path per line) into release-drop/. This unpacks it over the repository, runs the checks, and commits
+# the result only when they pass: a failed check publishes nothing.
+# Needs Settings > Actions > General > Workflow permissions: "Read and write permissions".
+name: Unpack release drop
+on:
+  push:
+    paths: ["release-drop/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: release-drop
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unpack
+        run: python3 .github/scripts/unpack_release.py
+      - name: Checks before anything is committed
+        run: |
+          pip install pytest -r plugins/qz-aidlc/requirements.txt
+          python3 -m playwright install --with-deps chromium
+          python3 -m pytest -q tests
+          python3 plugins/qz-aidlc/scripts/qz.py redteam
+      - name: Commit
+        run: |
+          git config user.name "qz-release-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "Apply release drop"
+          git push

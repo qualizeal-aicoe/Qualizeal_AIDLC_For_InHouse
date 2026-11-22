@@ -1,0 +1,5 @@
+# Name the people who approve changes to what the command line may do, where it may connect, and its gold set.
+# /harness.toml            @your-tech-lead
+# /mockctl/cli.py          @your-tech-lead
+# /.claude/settings.json   @your-tech-lead
+# /evals/gold.jsonl        @your-test-lead

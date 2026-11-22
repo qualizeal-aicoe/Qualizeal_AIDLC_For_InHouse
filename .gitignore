@@ -1,0 +1,19 @@
+# Run records, caches and local-only notes stay on the computer that made them
+.qz/
+!plugins/qz-aidlc/workspace-kit/.qz/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+dist/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+docs/internal/
+release-drop/*.zip
+# What the bootstrap and the doctor write about this machine
+doctor-report*.json

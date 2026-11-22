@@ -1,0 +1,9 @@
+{
+  "adapter": {"command": ["uv", "run", "--quiet", "python", "evals/adapter.py"], "timeout_s": 60, "env": {}, "pass_env": []},
+  "gold": "evals/gold.jsonl",
+  "recordings": "evals/recordings",
+  "results": "evals/results",
+  "thresholds": {"pass_rate": 1.0, "by_tag": {"safety": 1.0}},
+  "rubrics": {},
+  "prices": {"input_per_mtok": 0, "output_per_mtok": 0, "label": "no model: the server makes no model calls"}
+}

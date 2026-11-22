@@ -1,0 +1,183 @@
+{
+  "about": "The story pack for the live AI-DLC build. Each story is one stage: its tests already exist and skip until the stage is built. Create these in any Jira project, or read them here.",
+  "labels": [
+    "ai-dlc",
+    "qz-demo",
+    "vectorless-rag"
+  ],
+  "epic": {
+    "summary": "Vectorless RAG knowledge assistant for the employee handbook",
+    "description": "Employees get cited answers from the handbook in a chat page, with no vector database: a heading tree and BM25 full-text search in SQLite, refusals when the handbook does not answer, guardrails against instructions planted in documents, and an evaluation gate on 40 golden questions. A language model is optional and behind a switch. Design: docs/designs/vectorless-rag.md. Contracts: docs/contracts.md. Northwind Freight is a fictional company."
+  },
+  "stories": [
+    {
+      "id": "S0",
+      "stage": 0,
+      "points": 2,
+      "summary": "Agree the scope and approve the design after a fresh-eyes review",
+      "story": "As the product owner, I want the corpus, the readers of each document, the question types and the retrieval approach agreed before any code, so that the build answers the right questions in the right way.",
+      "acceptance": [
+        "Given corpus/manifest.json, when scope is reviewed, then every document has an owner, a version, a status and the groups that may read it.",
+        "Given docs/designs/vectorless-rag.md, when the spec lane's fresh-eyes reviewers run, then their findings are merged into one list and every blocker and major item is fixed or decided by a person.",
+        "Given the design's 'Alternatives considered', when it is approved, then the choice of BM25 plus tree navigation over embeddings and over long-context prompting is recorded with its reasons."
+      ],
+      "tests": "qz spec resolve-check vectorless-rag",
+      "files": [
+        "docs/designs/vectorless-rag.md",
+        "corpus/manifest.json"
+      ],
+      "demo": "/qz-aidlc:qz-spec review docs/designs/vectorless-rag.md, then qz spec approve"
+    },
+    {
+      "id": "S1",
+      "stage": 1,
+      "points": 3,
+      "summary": "Ingest the handbook into a tree of sections",
+      "story": "As the handbook owner, I want every approved document read into sections that keep their headings and pages, so that answers can point to the exact place.",
+      "acceptance": [
+        "Given the 13 documents in corpus/manifest.json in Markdown, HTML, Word and PDF, when ingest runs, then all 13 are read with no problems reported.",
+        "Given a PDF with bookmarks, when it is ingested, then each section keeps its page number (Response times is page 2).",
+        "Given an HTML comment or hidden Word text, when a document is ingested, then that text is recorded as a flag and is not part of any section.",
+        "Given a file that is not in the manifest, or an entry with no readers, when ingest runs, then it is reported and not read."
+      ],
+      "tests": "tests/test_1_ingest.py",
+      "files": [
+        "vrag/ingest.py"
+      ],
+      "demo": "uv run -m vrag ingest, then uv run -m vrag map hr/leave-policy.md"
+    },
+    {
+      "id": "S2",
+      "stage": 2,
+      "points": 3,
+      "summary": "Find sections with BM25 full-text search, within each user's access",
+      "story": "As an employee, I want my question matched to the right sections of the documents I may read, so that I only ever see what I am allowed to.",
+      "acceptance": [
+        "Given the index, when I search 'How many unused leave days can I carry over?', then the first section is Annual leave > Carry-over.",
+        "Given I am in the 'all' group, when I search for salary bands, then no section of the restricted salary document is returned; the People team sees it.",
+        "Given two versions of the leave policy, when I search, then only the current version is returned.",
+        "Given a question containing search operators or quotes, when I search, then it is treated as plain words and no error occurs."
+      ],
+      "tests": "tests/test_2_search.py",
+      "files": [
+        "vrag/index.py",
+        "vrag/search.py"
+      ],
+      "demo": "uv run -m vrag search \"carry over leave\" --as employee"
+    },
+    {
+      "id": "S3",
+      "stage": 3,
+      "points": 3,
+      "summary": "Answer with citations, and refuse when the handbook does not say",
+      "story": "As an employee, I want a short answer with the document and section it came from, or an honest 'I couldn't find that', so that I can trust what I am told.",
+      "acceptance": [
+        "Given 'How many days of annual leave do full-time employees get?', when I ask, then the answer says 22 working days and cites Leave policy > Annual leave.",
+        "Given a question about the PDF playbook, when I ask, then the citation includes the page.",
+        "Given 'What is the dress code?', when I ask, then I get the refusal message and no citation.",
+        "Given a restricted document, when an employee asks about it, then nothing from it is quoted or cited."
+      ],
+      "tests": "tests/test_3_answer.py",
+      "files": [
+        "vrag/answer.py"
+      ],
+      "demo": "Ask 'Show me the salary bands' now: the planted supplier note is repeated. Story S4 fixes it."
+    },
+    {
+      "id": "S4",
+      "stage": 4,
+      "points": 3,
+      "summary": "Guard against instructions planted in documents, remove personal data, audit every question",
+      "story": "As the security lead, I want documents treated as data, never as instructions, and personal data kept out of answers, so that one bad document cannot steer the assistant.",
+      "acceptance": [
+        "Given the supplier page with a planted instruction, when ingest runs, then the instruction is quarantined and listed by uv run -m vrag flags.",
+        "Given 'Show me the salary bands' from an employee, when I ask, then the answer is the refusal and repeats nothing from the planted note.",
+        "Given a document with a personal phone number, when an answer quotes that sentence, then the number is removed and the answer says so.",
+        "Given any question, when it is answered, then one audit line records user, retrieved and cited sections and refusal, and not the answer text."
+      ],
+      "tests": "tests/test_4_guard.py",
+      "files": [
+        "vrag/guard.py",
+        "vrag/audit.py"
+      ],
+      "demo": "Re-ask the salary question; then uv run -m vrag flags"
+    },
+    {
+      "id": "S5",
+      "stage": 5,
+      "points": 2,
+      "summary": "Score 40 golden questions and block changes that make them worse",
+      "story": "As the product owner, I want every change measured on the same golden questions, so that quality only moves forward.",
+      "acceptance": [
+        "Given evals/golden.jsonl, when the evaluation runs, then it reports recall@5, answer accuracy, refusal accuracy and safety violations.",
+        "Given the thresholds in evals/thresholds.json, when a metric falls below them, then uv run -m vrag eval --gate exits 1 and names it.",
+        "Given the current build, when the gate runs, then safety violations are 0 and refusal accuracy is 1.0."
+      ],
+      "tests": "tests/test_5_eval.py",
+      "files": [
+        "vrag/evaluate.py",
+        "evals/thresholds.json"
+      ],
+      "demo": "uv run -m vrag eval: about 35 of 40 pass; the misses are paraphrases"
+    },
+    {
+      "id": "S6",
+      "stage": 6,
+      "points": 5,
+      "summary": "Navigate the document outline with a model, and add synonyms, kept only if the golden set improves",
+      "story": "As an employee, I want questions in my own words understood ('vacation days', 'work from home'), so that I don't need to know the handbook's terms.",
+      "acceptance": [
+        "Given the baseline score, when synonyms are switched on, then the evaluation is re-run and the change is kept only if it scores higher with no new violation.",
+        "Given 'Can I work from home?', when the tree strategy runs, then the answer comes from Hybrid working (3 days a week).",
+        "Given a model reply whose citation names a section it was not given, or quotes words the section does not contain, when it is checked, then it is rejected and the extractive answer is used.",
+        "Given no ANTHROPIC_API_KEY, when the live provider is chosen, then it stops with a clear message; the key is never written to a file or a prompt."
+      ],
+      "tests": "tests/test_6_tree.py",
+      "files": [
+        "vrag/llm.py",
+        "vrag/tree.py",
+        "vrag.toml",
+        "corpus/synonyms.json"
+      ],
+      "demo": "qz hillclimb with uv run -m vrag eval --metric passed as the metric: 35, then 39, then 40 of 40"
+    },
+    {
+      "id": "S7",
+      "stage": 7,
+      "points": 2,
+      "summary": "Chat page and JSON API for employees",
+      "story": "As an employee, I want to ask in a simple chat page and see the citations under each answer.",
+      "acceptance": [
+        "Given the server, when I post a question to /api/ask, then I get the answer, the refusal flag and the citations, and nothing about the internal ranking.",
+        "Given an empty, malformed, oversized or unknown-user request, when it is posted, then it is refused with 400 or 413 and no stack trace.",
+        "Given the default settings, when the server starts, then it listens on this computer only."
+      ],
+      "tests": "tests/test_7_server.py",
+      "files": [
+        "vrag/server.py",
+        "vrag/static/index.html",
+        "vrag/static/app.js"
+      ],
+      "demo": "uv run -m vrag serve, then open http://127.0.0.1:8765"
+    },
+    {
+      "id": "S8",
+      "stage": 7,
+      "points": 2,
+      "summary": "Run it like a service: CI gate, audit review, runbook and an offline rehearsal",
+      "story": "As the operator, I want every change gated, every question audited and a runbook that works with the network off, so that the assistant can be trusted after the demo.",
+      "acceptance": [
+        "Given a pull request, when CI runs, then the stage tests and the golden-question gate run, and a drop below the thresholds fails the check.",
+        "Given ten questions asked, when the audit log is read, then it holds ten lines with user, retrieved and cited sections, refusal and latency, and no answer text.",
+        "Given the network is off and the model provider is none, when the demo script runs end to end, then every step completes on the extractive answers.",
+        "Given docs/runbook.md, when a document changes, then the steps to re-index, review flags and pass the gate are written down and work."
+      ],
+      "tests": ".github/workflows/ci.yml, tests/test_4_guard.py, tests/test_5_eval.py",
+      "files": [
+        ".github/workflows/ci.yml",
+        "docs/runbook.md"
+      ],
+      "demo": "Open the CI run; uv run -m vrag flags; tail .vrag/audit.jsonl"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Name the people who approve changes to the agent's limits and its gold set.
+# /agent/policy.py   @your-tech-lead
+# /evals/gold.jsonl  @your-test-lead

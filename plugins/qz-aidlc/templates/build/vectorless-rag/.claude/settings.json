@@ -1,0 +1,9 @@
+{
+  "extraKnownMarketplaces": {
+    "qualizeal": {"source": {"source": "github", "repo": "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse"}}
+  },
+  "enabledPlugins": {
+    "qz-aidlc@qualizeal": true,
+    "qz-console@qualizeal": true
+  }
+}

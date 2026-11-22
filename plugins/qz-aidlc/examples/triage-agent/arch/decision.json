@@ -1,0 +1,249 @@
+{
+  "title": "Choose the approach for ticket triage",
+  "context": "Triage must classify, attach shipments and escalate, inside the client's AWS account in the EU, run by a small Python team for under 0.04 USD a ticket.",
+  "deciders": "",
+  "criteria": [
+    {
+      "id": "fit",
+      "name": "Meets the must-have scenarios",
+      "weight": 30,
+      "anchors": {
+        "1": "Fails one or more must scenarios in the spike",
+        "3": "Meets them with workarounds we would have to maintain",
+        "5": "Meets all of them with the framework's own features"
+      }
+    },
+    {
+      "id": "team",
+      "name": "Team can build and run it",
+      "weight": 20,
+      "anchors": {
+        "1": "Nobody on the team has used it; no local support",
+        "3": "One engineer has used it; training needed",
+        "5": "The team runs it in production today"
+      }
+    },
+    {
+      "id": "cost",
+      "name": "Run cost per ticket",
+      "weight": 20,
+      "anchors": {
+        "1": "Over 0.08 USD",
+        "3": "About 0.04 USD",
+        "5": "Under 0.02 USD"
+      }
+    },
+    {
+      "id": "ops",
+      "name": "Operability: traces, retries, human gate",
+      "weight": 20,
+      "anchors": {
+        "1": "We build tracing, retries and approval ourselves",
+        "3": "Some built in, some glue",
+        "5": "Built in and documented"
+      }
+    },
+    {
+      "id": "risk",
+      "name": "Dependency risk",
+      "weight": 10,
+      "anchors": {
+        "1": "Preview features on the critical path",
+        "3": "GA but young (under a year)",
+        "5": "GA over a year with a stable API"
+      }
+    }
+  ],
+  "knockouts": [
+    {
+      "id": "eu",
+      "name": "Runs fully inside the client's EU AWS account"
+    },
+    {
+      "id": "python",
+      "name": "Fits a Python-only team"
+    }
+  ],
+  "options": [
+    {
+      "id": "baseline",
+      "name": "Fixed workflow with one model call",
+      "baseline": true,
+      "summary": "A queue worker calls the order API, then one structured-output model call returns queue and reason. No agent loop.",
+      "knockouts": {
+        "eu": true,
+        "python": true
+      },
+      "scores": {
+        "fit": {
+          "score": 4,
+          "evidence": "Spike SPK-1 scored 91.5% queue accuracy and 25 of 25 escalations with one call"
+        },
+        "team": {
+          "score": 5,
+          "evidence": "Plain Python and boto3, which the team ships today"
+        },
+        "cost": {
+          "score": 5,
+          "evidence": "Measured 0.011 USD per ticket in SPK-1"
+        },
+        "ops": {
+          "score": 3,
+          "evidence": "Retries and the confidence gate are 60 lines of our own code; tracing through OpenTelemetry"
+        },
+        "risk": {
+          "score": 5,
+          "evidence": "Bedrock Converse API has been GA since 2024"
+        }
+      },
+      "scores_b": {
+        "fit": {
+          "score": 4,
+          "evidence": "Meets FR-1 to FR-3 in the spike; FR-4 needs a second call"
+        },
+        "team": {
+          "score": 5,
+          "evidence": "Team wrote the spike in two days"
+        },
+        "cost": {
+          "score": 5,
+          "evidence": "Token counts from the spike trace give 0.011 USD"
+        },
+        "ops": {
+          "score": 3,
+          "evidence": "Approval and retry are hand-written but small"
+        },
+        "risk": {
+          "score": 5,
+          "evidence": "No preview dependency on the path"
+        }
+      }
+    },
+    {
+      "id": "langgraph",
+      "name": "LangGraph agent with tools",
+      "summary": "A graph with classify, lookup and review nodes; interrupt for the human gate; SQLite or Postgres checkpointer.",
+      "knockouts": {
+        "eu": true,
+        "python": true
+      },
+      "scores": {
+        "fit": {
+          "score": 5,
+          "evidence": "Interrupts and checkpointing cover QS-2 and QS-6 directly"
+        },
+        "team": {
+          "score": 3,
+          "evidence": "One engineer has built with it; the other has not"
+        },
+        "cost": {
+          "score": 3,
+          "evidence": "Agent loop used 2.9 calls per ticket in the spike, 0.034 USD"
+        },
+        "ops": {
+          "score": 5,
+          "evidence": "Interrupt, retry policy and LangSmith or OpenTelemetry traces are built in"
+        },
+        "risk": {
+          "score": 4,
+          "evidence": "1.x is GA; API moved between 0.x and 1.0"
+        }
+      },
+      "scores_b": {
+        "fit": {
+          "score": 5,
+          "evidence": "Covers every must scenario"
+        },
+        "team": {
+          "score": 3,
+          "evidence": "Needs a week of ramp-up for one engineer"
+        },
+        "cost": {
+          "score": 3,
+          "evidence": "About three times the baseline's cost per ticket"
+        },
+        "ops": {
+          "score": 4,
+          "evidence": "Built in, though the checkpointer adds a database to run"
+        },
+        "risk": {
+          "score": 4,
+          "evidence": "GA; pin the version"
+        }
+      }
+    },
+    {
+      "id": "strands",
+      "name": "Strands agent on Bedrock AgentCore",
+      "summary": "Strands agent with tools behind AgentCore Gateway, hosted on AgentCore Runtime.",
+      "knockouts": {
+        "eu": true,
+        "python": true
+      },
+      "scores": {
+        "fit": {
+          "score": 4,
+          "evidence": "Meets the scenarios; human gate through an interrupt hook"
+        },
+        "team": {
+          "score": 2,
+          "evidence": "Nobody on the team has run AgentCore"
+        },
+        "cost": {
+          "score": 2,
+          "evidence": "Runtime and gateway charges on top of tokens: 0.052 USD estimated"
+        },
+        "ops": {
+          "score": 4,
+          "evidence": "Tracing and identity are built in"
+        },
+        "risk": {
+          "score": 3,
+          "evidence": "Runtime is GA; Policy and Evaluations are under a year old"
+        }
+      },
+      "scores_b": {
+        "fit": {
+          "score": 4,
+          "evidence": "Meets the must scenarios in the docs; not spiked"
+        },
+        "team": {
+          "score": 2,
+          "evidence": "New platform for the team"
+        },
+        "cost": {
+          "score": 2,
+          "evidence": "Estimated above the 0.04 USD scenario"
+        },
+        "ops": {
+          "score": 4,
+          "evidence": "Good built-in observability"
+        },
+        "risk": {
+          "score": 3,
+          "evidence": "Young services on the critical path"
+        }
+      }
+    },
+    {
+      "id": "maf",
+      "name": "Microsoft Agent Framework (.NET)",
+      "summary": "Agent with approval-required functions on Azure.",
+      "knockouts": {
+        "eu": true,
+        "python": false
+      },
+      "scores": {},
+      "scores_b": {}
+    }
+  ],
+  "change_our_mind": [
+    "FR-4 (suggested reply) becomes a must: a second step and a review loop favour the graph",
+    "Queue accuracy on live traffic falls under 88% for two weeks",
+    "More than three tools are needed per ticket"
+  ],
+  "locked": {
+    "sha256": "2611df46487a890c3ecf35e5ba4b9cf6ac2d6b57a549a944e770635d1ca5671f",
+    "at": "2026-11-12T19:57:40.248305Z"
+  }
+}

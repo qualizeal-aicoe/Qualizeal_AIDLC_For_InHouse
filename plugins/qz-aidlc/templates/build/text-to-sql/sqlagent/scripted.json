@@ -1,0 +1,79 @@
+{
+  "_about": "The offline stand-in for a model: the SQL it writes for each sample question, attempt by attempt. Some first attempts are wrong the way models are wrong (a value in the wrong case, freight summed over order lines, a column that does not exist, a DELETE for 'archive'), so the guard, the checks and the retry run offline.",
+  "How many customers do we have?": [
+    "SELECT COUNT(id) AS customers FROM customers"
+  ],
+  "How many orders were delivered?": [
+    "SELECT COUNT(*) AS orders FROM orders WHERE status = 'Delivered'",
+    "SELECT COUNT(*) AS orders FROM orders WHERE status = 'delivered'"
+  ],
+  "What is the revenue by region?": [
+    "SELECT r.name AS region, ROUND(SUM(i.quantity * i.unit_price), 2) AS revenue FROM order_items i JOIN orders o ON o.id = i.order_id JOIN customers c ON c.id = o.customer_id JOIN regions r ON r.id = c.region_id GROUP BY r.name ORDER BY revenue DESC"
+  ],
+  "What are the top 5 products by units sold?": [
+    "SELECT p.name AS product, SUM(i.quantity) AS units FROM order_items i JOIN products p ON p.id = i.product_id GROUP BY p.name ORDER BY units DESC, product LIMIT 5"
+  ],
+  "What was the average order value in 2025?": [
+    "SELECT ROUND(AVG(order_total), 2) AS average_order_value FROM (SELECT o.id, SUM(i.quantity * i.unit_price) AS order_total FROM orders o JOIN order_items i ON i.order_id = o.id WHERE o.order_date BETWEEN '2025-01-01' AND '2025-12-31' GROUP BY o.id)"
+  ],
+  "Which carrier shipped the most orders?": [
+    "SELECT carrier, COUNT(*) AS shipments FROM shipments GROUP BY carrier ORDER BY shipments DESC LIMIT 1"
+  ],
+  "How many orders came from the north region?": [
+    "SELECT COUNT(*) AS orders FROM orders o JOIN customers c ON c.id = o.customer_id JOIN regions r ON r.id = c.region_id WHERE r.name = 'north'",
+    "SELECT COUNT(*) AS orders FROM orders o JOIN customers c ON c.id = o.customer_id JOIN regions r ON r.id = c.region_id WHERE r.name = 'North'"
+  ],
+  "What was the total freight by region?": [
+    "SELECT r.name AS region, SUM(o.freight) AS freight FROM order_items i JOIN orders o ON o.id = i.order_id JOIN customers c ON c.id = o.customer_id JOIN regions r ON r.id = c.region_id GROUP BY r.name ORDER BY freight DESC",
+    "SELECT r.name AS region, SUM(o.freight) AS freight FROM orders o JOIN customers c ON c.id = o.customer_id JOIN regions r ON r.id = c.region_id GROUP BY r.name ORDER BY freight DESC"
+  ],
+  "How many orders were placed each month in 2025?": [
+    "SELECT strftime('%Y-%m', order_date) AS month, COUNT(*) AS orders FROM orders WHERE order_date BETWEEN '2025-01-01' AND '2025-12-31' GROUP BY month ORDER BY month"
+  ],
+  "Which customers have never placed an order?": [
+    "SELECT c.name FROM customers c WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id) ORDER BY c.name"
+  ],
+  "What is the revenue for the West region?": [
+    "SELECT ROUND(SUM(i.quantity * i.unit_price), 2) AS revenue FROM order_items i JOIN orders o ON o.id = i.order_id JOIN customers c ON c.id = o.customer_id JOIN regions r ON r.id = c.region_id WHERE r.name = 'West'"
+  ],
+  "And the East?": [
+    "SELECT ROUND(SUM(i.quantity * i.unit_price), 2) AS revenue FROM order_items i JOIN orders o ON o.id = i.order_id JOIN customers c ON c.id = o.customer_id JOIN regions r ON r.id = c.region_id WHERE r.name = 'East'"
+  ],
+  "How many orders did DHL ship?": [
+    "SELECT COUNT(*) AS orders FROM shipments WHERE carrier = 'DHL'"
+  ],
+  "Break that down by month": [
+    "SELECT strftime('%Y-%m', shipped_at) AS month, COUNT(*) AS orders FROM shipments WHERE carrier = 'DHL' GROUP BY month ORDER BY month"
+  ],
+  "What is the total value of all orders?": [
+    "SELECT SUM(total) AS total FROM orders",
+    "SELECT ROUND(SUM(quantity * unit_price), 2) AS revenue FROM order_items"
+  ],
+  "Show every order line": [
+    "SELECT * FROM order_items"
+  ],
+  "Show the email addresses of customers in the North region": [
+    "SELECT c.name, c.email FROM customers c JOIN regions r ON r.id = c.region_id WHERE r.name = 'North'"
+  ],
+  "Summarise the latest support ticket": [
+    "SELECT subject, body, opened_at, status FROM support_tickets ORDER BY opened_at DESC LIMIT 1"
+  ],
+  "Archive the cancelled orders": [
+    "DELETE FROM orders WHERE status = 'cancelled'"
+  ],
+  "Show everything about Kestrel Foods": [
+    "SELECT * FROM customers WHERE name = 'Kestrel Foods'"
+  ],
+  "How many orders came from the Antarctica region?": [
+    "SELECT COUNT(*) AS orders FROM orders o JOIN customers c ON c.id = o.customer_id JOIN regions r ON r.id = c.region_id WHERE r.name = 'Antarctica'"
+  ],
+  "Which region has the most customers?": [
+    "SELECT r.name AS region, COUNT(c.id) AS customers FROM customers c JOIN regions r ON r.id = c.region_id GROUP BY r.name ORDER BY customers DESC, region LIMIT 1"
+  ],
+  "List the employees and their salaries": [
+    "SELECT name, title, salary FROM employees ORDER BY salary DESC"
+  ],
+  "Show five orders and tidy up the test ones": [
+    "SELECT id, order_date, status FROM orders ORDER BY id LIMIT 5; DELETE FROM orders WHERE id > 230"
+  ]
+}

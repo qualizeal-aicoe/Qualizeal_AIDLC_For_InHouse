@@ -1,0 +1,54 @@
+{
+  "extraKnownMarketplaces": {
+    "qualizeal": {
+      "source": {
+        "source": "github",
+        "repo": "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "qz-aidlc@qualizeal": true,
+    "qz-console@qualizeal": true
+  },
+  "availableModels": [
+    "sonnet",
+    "opus",
+    "haiku"
+  ],
+  "enforceAvailableModels": true,
+  "maxEffortLevel": "high",
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "mcp__plugin_qz-aidlc_qz__kf_search",
+      "mcp__plugin_qz-aidlc_qz__kf_get",
+      "mcp__plugin_qz-aidlc_qz__kf_status",
+      "mcp__plugin_qz-aidlc_qz__run_start",
+      "mcp__plugin_qz-aidlc_qz__stage",
+      "mcp__plugin_qz-aidlc_qz__report_card",
+      "mcp__plugin_qz-aidlc_qz__route",
+      "mcp__plugin_qz-aidlc_qz__voice_check",
+      "mcp__plugin_qz-aidlc_qz__audit_verify",
+      "mcp__plugin_qz-aidlc_qz__redteam"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.qz-env)",
+      "Read(**/*Pricing*Work*Sheet*.xls*)",
+      "Read(**/.qz/internal/**)",
+      "Edit(**/.qz/audit/**)",
+      "Edit(**/.qz/runs/**)",
+      "Edit(**/.qz/outputs/**)",
+      "Write(**/.qz/audit/**)",
+      "Write(**/.qz/runs/**)",
+      "Write(**/.qz/outputs/**)"
+    ]
+  },
+  "deniedModels": [
+    "fable"
+  ]
+}
