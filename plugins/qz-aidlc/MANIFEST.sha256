@@ -406,7 +406,7 @@ af53b52a3820065e7fb5c17aa8da00819e414781b714963ab785c06b601307bf  templates/buil
 5e780e11247564f8a9102b9040614c7691544ee28f573c7b816878a3065e7dcb  templates/build/claude-agent-sdk-py/.dockerignore
 98d62e6a6230fc34043d6fe8771d5c9ab463dfdf2b5232c7b50fa762944e2b1b  templates/build/claude-agent-sdk-py/Dockerfile
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  templates/build/claude-agent-sdk-py/agent/__init__.py
-2025c728af1f2e9c58d4347069496a1384bbb7b9a03a6601e09773904c3e93ae  templates/build/claude-agent-sdk-py/agent/app.py
+ac2858328b0796aac4cc6965e6ae47dcfeda91e35648ef4abfaec3a94c3afc9b  templates/build/claude-agent-sdk-py/agent/app.py
 e3474c94199cdd5b87071398322ad43faac84bfd87c9f36512b2675ffd78ad46  templates/build/claude-agent-sdk-py/agent/audit.py
 9f629bbda159a34068c03aa87add13f592a830ab00d0a64bf4ba991e874b7b66  templates/build/claude-agent-sdk-py/agent/durable.py
 ad8657d99d2fed7291e27137d644b6d241ed1bf38a2c1aac07261cb24c32bfc2  templates/build/claude-agent-sdk-py/agent/gateway.py
@@ -419,9 +419,9 @@ db743b348997aa03cd7bc29a3490541f282f0edd5d45701685a26cdb664107d7  templates/buil
 f2b39165bb98d9bbd6c4c06478e7ec4d3c7775fe58bb58bad685db665571b5e1  templates/build/claude-agent-sdk-py/agent/tools.py
 3f17ec4a7b043d32692210cea61b7fef47686f344e7a33c2ee3c2ec0c34872d6  templates/build/claude-agent-sdk-py/evals/adapter.py
 0167b4bdabef33bc7e6b64be67112245b1df569d4fbb6140c7fae13ba342284c  templates/build/claude-agent-sdk-py/pyproject.toml
-92bf22f8f54e131c50951b090e9e094d8590413afa9ab3ba625453c984370f3b  templates/build/claude-agent-sdk-py/scaffold.json
+f20412c8dd4f82b297c3084b6e28cba37dd63ac672844464e83a318dcf352051  templates/build/claude-agent-sdk-py/scaffold.json
 49fe5fae3be2b878f4f2cba88699a16c4d5d3a7d27a8ac9f815cea1f2488540f  templates/build/claude-agent-sdk-py/tests/conftest.py
-b26ba19135bb615cb2595f168ca0c3e7c8bd2399a878f7c9cad00f1a5da52d69  templates/build/claude-agent-sdk-py/tests/test_agent.py
+9591aa13e82e3a19698406f04223f087df174964e3e954cd2363a1d3674e3410  templates/build/claude-agent-sdk-py/tests/test_agent.py
 95b3d73fbbab41fde6cdfa619393a5a8b12dd5b8ed9a6962c314e8e4b91b667f  templates/build/claude-agent-sdk-py/tests/test_durable.py
 46655cb7023bfb10898cba185ee8260be4eba36a4c79549d343dfa7816d3ceda  templates/build/claude-agent-sdk-py/tests/test_gateway.py
 433cec002b4cf9dfc0adb5ee6828d39541b35a0764b3674a015d68c724d482b4  templates/build/claude-agent-sdk-py/tests/test_golive_controls.py
@@ -435,8 +435,8 @@ ef71a6a9f5f547221e01afc1a97a4975d248d97daa13d007813a94b14b59f5d6  templates/buil
 89d26254f6ebc30455290f96cda0fd9a442203c91b308ee700a3a235e7c47472  templates/build/claude-agent-sdk-ts/evals/adapter.ts
 4f5d267d925d61090b28994057c0ba60d2d918a8a9c7bfe511cc2e8d3adcb387  templates/build/claude-agent-sdk-ts/package-lock.json
 e1971256c52b5fc18e45bbc2295f9b51af34ea105469d4a8c1c6a69bf3b5c9b3  templates/build/claude-agent-sdk-ts/package.json
-561304fd5e85cd8e2e61381dae3c3511ee71e3688bec640a370a566634b47371  templates/build/claude-agent-sdk-ts/scaffold.json
-cfd805316e4a62d313e4bf18c46f49934d991ce08d79ba90eb2bd4bf3d26dbab  templates/build/claude-agent-sdk-ts/src/agent.ts
+f4ec84666adec2b8139dc5104b8019ac64a0ebdc8bae37f0d821fe7f850cc4fb  templates/build/claude-agent-sdk-ts/scaffold.json
+4782538e98e7c1a62d9dfd3158d3e09ebf35374f89aa21b9b64c3429eecd951e  templates/build/claude-agent-sdk-ts/src/agent.ts
 287cf5f9e8f28e398c590edefcab0a1733bd513e313c11de1f395fe311452609  templates/build/claude-agent-sdk-ts/src/audit.ts
 c580df7ab1afbce03831dcdc1c1662cbfdcb4926fb42a7b8c78d7f6c99387e56  templates/build/claude-agent-sdk-ts/src/durable.ts
 96284c8b0d258ddac728174655958803514d20d0af300ed54429061e9ecad833  templates/build/claude-agent-sdk-ts/src/gateway.ts
@@ -450,7 +450,7 @@ b02b5fbea2f79cbfab25f19d903e6559fd51277a151b007f35787c9781724d57  templates/buil
 52557adb7c1d60f69be8346b647dcbe4da9c3497c542ba3aebaad0382538d4e4  templates/build/claude-agent-sdk-ts/src/stub.ts
 d4147cce82885b59f1530e4fa55f0892df32b696fa099838033c1cd05c3bda7b  templates/build/claude-agent-sdk-ts/src/telemetry.ts
 57015b212f865a15ed534ce97c2d224c508d9a618d332f49d328ce3adbf3c5b2  templates/build/claude-agent-sdk-ts/src/tools.ts
-7ee8f29a333fd40d703251b6ab586b34c1cfb7eaa7258bb6978b9f3237e4f373  templates/build/claude-agent-sdk-ts/tests/agent.test.ts
+3a81cb4f0f2a18e9efda7abddd1eb99961cfa427d6c0f0e14d719857bcf93582  templates/build/claude-agent-sdk-ts/tests/agent.test.ts
 b7f119670b2e43c67858ea319232dd514ba8037b3e549cf31867c954fb433300  templates/build/claude-agent-sdk-ts/tests/durable.test.ts
 2b4d68f84a1e3aac0e373e7f1cfdeed4414a32918818f5723fde2d9ddb74ec91  templates/build/claude-agent-sdk-ts/tests/gateway.test.ts
 9ab8a8fa0b675f121c51617f9237a71cd6fa5d2397bffe2c9790588448be3754  templates/build/claude-agent-sdk-ts/tests/server.test.ts

@@ -58,6 +58,7 @@ export function options(gate: CanUseTool, model: string = policy.model, role: st
   return {   // the SDK caches the system prompt and tools itself
     model, systemPrompt: policy.system, mcpServers: { [policy.server]: server }, tools: [],   // no built-in tools: no shell, no file access
     allowedTools: policy.readOnly.filter((t) => (policy.roles[role] ?? []).includes(t)).map((t) => `mcp__${policy.server}__${t}`), canUseTool: gate,
+    disallowedTools: [...policy.readOnly, ...policy.needsApproval].filter((t) => !(policy.roles[role] ?? []).includes(t)).map((t) => `mcp__${policy.server}__${t}`),   // never shown to the model
     maxTurns: policy.maxTurns, maxBudgetUsd: policy.maxBudgetUsd, settingSources: [], permissionMode: "default",
     ...(gateway.on() ? { env: { ...process.env, ...gateway.claudeCodeEnv(model) } } : {}),   // the model gateway: gateway/litellm.yaml
   };
@@ -196,31 +197,35 @@ async function runOnce(message: string, approve: boolean | undefined, role: stri
     async function* prompt() {
       yield { type: "user" as const, message: { role: "user" as const, content: message }, parent_tool_use_id: null, session_id: "" };
     }
-    for await (const msg of query({ prompt: prompt() as any, options: options(gate, pickModel(message), role) })) {
-      if (msg.type === "assistant") {
-        for (const block of msg.message.content) {
-          if (block.type === "text") text = block.text;
-          else if (block.type === "tool_use") {
-            const short = block.name.split("__").pop() ?? block.name;
-            names.set(block.id, short);
-            if (policy.readOnly.includes(short)) calls.push({ name: short, args: block.input as Record<string, unknown>, status: "ok" });
+    try {
+      for await (const msg of query({ prompt: prompt() as any, options: options(gate, pickModel(message), role) })) {
+        if (msg.type === "assistant") {
+          for (const block of msg.message.content) {
+            if (block.type === "text") text = block.text;
+            else if (block.type === "tool_use") {
+              const short = block.name.split("__").pop() ?? block.name;
+              names.set(block.id, short);
+              if (policy.readOnly.includes(short)) calls.push({ name: short, args: block.input as Record<string, unknown>, status: "ok" });
+            }
           }
+        } else if (msg.type === "user" && Array.isArray(msg.message.content)) {   // tool results come back as the next user turn
+          for (const block of msg.message.content as Array<{ type: string; tool_use_id?: string; content?: unknown }>) {
+            if (block.type !== "tool_result" || !block.tool_use_id || !names.has(block.tool_use_id)) continue;
+            const text = Array.isArray(block.content) ? block.content.map((x: { text?: string }) => x.text ?? "").join("") : String(block.content ?? "");
+            let body: unknown = text;
+            try { body = JSON.parse(text); } catch { /* not JSON: keep the text */ }
+            const name = names.get(block.tool_use_id)!;
+            returned.set(name, [...(returned.get(name) ?? []), body]);
+          }
+        } else if (msg.type === "result") {
+          usage = { input_tokens: msg.usage.input_tokens + (msg.usage.cache_read_input_tokens ?? 0) + (msg.usage.cache_creation_input_tokens ?? 0), output_tokens: msg.usage.output_tokens };
+          cost = msg.total_cost_usd;
+          if (msg.subtype === "success") text = msg.result || text;
+          else if (!calls.some((c) => c.status === "pending")) throw new Error(`The run failed (${msg.subtype})`);
         }
-      } else if (msg.type === "user" && Array.isArray(msg.message.content)) {   // tool results come back as the next user turn
-        for (const block of msg.message.content as Array<{ type: string; tool_use_id?: string; content?: unknown }>) {
-          if (block.type !== "tool_result" || !block.tool_use_id || !names.has(block.tool_use_id)) continue;
-          const text = Array.isArray(block.content) ? block.content.map((x: { text?: string }) => x.text ?? "").join("") : String(block.content ?? "");
-          let body: unknown = text;
-          try { body = JSON.parse(text); } catch { /* not JSON: keep the text */ }
-          const name = names.get(block.tool_use_id)!;
-          returned.set(name, [...(returned.get(name) ?? []), body]);
-        }
-      } else if (msg.type === "result") {
-        if (msg.subtype !== "success") throw new Error(`The run failed (${msg.subtype})`);
-        usage = { input_tokens: msg.usage.input_tokens + (msg.usage.cache_read_input_tokens ?? 0) + (msg.usage.cache_creation_input_tokens ?? 0), output_tokens: msg.usage.output_tokens };
-        cost = msg.total_cost_usd;
-        text = msg.result || text;
       }
+    } catch (e) {   // the gate stopping the run to wait for a person ends it with an error result: that is not a failure
+      if (!calls.some((c) => c.status === "pending")) throw e;
     }
   }
   for (const c of calls) {   // each call that ran gets its result, in order, by tool name

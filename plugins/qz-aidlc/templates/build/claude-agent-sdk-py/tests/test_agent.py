@@ -25,3 +25,14 @@ def test_approved_refund_runs_and_declined_refund_does_not():
 def test_live_options_expose_no_built_in_tools_and_pre_approve_only_reads():
     o = options(make_gate(None, []))
     assert o.tools == [] and o.allowed_tools == ["mcp__orders__get_order"] and o.max_turns == policy.MAX_TURNS and o.can_use_tool is not None
+    assert o.disallowed_tools == []                                   # support may use both tools
+
+
+def test_a_tool_the_role_lacks_is_never_shown_to_the_model():
+    from agent import guardrails
+    token = guardrails._ROLE.set("viewer")
+    try:
+        o = options(make_gate(None, []))
+    finally:
+        guardrails._ROLE.reset(token)
+    assert o.disallowed_tools == ["mcp__orders__issue_refund"] and o.allowed_tools == ["mcp__orders__get_order"]

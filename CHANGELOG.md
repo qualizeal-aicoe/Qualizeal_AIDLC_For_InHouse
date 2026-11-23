@@ -68,6 +68,20 @@ client's own Kubernetes, with Claude through the cloud's own model service (on K
 
 - PyYAML is one of the Studio's own packages, and the doctor lists it: the gateway config and the cloud lint read YAML,
   and the SIE check fails closed without it.
+- In the Claude Agent SDK starters (Python and TypeScript) a tool the caller's role may not use is no longer shown to the
+  model at all, as well as refused by the approval gate; and a run that the gate stops to wait for a person is a waiting
+  run, not a failed one, when Claude Code ends it with an error result.
+- Every image variable in the cloud templates needs a release tag or a digest: an image with no tag is `latest`.
+
+### Fixed
+
+- Found by the first runs through the real gateway: a call in Anthropic's format (the Claude Agent SDK, Go and .NET
+  starters) to an OpenAI-compatible model went to the Responses API, which self-hosted servers such as SIE and Ollama do
+  not have; both gateway configs now send it through chat/completions. The Strands starter shared one model client
+  between turns, so the answer to an approval reused a connection from a closed event loop; it now makes a client per
+  request. An evaluation run with its own results folder (the gateway's gold set) wrote its report to the default one.
+- On Windows, two of the Studio's tests read paths with backslashes and fed git carriage returns, so a shipped
+  `.env.example` looked ignored.
 
 ## 1.3.0 · 23 November 2026
 
