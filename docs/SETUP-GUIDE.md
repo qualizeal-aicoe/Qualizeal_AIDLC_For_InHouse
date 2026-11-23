@@ -216,7 +216,7 @@ When it blocks something, the message names the rule (for example `QZ-SH-GIT-PUS
 
 ## Not proven yet
 
-Run on 23 November 2026 for 1.0.1, as on 20 November for 1.0.0: the test suite, the guard's red-team, the doctor and
+Run on 23 November 2026 for 1.0.2, as for 1.0.1 that morning: the test suite, the guard's red-team, the doctor and
 the bootstrap (check only) in continuous integration (CI) on Windows and Linux; every starter's tests and gold set;
 the marketplace added from GitHub and both plugins installed by Claude Code; the handbook demo end to end. The
 README's "What was run" has the counts.

@@ -84,8 +84,10 @@ Studio's CI builds all 13 images on a release branch, on a tag, or when asked, a
 
 ## The QualiZeal standards
 
-Everything the Studio builds, and the Studio itself, meets five standards. `qz standards` prints one scorecard, every
-starter's CI fails without it, and on GitHub it lands on the pull request's checks page.
+Everything the Studio builds, and the Studio itself, meets five standards. `qz standards` prints one scorecard, and on
+GitHub it lands on the pull request's checks page. The CI of every starter that carries the Studio's kit (11 of the 13)
+fails without it; the two RAG kits carry no kit and gate on their own golden questions, so the Deliver lane runs the
+scorecard for them before a change is called done.
 
 | Standard | What it checks |
 |---|---|
@@ -190,26 +192,26 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
 
 ## What was run, and what was not
 
-Run on 23 November 2026 for 1.0.1, the same way 1.0.0 was checked on 20 and 21 November:
-- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 408 tests (406
-  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 405 passed and 3 skipped on macOS,
-  whose runner also lacks Chrome for one visual check; 404 passed and 4 skipped on Windows, where in addition Claude
+Run on 23 November 2026 for 1.0.2, the same way 1.0.1 was checked earlier that day and 1.0.0 on 20 and 21 November:
+- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 414 tests (412
+  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 411 passed and 3 skipped on macOS,
+  whose runner also lacks Chrome for one visual check; 410 passed and 4 skipped on Windows, where in addition Claude
   Code's sandbox does not run natively); the guard's red-team, 147 of 147; the doctor, and the bootstrap in
   check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the vectorless
   demo rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude
   Code from its native installer. Every pull request and every push to main runs the same checks, and the Actions tab
   shows the latest.
 - **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
-  their gate) and health check inside the image with no network: 13 of 13 passed. On the way, the .NET image stalled
-  twice on a slow public Ubuntu mirror: its gold stage now reads only Ubuntu's main component, with retries and a
-  30-second timeout, from the mirror named in `UBUNTU_MIRROR` (GitHub's own on its runners), and the log shows each step.
+  their gate) and health check inside the image with no network: 13 of 13 passed. Each starter also meets the five
+  standards the moment it is created, the solution shape included (14 of 14 parts).
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
   ones. The hybrid kit with its real models on a CPU with no GPU scored 41 of 43 on both systems, against 38 for
   keyword search alone, with no safety violations; its 72 tests also passed on Python 3.11, 3.12 and 3.13. The
   command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail rather than skip if
   the server were missing.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
-  and both plugins installed at 1.0.1 by Claude Code 2.1.330, in a clean configuration.
+  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.0.2 and qz-console at 1.0.1
+  (unchanged in 1.0.2).
 - **The handbook demo end to end** on Linux with the real models, scaffolded the way an attendee does: the questions,
   the trace, the refusal, the HR answer, both gates and the chat page over HTTP. Its offline fallback answers 38 of 43,
   as the session plan says.
@@ -250,7 +252,7 @@ deletes a branch once its head is the head of a merged pull request, and keeps a
 | [docs/QUICK-GUIDE.md](docs/QUICK-GUIDE.md) | Every command, the QualiZeal names, and how to spend fewer tokens |
 | [docs/DEMO-VECTORLESS-RAG.md](docs/DEMO-VECTORLESS-RAG.md) | A longer session that builds the vectorless kit live, one story at a time |
 | [docs/GITHUB-AGENT.md](docs/GITHUB-AGENT.md) | The GitHub agent, set up from the website |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.1 adds and why: your client's cloud (Azure, AWS, Google Cloud or Kubernetes), document parsing you can measure, durable runs, changes mid-run, LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.1 adds and why: all-in-one solutions with CI/CD, your client's cloud (Azure, AWS, Google Cloud or Kubernetes, with open models on SIE), small models for narrow decisions, document parsing you can measure, durable runs, changes mid-run, LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
 | [docs/HISTORY.md](docs/HISTORY.md) | Releases 0.4.0 to 0.10.0, as described at the time |
 | [LAYERS.md](LAYERS.md) | What is AWS AI-DLC and what is ours |
 | [CREDITS.md](CREDITS.md) | The projects that shaped the Studio, and their licences |

@@ -13,7 +13,8 @@ One shape for every solution: the same parts, the same evidence and the same pag
   `.qz/solution.json`: entry, agent, tools, model, prompts, guardrails, limits, interface, knowledge, tracing, tests,
   evals, delivery and docs. Each is where it lives (a file, a folder, or a function or constant in a file) or a reason
   it does not apply. The check calls no model. A missing part, a reason left as a TODO, a gold set with fewer than
-  three cases, or an image that runs as root or has no health check fails it, and with it the project's CI. All 13
+  three cases, or an image that runs as root or has no health check fails it, and with it the CI of every project that
+  carries the Studio's kit (the two RAG kits carry none: the Deliver lane runs the scorecard for them). All 13
   starters name their parts and meet it the moment they are created.
 - **Secrets hygiene in the same check.** `.env` is ignored and never tracked, and `.env.example`, written into every
   new project, names every variable the code reads, with no values.

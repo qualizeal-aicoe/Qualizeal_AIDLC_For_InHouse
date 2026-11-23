@@ -19,7 +19,7 @@ __SETUP_STEPS__
         run: python3 .claude/qz/scripts/qz.py eval run --label ci
       - name: Agentic project audit
         run: python3 .claude/qz/scripts/qz.py audit-project scan
-      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers)
+      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers, solution shape)
         run: python3 .claude/qz/scripts/qz.py standards --gate
       - name: Team decisions (docs/decisions/) against this pull request
         if: github.event_name == 'pull_request'
