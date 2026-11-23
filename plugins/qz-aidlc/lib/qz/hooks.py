@@ -11,7 +11,7 @@ import time
 import json
 from pathlib import Path
 
-from . import audit, conventions, decisions, footprint, guard, ledger, testrun
+from . import audit, autonomy, conventions, decisions, footprint, guard, ledger, testrun
 from .ctx import hook as ctxhook
 from .names import shown, tag
 from .util import now, project_config, project_dir, qz_dir
@@ -224,6 +224,16 @@ def pre_tool(p: dict) -> dict | None:
             if dc:                                       # a push that already waits for the person shows the conflict too
                 audit.append(proj, "DECISION_CONFLICT", tool=tool, run=led["run_id"], stage=led["stage"])
                 out["hookSpecificOutput"]["permissionDecisionReason"] += f" {tag('qz-decisions')} {dc['message']}"
+            elif d.action == "ask" and (ok := _quiet(autonomy.permits, proj, tool, tin, d.rule)):
+                # A signed envelope answers this question for an unattended run: never a deny, never the harness's own
+                # questions (autonomy.NEVER), and each yes is chained in the audit log and counted against its cap.
+                ledger.resolve_gate(led, tid, "autonomous")
+                audit.append(proj, "AUTONOMOUS_ALLOW", rule=d.rule, tool=tool, envelope=ok["sha"], n=ok["used"] + 1, cap=ok["cap"],
+                             by=ok["signed"]["by"], run=led["run_id"], stage=led["stage"])
+                out = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow",
+                                              "permissionDecisionReason": f"{tag('qz-autonomy')} {d.message} Allowed without asking under the "
+                                              f"autonomy envelope {ok['signed']['by']} signed ({ok['used'] + 1} of {ok['cap']}, until "
+                                              f"{ok['env']['expires']}): {ok['entry']['why']}"}}
     elif (x := _quiet(_extra_checks, proj, led, tool, tin, tid, p.get("cwd"), str(p.get("agent_id") or ""))):
         rule, msg = x
         ledger.count(led, "ask", rule)

@@ -44,6 +44,12 @@ def run_case(case: dict, cfg: dict | None = None) -> dict:
                     thread = r["thread_id"]
             finally:
                 agent.close()
+            keep = os.environ.get("SQLAGENT_EVAL_AUDIT")      # eval.json sets it: CI scores these lines with qz eval monitor
+            if keep:
+                for log in Path(tmp).rglob("audit.jsonl"):
+                    Path(keep).parent.mkdir(parents=True, exist_ok=True)
+                    with Path(keep).open("a", encoding="utf-8") as f:
+                        f.write(log.read_text(encoding="utf-8"))
         finally:
             if old is None:
                 os.environ.pop("SQLAGENT_HOME", None)
@@ -57,6 +63,8 @@ def run_case(case: dict, cfg: dict | None = None) -> dict:
 
 
 def passes(res: dict, checks: list[dict]) -> list[str]:
+    """The Studio eval runner's check types at its three levels: tool (tool_status, tool_not_called on the steps),
+    response (contains, not_contains, grounded) and outcome (outcome, and execution_check: the rows equal the gold's)."""
     bad, out, calls = [], res["output"], res["tool_calls"]
     for c in checks:
         v = c.get("value", "")
@@ -68,6 +76,10 @@ def passes(res: dict, checks: list[dict]) -> list[str]:
             bad.append(f"no {c['name']} step ended {c['status']}")
         elif c["type"] == "tool_not_called" and any(x["name"] == c["name"] and (not c.get("status") or x["status"] == c["status"]) for x in calls):
             bad.append(f"{c['name']} ran" + (f" and ended {c['status']}" if c.get("status") else ""))
+        elif c["type"] == "outcome" and (res.get("result") or {}).get("outcome") not in (v if isinstance(v, list) else [v]):
+            bad.append(f"ended {(res.get('result') or {}).get('outcome')}, not {v}")
+        elif c["type"] == "grounded" and ((res.get("result") or {}).get("checks") or {}).get("grounded") is False:
+            bad.append("a number in the model's answer was not in the rows")
     return bad
 
 

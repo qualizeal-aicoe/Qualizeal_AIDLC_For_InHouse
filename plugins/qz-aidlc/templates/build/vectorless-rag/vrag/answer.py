@@ -160,10 +160,12 @@ def _checks(con: sqlite3.Connection, cfg, ans: "Answer") -> None:
         ans.flags.append("withheld: the answer held a blocked term")
 
 
-def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str | None = None, llm=None) -> Answer:
+def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str | None = None, llm=None,
+           groups: list[str] | None = None) -> Answer:
+    """groups: the asker's groups from the identity provider; None looks the demo user up in [users]."""
     start = time.perf_counter()
     strategy = strategy or cfg["answer"]["strategy"]
-    groups = cfg.groups(user)
+    groups = list(groups) if groups is not None else cfg.groups(user)
     cs = S.concepts(question, S.load_synonyms(cfg))
     flags: list[str] = []
     if strategy == "tree":

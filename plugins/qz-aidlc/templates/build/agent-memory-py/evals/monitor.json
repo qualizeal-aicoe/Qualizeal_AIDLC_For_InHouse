@@ -1,0 +1,35 @@
+{
+  "_doc": "Live monitoring (qz eval monitor): the memory's audit log scored at the tool (memory calls, empty recalls), response (answers only from what was kept) and outcome (kept, refused, answered) levels, a window against the one before it.",
+  "logs": [
+    ".mem/audit.jsonl"
+  ],
+  "format": "memory",
+  "window_hours": 24,
+  "min_runs": 20,
+  "sample": 20,
+  "labels": "evals/monitor/labels.jsonl",
+  "alerts": {
+    "tool": {
+      "empty_retrieval_rate": {
+        "max_rise": 0.1
+      },
+      "blocked_call_rate": {
+        "max_rise": 0.05
+      }
+    },
+    "response": {
+      "ungrounded_rate": {
+        "max": 0.0
+      }
+    },
+    "outcome": {
+      "refused_rate": {
+        "max_rise": 0.05
+      },
+      "goal_rate": {
+        "min": 0.8,
+        "max_fall": 0.05
+      }
+    }
+  }
+}

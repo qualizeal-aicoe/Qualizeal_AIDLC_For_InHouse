@@ -3,6 +3,57 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
+## 1.1.0 · 23 November 2026
+
+Ready for an enterprise go-live, evaluated at three levels, and safe to leave running unattended.
+
+### Added
+
+- **Go-live readiness, a sixth QualiZeal standard (`qz golive`).** The nine gates an enterprise checks before an AI
+  solution goes live: single sign-on, roles, data residency, personal data, audit log, network isolation, vendor
+  review, data processing and penetration test. Each is built into all 13 starters and named in `.qz/golive.json`:
+  token checks against the client's identity provider or a trusted proxy in the knowledge kits, the model handed only
+  the caller's role's tools, an outbound host allow-list that fails closed, a hash-chained audit log with who asked,
+  in which role and how it ended, every dependency pinned with a CycloneDX bill of materials and a vulnerability scan
+  (OSV) in CI, and attack cases tagged by OWASP risk. A gate clears when the client's answers are in and a named person
+  signs it (`qz golive sign`); the sign-offs are a chained log that voids itself if edited, and `qz golive --gate`
+  wants all nine before production. `qz golive pack` writes the evidence for the client's security team.
+- **Agent evals at three levels, a seventh standard.** Tool (the right tool, arguments and order), response (one reply,
+  correct and grounded in what the tools returned) and outcome (what the session changed and how it ended), each with
+  a floor and at least three cases. New checks: `grounded` (every code and amount in a reply came from a tool or the
+  input: a deterministic hallucination check), `effect`, `no_effect` and `outcome`. Every agent starter reports what
+  each tool returned, the effects (a tool that changes something says so in its result) and how the run ended, and
+  checks each reply for grounding at run time. The starters' gold sets grew to 14 cases, each checking all three
+  levels; the kits map theirs (retrieval recall, grounded rate and accuracy for RAG; execution accuracy for SQL; what
+  the memory holds; what changed on the server).
+- **Live monitoring (`qz eval monitor`).** Scores the audit log at the same three levels, a window against the one
+  before, with alerts from `evals/monitor.json`; goal success and faithfulness judged on a stable sample. It reads the
+  agent starters' log and every kit's own, and the Studio's run ledgers (`--studio`). Every project's CI proves the
+  log carries all three levels.
+- **The Studio's own evals (`qz eval studio`).** Routing and the guard's decisions (tool), credential redaction and
+  flagged injections (response), and whole sessions played through the hooks with the end state checked (outcome).
+  The Studio's CI runs them.
+- **The signed autonomy envelope (`qz autonomy`).** An unattended run answers yes only to the questions a person signed
+  for in `.qz/autonomy.json`: named guard rules, tool and argument patterns, an expiry within 90 days and a cap. It
+  is void the moment the file changes, never turns a denial into an allow, never answers the questions that guard the
+  harness itself, and records every yes in the audit chain. The idea is from omnigent's harness (method only).
+
+### Changed
+
+- `qz standards` checks seven standards; every new project's README, the Deliver lane and the release recipe say so.
+  The Architect lane starts the go-live record in the first week; the Deliver lane gates production on it.
+- Writes to Azure DevOps wait for a person, as Jira, Confluence and GitHub writes already did, and deletes there are
+  refused. Go-live sign-offs, the autonomy envelope and the EU AI Act confirmation are a person's step: the guard asks
+  before them, and an agent cannot write the sign-off log.
+- The release recipe gates each step on the three levels and on the monitor, and `CODEOWNERS` names who approves the
+  gold set, the monitor, the go-live record and the envelope.
+
+### Fixed
+
+- `qz golive` read a host from a comment in a config file as a host the code calls, and a C# method with a tuple
+  return type as not defined.
+- The memory and SQL kits' own evaluators ignored check types they did not know; they now read all three levels.
+
 ## 1.0.2 · 23 November 2026
 
 One shape for every solution: the same parts, the same evidence and the same page, whoever builds it.

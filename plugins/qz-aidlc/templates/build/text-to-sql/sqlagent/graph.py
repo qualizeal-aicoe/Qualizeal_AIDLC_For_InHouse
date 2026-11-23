@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sqlite3
 import threading
@@ -327,7 +328,8 @@ class Agent:
         return g
 
     # ------------------------------------------------------------------ one question
-    def ask(self, question: str, thread_id: str | None = None) -> dict:
+    def ask(self, question: str, thread_id: str | None = None, actor: str = "") -> dict:
+        """actor: who is asking, from the identity provider (the web page passes it); the audit log names them."""
         thread_id = thread_id or uuid.uuid4().hex
         cfg = {"configurable": {"thread_id": thread_id}, "recursion_limit": int(self.cfg["limits"]["recursion_limit"])}
         with self._lock, tracer().start_as_current_span("sql.ask") as span:
@@ -338,6 +340,10 @@ class Agent:
                    "notes": s.get("notes") or [], "path": s.get("path") or [], "usage": s.get("usage") or {}, "provider": self.model.name,
                    "ai_notice": AI_NOTICE}
             out["ai_generated"] = any(p["name"] == "answer" and p["args"].get("by") == "model" for p in out["path"])   # Article 50(2)
+            by = next((str(p["args"].get("by", "")) for p in out["path"] if p["name"] == "answer"), None)
+            # Response level, on every answer: a number in the model's answer that is not in the rows makes it
+            # ungrounded; the answer step then sends the plain description of the rows instead. The monitor counts both.
+            out["checks"] = None if by is None else {"grounded": not by.startswith("template (a number"), "template": by.startswith("template")}
             masked = guard.masked(out["ran"] or out["sql"]) if (out["ran"] or out["sql"]) else ""
             for k, v in (("sql.role", self.role), ("sql.outcome", out["outcome"]), ("sql.attempts", out["attempts"]),
                          ("sql.rows", len(out["rows"])), ("sql.query", masked), ("sql.tables", out["tables"]),
@@ -345,9 +351,9 @@ class Agent:
                          ("gen_ai.usage.input_tokens", out["usage"].get("input_tokens", 0)),
                          ("gen_ai.usage.output_tokens", out["usage"].get("output_tokens", 0))):
                 span.set_attribute(k, v)
-            rec = self.audit.write(thread=thread_id, role=self.role, outcome=out["outcome"], attempts=out["attempts"], tables=out["tables"],
+            rec = self.audit.write(thread=thread_id, actor=actor or os.environ.get("SQLAGENT_ACTOR", ""), role=self.role, outcome=out["outcome"], attempts=out["attempts"], tables=out["tables"],
                                    sql=masked, rows=len(out["rows"]), path=[f"{p['name']}:{p['status']}" for p in out["path"]],
-                                   provider=self.model.name, usage=out["usage"])
+                                   provider=self.model.name, usage=out["usage"], checks=out["checks"])
             span.set_attribute("sql.audit_seq", rec["seq"])
             return out
 

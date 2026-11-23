@@ -1,8 +1,11 @@
 """Run a gold set through an agent's adapter, or replay recorded outputs for a free, deterministic CI run.
 
 The adapter is any command that reads one case as JSON on stdin and writes one JSON object on stdout:
-  {"output": <text or object>, "tool_calls": [{"name", "args", "status"}], "usage": {"input_tokens", "output_tokens"},
-   "cost_usd": optional, "latency_ms": optional}
+  {"output": <text or object>, "tool_calls": [{"name", "args", "status", "result"}], "usage": {"input_tokens", "output_tokens"},
+   "effects": [{"kind", ...}], "outcome": "acted|answered|refused|...", "cost_usd": optional, "latency_ms": optional}
+Every check counts at one level (tool, response or outcome: see checks.py). thresholds.levels sets a floor per level and
+thresholds.min_per_level (default 3) how many cases must check each mandated level, so a gold set cannot pass the
+mandate on tool checks alone.
 The kit never puts API keys in files: the adapter inherits only the environment variables named in pass_env."""
 from __future__ import annotations
 
@@ -51,6 +54,8 @@ def lint(cfg: dict, cases: list[dict]) -> list[str]:
         for ch in c.get("checks") or []:
             if ch.get("type") not in checks.TYPES:
                 errs.append(f"{cid}: unknown check type {ch.get('type')!r}")
+            elif ch["type"] in ("effect", "no_effect") and not ch.get("kind") and not ch.get("fields") and not ch.get("match"):
+                errs.append(f"{cid}: an {ch['type']} check needs a kind (for example refund)")
         if c.get("rubric") and c["rubric"] not in (cfg.get("rubrics") or {}) and len(str(c["rubric"])) < 30:
             errs.append(f"{cid}: rubric '{c['rubric']}' is not defined in eval.json")
     return errs
@@ -147,13 +152,33 @@ def run(proj: Path, mode: str = "live", cfg_path: str = "evals/eval.json", only:
             if res.get("secrets_in_output"):          # a credential in the output fails the case whatever its checks say
                 fails.append({"type": "secret", "detail": "the output contained what looks like a credential; it is redacted in the recording"})
             for ch in c.get("checks") or []:
-                ok, why = checks.run(ch, res)
+                ok, why = checks.run(ch, res, c["input"])
                 if not ok:
-                    fails.append({"type": ch["type"], "detail": why, "check": {k: v for k, v in ch.items() if k != "schema"}})
+                    fails.append({"type": ch["type"], "level": checks.level(ch), "detail": why, "check": {k: v for k, v in ch.items() if k != "schema"}})
         rows.append({"id": c["id"], "tags": c.get("tags") or [], "passed": not fails, "fails": fails, "needs_judge": bool(c.get("rubric")), "rubric": c.get("rubric"),
-                     "input": c["input"], "output": res.get("output"), "tool_calls": res.get("tool_calls") or [], "latency_ms": res.get("latency_ms"),
+                     "levels": levels_of(c), "input": c["input"], "output": res.get("output"), "tool_calls": res.get("tool_calls") or [],
+                     "effects": res.get("effects") or [], "outcome": res.get("outcome"), "latency_ms": res.get("latency_ms"),
                      "usage": res.get("usage"), "cost_usd": res.get("cost_usd")})
-    return summarise(proj, cfg, rows, "replay" if mode == "replay" else ("stub" if stub else "live"), label)
+    return summarise(proj, cfg, rows, "replay" if mode == "replay" else ("stub" if stub else "live"), label, partial=bool(only or tag))
+
+
+def levels_of(case: dict) -> list[str]:
+    """The levels a case checks: from its checks, plus response when a model judges it against a rubric."""
+    got = {checks.level(ch) for ch in case.get("checks") or []} | ({"response"} if case.get("rubric") else set())
+    return [lv for lv in checks.LEVELS if lv in got]
+
+
+def coverage(cases: list[dict]) -> dict:
+    return {lv: sum(1 for c in cases if lv in levels_of(c)) for lv in checks.LEVELS}
+
+
+def _level_pass(r: dict, lv: str, judge: dict | None) -> bool:
+    if any(f["type"] in ("adapter", "secret") for f in r["fails"]):
+        return False                                          # no result, or a leaked credential: every level fails
+    ok = not any(f.get("level", "response") == lv for f in r["fails"])
+    if lv == "response" and r.get("needs_judge") and (judge or {}).get("trusted"):
+        ok = ok and r.get("judge_pass", True)
+    return ok
 
 
 def _sha(x) -> str:
@@ -161,7 +186,7 @@ def _sha(x) -> str:
     return hashlib.sha256(json.dumps(x, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
 
 
-def summarise(proj: Path, cfg: dict, rows: list[dict], mode: str, label: str = "", judge: dict | None = None) -> dict:
+def summarise(proj: Path, cfg: dict, rows: list[dict], mode: str, label: str = "", judge: dict | None = None, partial: bool = False) -> dict:
     def final(r):
         return r["passed"] and (r.get("judge_pass", True) if (judge or {}).get("trusted") else True)
     n, k = len(rows), sum(1 for r in rows if final(r))
@@ -173,12 +198,24 @@ def summarise(proj: Path, cfg: dict, rows: list[dict], mode: str, label: str = "
             a[0] += 1 if final(r) else 0
             a[1] += 1
     th = cfg.get("thresholds") or {}
+    levels = {}
+    for lv in checks.LEVELS:
+        mine = [r for r in rows if lv in (r.get("levels") or [])]
+        levels[lv] = {"passed": sum(1 for r in mine if _level_pass(r, lv, judge)), "n": len(mine)}
     breaches = []
     if n and k / n < th.get("pass_rate", 0.9):
         breaches.append(f"pass rate {k / n:.1%} is under the threshold {th.get('pass_rate', 0.9):.0%}")
     for t, floor in (th.get("by_tag") or {}).items():
         if t in tags and tags[t][0] / tags[t][1] < floor:
             breaches.append(f"tag '{t}': {tags[t][0]}/{tags[t][1]} is under {floor:.0%}")
+    floors = th.get("levels") or {}
+    need = int(th.get("min_per_level", 3))
+    for lv, floor in floors.items():
+        a = levels.get(lv) or {"passed": 0, "n": 0}
+        if a["n"] < need and not partial:                     # a run of some cases (--only, --tag) is not held to coverage
+            breaches.append(f"{lv} level: only {a['n']} case(s) check it; the mandate needs at least {need}")
+        elif a["passed"] / a["n"] < floor:
+            breaches.append(f"{lv} level: {a['passed']}/{a['n']} is under {floor:.0%}")
     lat = [r["latency_ms"] for r in rows if r["latency_ms"] is not None]
     cost = [r["cost_usd"] for r in rows if r["cost_usd"] is not None]
     if th.get("p95_latency_ms") and lat and _pct(lat, 0.95) > th["p95_latency_ms"]:
@@ -186,7 +223,9 @@ def summarise(proj: Path, cfg: dict, rows: list[dict], mode: str, label: str = "
     if th.get("mean_cost_usd") and cost and sum(cost) / len(cost) > th["mean_cost_usd"]:
         breaches.append(f"mean cost ${sum(cost) / len(cost):.4f} is over ${th['mean_cost_usd']}")
     res = {"schema": 1, "at": now(), "mode": mode, "label": label, "n": n, "passed": k, "pass_rate": round(k / n, 4) if n else 0.0, "ci95": [round(lo, 4), round(hi, 4)],
-           "by_tag": {t: {"passed": a[0], "n": a[1]} for t, a in sorted(tags.items())}, "p50_latency_ms": _pct(lat, 0.5), "p95_latency_ms": _pct(lat, 0.95),
+           "by_tag": {t: {"passed": a[0], "n": a[1]} for t, a in sorted(tags.items())},
+           "by_level": {lv: {**a, "pass_rate": round(a["passed"] / a["n"], 4) if a["n"] else None, "floor": floors.get(lv)} for lv, a in levels.items()},
+           "mandate": sorted(floors), "partial": partial, "p50_latency_ms": _pct(lat, 0.5), "p95_latency_ms": _pct(lat, 0.95),
            "mean_cost_usd": round(sum(cost) / len(cost), 6) if cost else None, "total_cost_usd": round(sum(cost), 6) if cost else None,
            "tokens": sum(((r["usage"] or {}).get("input_tokens") or 0) + ((r["usage"] or {}).get("output_tokens") or 0) for r in rows),
            "judge": judge, "awaiting_judge": sum(1 for r in rows if r["needs_judge"] and "judge_pass" not in r), "breaches": breaches, "verdict": "FAIL" if breaches else "PASS",
@@ -211,6 +250,10 @@ def compare(base: dict, new: dict, max_drop: float = 0.02, cost_up: float = 0.2)
         reasons.append(f"pass rate fell from {base['pass_rate']:.1%} to {new['pass_rate']:.1%}")
     if base.get("mean_cost_usd") and new.get("mean_cost_usd") and new["mean_cost_usd"] > base["mean_cost_usd"] * (1 + cost_up):
         reasons.append(f"mean cost rose from ${base['mean_cost_usd']:.4f} to ${new['mean_cost_usd']:.4f}")
+    for lv, a in (new.get("by_level") or {}).items():
+        b0 = (base.get("by_level") or {}).get(lv) or {}
+        if a.get("pass_rate") is not None and b0.get("pass_rate") is not None and a["pass_rate"] < b0["pass_rate"] - max_drop:
+            reasons.append(f"{lv} level fell from {b0['pass_rate']:.1%} to {a['pass_rate']:.1%}")
     overlap = not (new["ci95"][1] < base["ci95"][0] or base["ci95"][1] < new["ci95"][0])
     return {"verdict": "REGRESSION" if reasons else "OK", "reasons": reasons, "flipped_to_fail": flipped, "fixed": fixed,
             "base": {"pass_rate": base["pass_rate"], "ci95": base["ci95"], "n": base["n"]}, "new": {"pass_rate": new["pass_rate"], "ci95": new["ci95"], "n": new["n"]},

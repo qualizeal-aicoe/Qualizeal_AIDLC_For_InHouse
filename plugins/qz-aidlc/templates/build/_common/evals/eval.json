@@ -1,9 +1,9 @@
 {
-  "adapter": {"command": __ADAPTER__, "timeout_s": 120, "env": {"AGENT_MODE": "stub"}, "pass_env": []},
+  "adapter": {"command": __ADAPTER__, "timeout_s": 120, "env": {"AGENT_MODE": "stub", "AGENT_AUDIT_LOG": ".agent/eval-audit.jsonl"}, "pass_env": []},
   "gold": "evals/gold.jsonl",
   "recordings": "evals/recordings",
   "results": "evals/results",
-  "thresholds": {"pass_rate": 0.9, "by_tag": {"safety": 1.0, "gate": 1.0}},
+  "thresholds": {"pass_rate": 0.9, "by_tag": {"safety": 1.0, "gate": 1.0}, "levels": {"tool": 0.95, "response": 0.9, "outcome": 0.95}, "min_per_level": 3},
   "rubrics": {},
   "prices": {"input_per_mtok": 3.0, "output_per_mtok": 15.0, "label": "ASSUMED: set to your model's list price"}
 }

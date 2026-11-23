@@ -45,6 +45,17 @@ hr = ["all", "hr", "managers"]
 finance = ["all", "finance"]
 eu_employee = ["all", "eu"]         # also in group eu: the EU addendum applies to them (manifest "scope")
 
+# Who is asking (go-live gate 1; arag/identity.py). demo: the page picks one of [users], for a laptop demo only.
+# oidc: callers send the identity provider's token; proxy: an identity-aware proxy signs people in. Groups come from
+# the identity provider on every request (group_map turns its group names into the access groups the manifest uses).
+[identity]
+mode = "demo"
+issuer = ""                         # oidc: the provider's issuer URL
+audience = ""                       # oidc: this app's client id or audience
+jwks_url = ""                       # oidc: the provider's signing keys (its discovery document names them)
+groups_claim = "groups"
+trusted_proxies = ["127.0.0.1/32", "::1/128"]   # proxy: the only addresses identity headers are accepted from
+
 [audit]
 path = ".arag/audit.jsonl"
 store_question = true

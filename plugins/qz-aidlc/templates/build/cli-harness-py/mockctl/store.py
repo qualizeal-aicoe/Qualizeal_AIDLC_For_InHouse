@@ -9,6 +9,7 @@ Both are written under an exclusive lock on state.lock, so two agents or termina
 from __future__ import annotations
 
 import contextlib
+import getpass
 import hashlib
 import json
 import os
@@ -17,6 +18,14 @@ from pathlib import Path
 
 GENESIS = "0" * 64
 JOURNAL_MAX = 50                     # changes that can be undone, newest first
+
+
+def _actor() -> str:
+    """Who ran the command (go-live gate 5): MOCKCTL_ACTOR, or the user running it."""
+    try:
+        return os.environ.get("MOCKCTL_ACTOR") or getpass.getuser()
+    except Exception:
+        return "unknown"
 
 
 def _digest(rec: dict) -> str:
@@ -102,7 +111,7 @@ class Store:
         with _locked(self.lock_path):
             s = self._read()
             head = s.get("audit_head") or {"seq": 0, "hash": GENESIS}
-            out = {"seq": head["seq"] + 1, "ts": round(time.time(), 3), **rec, "prev": head["hash"]}
+            out = {"seq": head["seq"] + 1, "ts": round(time.time(), 3), "actor": _actor(), **rec, "prev": head["hash"]}
             out["hash"] = _digest(out)
             self.dir.mkdir(parents=True, exist_ok=True)
             with self.audit_path.open("a", encoding="utf-8") as f:

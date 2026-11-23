@@ -5,8 +5,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from mem.evaluate import run_case_with_calls  # noqa: E402
+from mem.evaluate import run_case_full  # noqa: E402
 
 case = json.load(sys.stdin)
-output, calls = run_case_with_calls(case["input"])
-print(json.dumps({"output": output, "tool_calls": calls, "usage": {"input_tokens": 0, "output_tokens": 0}}))
+r = run_case_full(case["input"])   # effects: what the memory holds for the person at the end; outcome: acted, refused or answered
+print(json.dumps({**r, "usage": {"input_tokens": 0, "output_tokens": 0}}, default=str))

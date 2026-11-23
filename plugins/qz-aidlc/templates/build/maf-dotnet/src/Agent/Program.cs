@@ -19,7 +19,8 @@ if (args.Contains("--eval"))
     JsonElement input = doc.RootElement.GetProperty("input");
     string message = input.ValueKind == JsonValueKind.String ? input.GetString()! : input.GetProperty("message").GetString()!;
     bool? approve = input.ValueKind == JsonValueKind.Object && input.TryGetProperty("approve", out JsonElement a) && a.ValueKind is JsonValueKind.True or JsonValueKind.False ? a.GetBoolean() : null;
-    Console.WriteLine(JsonSerializer.Serialize(await OrderSupport.RunAsync(message, approve)));
+    string? role = input.ValueKind == JsonValueKind.Object && input.TryGetProperty("role", out JsonElement r) && r.ValueKind == JsonValueKind.String ? r.GetString() : null;
+    Console.WriteLine(JsonSerializer.Serialize(await OrderSupport.RunAsync(message, approve, role: role)));
 }
 else
 {

@@ -3,33 +3,131 @@
   "summary": "Strands Agent with a BeforeToolCallEvent approval hook (interrupt and resume), per-request turn and token limits, an AgentCore Runtime entrypoint, and .kiro steering plus a starter spec.",
   "verified": "RUN: tests and gold set ran here against the offline stub with strands-agents 1.64.0 on a real Strands Agent, including interrupt and resume; the AgentCore entrypoint was imported and invoked in-process with bedrock-agentcore 1.26.0. Not run against Bedrock and not deployed to AgentCore here.",
   "stack_line": "A Strands agent in Python for Amazon Bedrock AgentCore, with Kiro steering files and a starter spec.",
-  "policy": "agent/policy.py", "agent_dir": "agent/",
-  "adapter": ["python3", "evals/adapter.py"],
-  "pass_env": ["AGENT_MODEL", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_PROFILE"],
-  "secret_env": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
+  "policy": "agent/policy.py",
+  "agent_dir": "agent/",
+  "adapter": [
+    "python3",
+    "evals/adapter.py"
+  ],
+  "pass_env": [
+    "AGENT_MODEL",
+    "AWS_REGION",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_PROFILE"
+  ],
+  "secret_env": [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY"
+  ],
   "test_cmd": "python3 -m pytest -q tests",
   "run_cmd": "python3 -m agent.app \"Where is my order ORD-1001?\"",
-  "setup_steps": ["- uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n          cache: pip", "- run: pip install -r requirements.txt"],
+  "setup_steps": [
+    "- uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n          cache: pip",
+    "- run: pip install -r requirements.txt"
+  ],
   "live": "Set AWS credentials, AWS_REGION and AGENT_MODEL (a Bedrock model id or inference profile) and AGENT_MODE=live. In CI prefer GitHub OIDC to an AWS role over stored keys.",
-  "next": ["Replace the tool bodies in agent/tools.py, or front them with AgentCore Gateway.", "Add a session manager so a waiting approval survives a restart.", "Open the folder in Kiro: steering loads automatically; continue the spec in .kiro/specs/order-support/.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."],
-  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "agent/guardrails.py"], "marking": ["every result carries ai_generated", "agent/guardrails.py"]},
-  "vendors": ["aws"],
+  "next": [
+    "Replace the tool bodies in agent/tools.py, or front them with AgentCore Gateway.",
+    "Add a session manager so a waiting approval survives a restart.",
+    "Open the folder in Kiro: steering loads automatically; continue the spec in .kiro/specs/order-support/.",
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+  ],
+  "ai_act": {
+    "purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.",
+    "people": true,
+    "generates": true,
+    "notice": [
+      "You're chatting with an AI assistant, not a person.",
+      "agent/guardrails.py"
+    ],
+    "marking": [
+      "every result carries ai_generated",
+      "agent/guardrails.py"
+    ]
+  },
+  "vendors": [
+    "aws"
+  ],
   "open_line": "AWS (Bedrock and AgentCore) is this stack's platform by choice, recorded in `.qz/practices.json`; Strands also runs open-weight models through Ollama or LiteLLM.",
   "container_check": "docker run --rm --network none app:ci",
   "roles": {
     "entry": "agent/app.py#run",
     "agent": "agent/app.py#run",
     "tools": "agent/tools.py",
-    "model": ["agent/app.py", "agent/stub.py"],
+    "model": [
+      "agent/app.py",
+      "agent/stub.py"
+    ],
     "prompts": "agent/policy.py#SYSTEM",
     "guardrails": "agent/guardrails.py",
     "limits": "agent/policy.py",
     "api": "runtime.py#invoke",
-    "knowledge": {"none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"},
+    "knowledge": {
+      "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
+    },
     "tracing": "agent/app.py#_telemetry",
     "tests": "tests",
-    "evals": ["evals/gold.jsonl", "evals/eval.json"],
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/decisions", "docs/ai-act"]
+    "evals": [
+      "evals/gold.jsonl",
+      "evals/eval.json"
+    ],
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/adr",
+      "docs/decisions",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": [
+        "runtime.py#app"
+      ],
+      "rbac": [
+        "agent/policy.py#ROLES",
+        "agent/guardrails.py#tools_for"
+      ],
+      "residency": [
+        "agent/guardrails.py#check_endpoint",
+        "agent/policy.py#ALLOWED_HOSTS"
+      ],
+      "pii": "agent/guardrails.py#mask",
+      "audit": "agent/audit.py#verify",
+      "network": [
+        "agent/guardrails.py#check_endpoint",
+        "agent/policy.py#ALLOWED_HOSTS"
+      ],
+      "vendor": "requirements.txt",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/gold.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "bedrock-runtime.{REGION}.amazonaws.com",
+        "purpose": "the model on Amazon Bedrock, in AWS_REGION",
+        "processor": "Amazon Web Services (Amazon Bedrock)",
+        "region": "TODO: the AWS_REGION the client approved"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "order numbers",
+          "order notes",
+          "refund reasons",
+          "what customers write"
+        ],
+        "special": "TODO: none expected; confirm"
+      }
+    }
   }
 }

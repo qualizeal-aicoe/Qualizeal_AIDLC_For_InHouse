@@ -21,7 +21,8 @@ RUN python3 .claude/qz/scripts/qz.py eval run --label container
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/agent /agent
-ENV AGENT_MODE=stub
+# Audit lines go to standard error, for the platform's log shipping (the image has no writable working folder).
+ENV AGENT_MODE=stub AGENT_AUDIT_LOG=-
 USER nonroot
 # distroless has no shell: the health check is the binary answering offline.
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD ["/agent", "Where is my order ORD-1001?"]

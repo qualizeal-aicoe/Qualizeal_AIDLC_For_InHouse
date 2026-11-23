@@ -11,6 +11,7 @@ function add(cls, text) {
 }
 
 fetch("/api/users").then(r => r.json()).then(d => {
+  if (!d.users.length) who.hidden = true;   // signed in through the identity provider: no picker
   for (const u of d.users) {
     const o = document.createElement("option");
     o.value = o.textContent = u;

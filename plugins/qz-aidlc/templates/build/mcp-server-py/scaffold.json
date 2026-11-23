@@ -28,25 +28,88 @@
     "Change a tool, then run uv run -m server.pin and commit tests/tool_pins.json with it.",
     "Before serving a team over HTTP, put OAuth in front of it (the SDK's token_verifier and AuthSettings)."
   ],
-  "ai_act": {"purpose": "Gives AI agents read access to orders, and a refund tool that waits for a person's approval, over the Model Context Protocol.", "people": false, "generates": false},
+  "ai_act": {
+    "purpose": "Gives AI agents read access to orders, and a refund tool that waits for a person's approval, over the Model Context Protocol.",
+    "people": false,
+    "generates": false
+  },
   "vendors": [],
   "open_line": "No model and no vendor SDK: the server is plain Python on the open MCP standard.",
   "cost_line": "it calls no model, so there is no token spend to cut; `python3 .claude/qz/scripts/qz.py cost` reads not applicable on all six.",
   "container_check": "docker run --rm --network none app:ci",
   "roles": {
     "entry": "server/app.py#main",
-    "agent": {"none": "a tool server: other agents run the loop and call it"},
+    "agent": {
+      "none": "a tool server: other agents run the loop and call it"
+    },
     "tools": "server/app.py#get_order",
-    "model": {"none": "it serves data to agents and calls no model itself"},
-    "prompts": {"none": "it calls no model; its tool descriptions are pinned in server/pin.py"},
+    "model": {
+      "none": "it serves data to agents and calls no model itself"
+    },
+    "prompts": {
+      "none": "it calls no model; its tool descriptions are pinned in server/pin.py"
+    },
     "guardrails": "server/guard.py",
     "limits": "server/policy.py",
     "api": "server/app.py",
     "knowledge": "server/data.py",
     "tracing": "server/audit.py",
     "tests": "tests",
-    "evals": ["evals/gold.jsonl", "evals/eval.json"],
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/ai-act"]
+    "evals": [
+      "evals/gold.jsonl",
+      "evals/eval.json"
+    ],
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/adr",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": {
+        "none": "an MCP server over stdio: the person's own MCP client starts it and nothing listens on the network"
+      },
+      "rbac": {
+        "none": "every tool is read-only (readOnlyHint) and one person's client calls it over stdio: no write to separate"
+      },
+      "residency": {
+        "none": "it calls no host: it reads its own data and answers over stdio"
+      },
+      "pii": "server/guard.py#mask",
+      "audit": "server/audit.py#verify",
+      "network": {
+        "none": "it calls no host: it reads its own data and answers over stdio"
+      },
+      "vendor": "uv.lock",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/gold.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "none",
+        "purpose": "it calls no host",
+        "processor": "none: it runs where the client runs",
+        "region": "local"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "order numbers",
+          "order notes",
+          "refund reasons",
+          "what customers write"
+        ],
+        "special": "TODO: none expected; confirm"
+      }
+    }
   }
 }

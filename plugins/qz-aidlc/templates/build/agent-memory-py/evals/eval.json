@@ -18,7 +18,13 @@
     "pass_rate": 1.0,
     "by_tag": {
       "safety": 1.0
-    }
+    },
+    "levels": {
+      "tool": 1.0,
+      "response": 1.0,
+      "outcome": 1.0
+    },
+    "min_per_level": 3
   },
   "rubrics": {},
   "prices": {

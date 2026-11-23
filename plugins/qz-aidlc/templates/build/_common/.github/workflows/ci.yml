@@ -15,11 +15,13 @@ jobs:
 __SETUP_STEPS__
       - name: Unit tests
         run: __TEST_CMD__
-      - name: Gold set against the offline stub (no key, no spend)
+      - name: Gold set against the offline stub, at the tool, response and outcome levels (no key, no spend)
         run: python3 .claude/qz/scripts/qz.py eval run --label ci
+      - name: Live monitoring wiring (the audit lines the gold set just wrote, scored at the same three levels)
+        run: python3 .claude/qz/scripts/qz.py eval monitor --log .agent/eval-audit.jsonl --min-runs 1 --require-signal
       - name: Agentic project audit
         run: python3 .claude/qz/scripts/qz.py audit-project scan
-      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers, solution shape)
+      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers, solution shape, go-live readiness, agent evals)
         run: python3 .claude/qz/scripts/qz.py standards --gate
       - name: Team decisions (docs/decisions/) against this pull request
         if: github.event_name == 'pull_request'
@@ -33,6 +35,7 @@ __SETUP_STEPS__
           name: qz-reports
           path: |
             evals/results/report.html
+            evals/monitor/latest.json
             .qz/outputs/project-audit/audit.html
 
   container:
@@ -45,3 +48,18 @@ __SETUP_STEPS__
         run: docker build -t app:ci .
       - name: The gold set inside the container (offline, no key)
         run: __CONTAINER_CHECK__
+
+  vulnerabilities:
+    # Go-live gate 7 (vendor review): every lockfile here is checked against the OSV database (osv.dev) on every change,
+    # and a known vulnerability fails the build. Open source (Apache-2.0), no account. Results stay in the run: uploading
+    # them to code scanning needs GitHub Advanced Security on a private repository.
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.7.1
+    with:
+      upload-sarif: false
+      scan-args: |-
+        --recursive
+        ./

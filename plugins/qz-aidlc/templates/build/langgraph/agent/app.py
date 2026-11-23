@@ -18,18 +18,21 @@ from .tools import TOOLS
 def _model(model_id: str | None = None):
     if os.environ.get("AGENT_MODE", "stub") == "stub":
         from .stub import StubChatModel
-        return StubChatModel()
+        return StubChatModel(available=[guardrails.tool_name(t) for t in guardrails.tools_for(TOOLS)])
     from langchain.chat_models import init_chat_model
     common = dict(max_tokens=policy.MAX_OUTPUT_TOKENS, timeout=policy.REQUEST_TIMEOUT_S, max_retries=2)
     if policy.MODEL:                                       # a vendor, chosen by setting AGENT_MODEL
-        return init_chat_model(model_id or policy.MODEL, **common)
+        mid = model_id or policy.MODEL
+        guardrails.check_endpoint(policy.MODEL_HOSTS.get(mid.split(":", 1)[0], mid))    # go-live gates 3 and 6
+        return init_chat_model(mid, **common)
+    guardrails.check_endpoint(policy.LOCAL_BASE_URL)
     return init_chat_model(model_id or policy.LOCAL_MODEL, model_provider="openai", base_url=policy.LOCAL_BASE_URL,
                            api_key=os.environ.get("OPENAI_API_KEY") or "local", **common)
 
 
 def build(checkpointer=None, model_id: str | None = None):
     """For anything longer than one process, pass a durable checkpointer (SqliteSaver, PostgresSaver)."""
-    return create_agent(_model(model_id), tools=TOOLS, system_prompt=policy.SYSTEM, checkpointer=checkpointer or InMemorySaver(),
+    return create_agent(_model(model_id), tools=guardrails.tools_for(TOOLS), system_prompt=policy.SYSTEM, checkpointer=checkpointer or InMemorySaver(),
                         middleware=[HumanInTheLoopMiddleware(interrupt_on=policy.NEEDS_APPROVAL), ModelCallLimitMiddleware(run_limit=policy.MAX_MODEL_CALLS, exit_behavior="end"),
                                     AnthropicPromptCachingMiddleware(unsupported_model_behavior="ignore"),        # caches system prompt and tools on Claude
                                     ContextEditingMiddleware(edits=[ClearToolUsesEdit(trigger=policy.CLEAR_TOOL_RESULTS_AT)])])
@@ -60,6 +63,14 @@ def run(message: str, approve: bool | None = None, thread_id: str | None = None,
         return result
 
 
+def _content(m: ToolMessage):
+    """What the tool returned, for the grounded check and the effects (a tool that changed something says so)."""
+    try:
+        return json.loads(m.content) if isinstance(m.content, str) else m.content
+    except ValueError:
+        return m.content
+
+
 def _result(state: dict, gate: str, thread_id: str) -> dict:
     msgs = state["messages"]
     ran = {m.tool_call_id: m for m in msgs if isinstance(m, ToolMessage)}
@@ -72,7 +83,7 @@ def _result(state: dict, gate: str, thread_id: str) -> dict:
             for c in m.tool_calls:
                 gated = c["name"] in policy.NEEDS_APPROVAL
                 status = "ok" if not gated else ("pending" if c["id"] not in ran else gate if gate in ("ok", "denied") else "ok")
-                calls.append({"name": c["name"], "args": c["args"], "status": status})
+                calls.append({"name": c["name"], "args": c["args"], "status": status, **({"result": _content(ran[c["id"]])} if c["id"] in ran else {})})
     last = msgs[-1]
     text = last.content if isinstance(last, AIMessage) and isinstance(last.content, str) else "".join(b.get("text", "") for b in getattr(last, "content", []) if isinstance(b, dict))
     if gate == "pending":

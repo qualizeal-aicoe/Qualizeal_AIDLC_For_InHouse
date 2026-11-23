@@ -8,7 +8,16 @@ from strands.models import Model
 ORDER = re.compile(r"\bORD-\d+\b", re.I)
 
 
-def decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
+NOT_ALLOWED = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help."
+
+
+def decide(user_text: str, results: list[tuple[str, dict]], available=None) -> dict:
+    """A model only calls the tools it was given, so a tool outside `available` (the role's tools) is never called."""
+    d = _decide(user_text, results)
+    return {"say": NOT_ALLOWED} if "call" in d and available is not None and d["call"] not in available else d
+
+
+def _decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
     m = ORDER.search(user_text or "")
     if not m:
         return {"say": "I can help once I have an order number, for example ORD-1001."}
@@ -54,7 +63,7 @@ class StubModel(Model):
                     if body is None:
                         body = {"ok": False, "error": " ".join(c.get("text", "") for c in tr["content"])[:200]}
                     results.append((names.get(tr["toolUseId"], "?"), body))
-        d = decide(user, results)
+        d = decide(user, results, [s.get("name", "") for s in tool_specs or []])      # no tools given: none can be called
         yield {"messageStart": {"role": "assistant"}}
         if "say" in d:
             yield {"contentBlockStart": {"start": {}}}

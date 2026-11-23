@@ -32,6 +32,7 @@ def _model(model_id: str | None = None):
     if not policy.MODEL_ID:
         raise SystemExit("Set AGENT_MODEL to a Bedrock model id or inference profile for live runs.")
     from strands.models import BedrockModel, CacheConfig
+    guardrails.check_endpoint(f"https://bedrock-runtime.{policy.REGION}.amazonaws.com")      # go-live gates 3 and 6
     return BedrockModel(model_id=model_id or policy.MODEL_ID, region_name=policy.REGION, max_tokens=policy.MAX_OUTPUT_TOKENS,
                         cache_config=CacheConfig(strategy="auto"))     # Bedrock cache points on the system prompt and tools
 
@@ -42,7 +43,7 @@ def build(model_id: str | None = None) -> Agent:
         from strands.telemetry import StrandsTelemetry
         StrandsTelemetry().setup_otlp_exporter()      # spans for every model call and tool call
         _telemetry = True
-    return Agent(model=_model(model_id), tools=TOOLS, system_prompt=policy.SYSTEM, hooks=[ApprovalGate()], callback_handler=None, name="__NAME__")
+    return Agent(model=_model(model_id), tools=guardrails.tools_for(TOOLS), system_prompt=policy.SYSTEM, hooks=[ApprovalGate()], callback_handler=None, name="__NAME__")
 
 
 @guardrails.guarded
@@ -62,18 +63,20 @@ def run(message: str, approve: bool | None = None, agent: Agent | None = None) -
 
 
 def _result(agent: Agent, result, gate: str) -> dict:
-    done, calls = set(), []
+    done, calls = {}, []
     for m in agent.messages:
         for b in m["content"]:
-            if "toolResult" in b:
-                done.add(b["toolResult"]["toolUseId"])
+            if "toolResult" in b:                         # what the tool returned: for the grounded check and the effects
+                body = (b["toolResult"].get("content") or [{}])[0]
+                done[b["toolResult"]["toolUseId"]] = body.get("json", body.get("text"))
     for m in agent.messages:
         for b in m["content"]:
             if "toolUse" in b:
                 tu = b["toolUse"]
                 gated = tu["name"] in policy.NEEDS_APPROVAL
                 status = "ok" if not gated else ("pending" if tu["toolUseId"] not in done or gate == "pending" else gate if gate in ("ok", "denied") else "ok")
-                calls.append({"name": tu["name"], "args": tu["input"], "status": status})
+                calls.append({"name": tu["name"], "args": tu["input"], "status": status,
+                              **({"result": done[tu["toolUseId"]]} if tu["toolUseId"] in done and status == "ok" else {})})
     text = "".join(b.get("text", "") for b in result.message.get("content", []))
     if gate == "pending":
         text = f"This needs approval from a person before it can go ahead: {', '.join(c['name'] for c in calls if c['status'] == 'pending')}. It is waiting; nothing has been changed."

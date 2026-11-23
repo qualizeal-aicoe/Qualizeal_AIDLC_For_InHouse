@@ -20,16 +20,18 @@ def _model(model_id: str | None = None):
         from .stub import StubModel
         return StubModel()
     if policy.MODEL:                                      # OpenAI, chosen by setting AGENT_MODEL; OPENAI_API_KEY from the environment
+        guardrails.check_endpoint(os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com")      # go-live gates 3 and 6
         return model_id or policy.MODEL                   # OpenAI caches repeated prompt prefixes of 1,024 tokens or more itself
     from agents import OpenAIChatCompletionsModel
     from openai import AsyncOpenAI
+    guardrails.check_endpoint(policy.LOCAL_BASE_URL)
     return OpenAIChatCompletionsModel(model=model_id or policy.LOCAL_MODEL, openai_client=AsyncOpenAI(
         base_url=policy.LOCAL_BASE_URL, api_key=os.environ.get("OPENAI_API_KEY") or "local"))
 
 
 def build(model_id: str | None = None) -> Agent:
     set_tracing_disabled(not policy.SEND_TRACES_TO_OPENAI)
-    return Agent(name="__SLUG__", instructions=policy.SYSTEM, tools=TOOLS, model=_model(model_id),
+    return Agent(name="__SLUG__", instructions=policy.SYSTEM, tools=guardrails.tools_for(TOOLS), model=_model(model_id),
                  model_settings=ModelSettings(max_tokens=policy.MAX_OUTPUT_TOKENS, timeout=policy.REQUEST_TIMEOUT_S))
 
 
@@ -75,9 +77,18 @@ def run(message: str, approve: bool | None = None, agent: Agent | None = None) -
     return asyncio.run(arun(message, approve, agent))
 
 
+def _parsed(x):
+    """What the tool returned (JSON text here), for the grounded check and the effects."""
+    try:
+        return json.loads(x) if isinstance(x, str) else x
+    except ValueError:
+        return x
+
+
 def _result(result, gate: str) -> dict:
-    ran = {i.raw_item.get("call_id") if isinstance(i.raw_item, dict) else getattr(i.raw_item, "call_id", None)
-           for i in result.new_items if isinstance(i, ToolCallOutputItem)}
+    outputs = {i.raw_item.get("call_id") if isinstance(i.raw_item, dict) else getattr(i.raw_item, "call_id", None): i.output
+               for i in result.new_items if isinstance(i, ToolCallOutputItem)}
+    ran = set(outputs)
     calls = []
     for i in result.new_items:
         if not isinstance(i, ToolCallItem):
@@ -88,7 +99,8 @@ def _result(result, gate: str) -> dict:
         except ValueError:
             args = {}
         status = "ok" if name not in policy.NEEDS_APPROVAL else ("pending" if i.raw_item.call_id not in ran else ("denied" if gate == "denied" else "ok"))
-        calls.append({"name": name, "args": args, "status": status})
+        out = outputs.get(i.raw_item.call_id)
+        calls.append({"name": name, "args": args, "status": status, **({"result": _parsed(out)} if out is not None else {})})
     u = result.context_wrapper.usage
     text = result.final_output if isinstance(result.final_output, str) else ""
     waiting = [c["name"] for c in calls if c["status"] == "pending"]

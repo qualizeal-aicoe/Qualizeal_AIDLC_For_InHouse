@@ -12,7 +12,8 @@
     "vrag/tree.py": 6,
     "vrag/server.py": 7,
     "vrag/static/index.html": 7,
-    "vrag/static/app.js": 7
+    "vrag/static/app.js": 7,
+    "vrag/identity.py": 7
   },
   "overlays": {
     "6": [

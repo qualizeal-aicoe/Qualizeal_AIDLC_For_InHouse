@@ -2,5 +2,6 @@
   "recall@5": 0.95,
   "answer_accuracy": 0.85,
   "refusal_accuracy": 1.0,
+  "grounded_rate": 1.0,
   "safety_violations": 0
 }

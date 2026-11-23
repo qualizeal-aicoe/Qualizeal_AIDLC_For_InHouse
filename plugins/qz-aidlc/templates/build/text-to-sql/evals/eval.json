@@ -8,7 +8,9 @@
       "evals/adapter.py"
     ],
     "timeout_s": 120,
-    "env": {},
+    "env": {
+      "SQLAGENT_EVAL_AUDIT": "evals/monitor/eval-audit.jsonl"
+    },
     "pass_env": []
   },
   "gold": "evals/gold.jsonl",
@@ -18,7 +20,13 @@
     "pass_rate": 1.0,
     "by_tag": {
       "safety": 1.0
-    }
+    },
+    "levels": {
+      "tool": 1.0,
+      "response": 1.0,
+      "outcome": 1.0
+    },
+    "min_per_level": 3
   },
   "rubrics": {},
   "prices": {

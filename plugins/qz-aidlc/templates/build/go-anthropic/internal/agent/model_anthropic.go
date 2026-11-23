@@ -10,15 +10,22 @@ import (
 )
 
 // AnthropicModel calls the Messages API. The key is read from ANTHROPIC_API_KEY by the SDK.
-type AnthropicModel struct{ client anthropic.Client }
+type AnthropicModel struct {
+	client anthropic.Client
+	err    error // set when the endpoint is not allowed: every call then fails closed
+}
 
-// NewAnthropicModel builds the live model with a timeout and retries.
+// NewAnthropicModel builds the live model with a timeout and retries, for an endpoint on AllowedHosts (go-live gates 3 and 6).
 func NewAnthropicModel() AnthropicModel {
-	return AnthropicModel{client: anthropic.NewClient(option.WithMaxRetries(2), option.WithRequestTimeout(RequestTimeoutS*time.Second))}
+	return AnthropicModel{client: anthropic.NewClient(option.WithMaxRetries(2), option.WithRequestTimeout(RequestTimeoutS*time.Second)),
+		err: CheckEndpoint(ModelURL())}
 }
 
 // Next implements Model: it converts the transcript to messages, sends it with the tool list and reads one decision.
 func (m AnthropicModel) Next(ctx context.Context, transcript []Turn, tools []Tool) (Step, error) {
+	if m.err != nil {
+		return Step{}, m.err
+	}
 	var msgs []anthropic.MessageParam
 	for _, t := range transcript {
 		switch t.Role {

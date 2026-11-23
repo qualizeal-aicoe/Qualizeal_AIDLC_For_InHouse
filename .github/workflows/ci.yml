@@ -77,6 +77,10 @@ jobs:
         if: always()
         shell: bash
         run: '"$PY" -I -X utf8 plugins/qz-aidlc/scripts/qz.py redteam'
+      - name: The Studio's own evals, at the tool, response and outcome levels
+        if: always()
+        shell: bash
+        run: '"$PY" -I -X utf8 plugins/qz-aidlc/scripts/qz.py eval studio --gate'
       - name: Doctor, started the way an attendee starts it (PowerShell)
         if: always() && runner.os == 'Windows'
         shell: pwsh
@@ -248,6 +252,9 @@ jobs:
             uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run --label ci
             uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
           fi
+      - name: The seven standards on the new project (go-live gates built in, agent evals at three levels)
+        shell: bash
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py standards "$RUNNER_TEMP/proj" --gate
 
   containers:
     # Each starter's image, built and checked the way the project's own CI checks it: the gold set (or the RAG gate)

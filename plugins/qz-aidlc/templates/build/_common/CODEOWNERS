@@ -1,3 +1,7 @@
-# Name the people who approve changes to the agent's limits and its gold set.
-# /agent/policy.py   @your-tech-lead
-# /evals/gold.jsonl  @your-test-lead
+# Name the people who approve changes to the agent's limits, its gold set and its go-live record.
+# /agent/policy.py          @your-tech-lead
+# /evals/gold.jsonl         @your-test-lead
+# /evals/monitor.json       @your-test-lead
+# /.qz/golive.json          @your-security-lead
+# /.qz/golive/              @your-security-lead
+# /.qz/autonomy.json        @your-delivery-lead

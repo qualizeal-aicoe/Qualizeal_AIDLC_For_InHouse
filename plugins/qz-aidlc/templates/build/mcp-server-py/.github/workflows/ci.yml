@@ -17,11 +17,13 @@ jobs:
       - run: uv sync --locked
       - name: Unit tests and the tool pins
         run: uv run -m pytest -q
-      - name: Contract cases through a real MCP client
+      - name: Contract cases through a real MCP client, at the tool, response and outcome levels
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval run --label ci
+      - name: Live monitoring wiring (the audit lines the gold set just wrote, scored at the same three levels)
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py eval monitor --log evals/monitor/eval-audit.jsonl --min-runs 1 --require-signal
       - name: Agentic project audit
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py audit-project scan
-      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers, solution shape)
+      - name: QualiZeal standards (six guardrails, EU AI Act, open source first, cost levers, solution shape, go-live readiness, agent evals)
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py standards --gate
       - name: Team decisions (docs/decisions/) against this pull request
         if: github.event_name == 'pull_request'
@@ -45,3 +47,18 @@ jobs:
         run: docker build -t app:ci .
       - name: The gold set inside the container (offline, no key)
         run: docker run --rm --network none app:ci
+
+  vulnerabilities:
+    # Go-live gate 7 (vendor review): every lockfile here is checked against the OSV database (osv.dev) on every change,
+    # and a known vulnerability fails the build. Open source (Apache-2.0), no account. Results stay in the run: uploading
+    # them to code scanning needs GitHub Advanced Security on a private repository.
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.7.1
+    with:
+      upload-sarif: false
+      scan-args: |-
+        --recursive
+        ./

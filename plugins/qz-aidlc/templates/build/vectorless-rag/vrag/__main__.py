@@ -98,6 +98,8 @@ def main(argv: list[str] | None = None) -> int:
     fb = sp.add_parser("feedback", help="thumbs up and down from the chat page; --gold proposes gold candidates (--yes writes them)")
     fb.add_argument("--gold", action="store_true")
     fb.add_argument("--yes", action="store_true")
+    st = sp.add_parser("stats", help="how often questions were refused, and the three levels, from the audit log")
+    st.add_argument("--gate", action="store_true", help="exit 1 when a level has no signal or an answer cites nothing")
     v = sp.add_parser("serve", help="chat page and JSON API on this computer")
     v.add_argument("--port", type=int, default=8765)
     v.add_argument("--host", default="127.0.0.1")
@@ -165,6 +167,27 @@ def main(argv: list[str] | None = None) -> int:
         ans = need("answer").answer(con, cfg, args.question, args.user, args.strategy, provider(cfg, args.llm))
         show(ans, args.json)
         return 0
+    if args.cmd == "stats":
+        r = need("audit").stats(cfg)
+        if not r["questions"]:
+            print("No questions in the audit log yet.")
+            return 1 if args.gate else 0
+        print(f"{r['questions']} question(s), {r['refused']} refused ({r['refusal_rate']:.1%}).")
+        print("  Too high: people ask what the documents do not cover. Too low: check the threshold in vrag.toml.")
+        for why, n in r["reasons"]:
+            print(f"  {n:4}  {why}")
+        for q in r["recent"]:
+            print(f"  refused: {q}")
+        lv = r["levels"]
+        pct = lambda v: "n/a" if v is None else f"{v:.1%}"  # noqa: E731
+        print(f"  tool: {lv['tool']['searches']} searches, {pct(lv['tool']['empty_retrieval_rate'])} found nothing · "
+              f"response: {lv['response']['answers']} answers, {pct(lv['response']['ungrounded_rate'])} cite nothing · "
+              f"outcome: {pct(lv['outcome']['answered_rate'])} answered, {pct(lv['outcome']['refusal_rate'])} refused")
+        bad = ([] if lv["response"]["signal"] else ["answers in the log carry no citations field"]) + \
+              ([f"{pct(lv['response']['ungrounded_rate'])} of answers cite nothing"] if lv["response"]["ungrounded_rate"] else [])
+        for b in bad:
+            print(f"GATE: {b}")
+        return 1 if args.gate and bad else 0
     if args.cmd == "eval":
         ev = need("evaluate")
         return ev.main(cfg, args.strategy, provider(cfg, args.llm), args.metric, args.gate, args.json)

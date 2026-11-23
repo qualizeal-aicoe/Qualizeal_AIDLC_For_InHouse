@@ -15,25 +15,116 @@
     "Run uv run -m arag calibrate, then set [rerank] min_score from what it shows.",
     "Keep uv run -m arag compare --gate in CI: hybrid must never be worse than BM25 alone."
   ],
-  "ai_act": {"purpose": "Answers people's questions from the team's documents and cites the sources it used.", "people": true, "generates": true, "notice": ["Answers are written by AI from your documents. Check the cited source before you act on one.", "arag/static/index.html"], "marking": ["every answer carries ai_generated", "arag/answer.py"]},
+  "ai_act": {
+    "purpose": "Answers people's questions from the team's documents and cites the sources it used.",
+    "people": true,
+    "generates": true,
+    "notice": [
+      "Answers are written by AI from your documents. Check the cited source before you act on one.",
+      "arag/static/index.html"
+    ],
+    "marking": [
+      "every answer carries ai_generated",
+      "arag/answer.py"
+    ]
+  },
   "vendors": [],
   "open_line": "Embeddings and the reranker are open models that run on your machine; answers can come from an open-weight model through any OpenAI-compatible server.",
   "cost_line": "the system block cached on every model call; outline navigation on its own `navigate_model` (a small model is enough) and answers on `answer_model`; repeat questions answered from a cache kept per reader's access and index version; embeddings and reranking on the CPU, so retrieval costs no tokens; at most five sections reach the model.",
   "container_check": "docker run --rm --network none app:ci uv run -m arag eval --gate",
   "roles": {
     "entry": "arag/__main__.py",
-    "agent": ["arag/answer.py", "arag/hybrid.py"],
-    "tools": {"none": "it answers from documents and takes no actions"},
-    "model": ["arag/embed.py", "arag/rerank.py", "arag/llm.py"],
+    "agent": [
+      "arag/answer.py",
+      "arag/hybrid.py"
+    ],
+    "tools": {
+      "none": "it answers from documents and takes no actions"
+    },
+    "model": [
+      "arag/embed.py",
+      "arag/rerank.py",
+      "arag/llm.py"
+    ],
     "prompts": "arag/llm.py",
     "guardrails": "arag/guard.py",
     "limits": "arag.toml",
     "api": "arag/server.py",
-    "knowledge": ["corpus/manifest.json", "web.toml"],
-    "tracing": ["arag/explain.py", "arag/audit.py"],
+    "knowledge": [
+      "corpus/manifest.json",
+      "web.toml"
+    ],
+    "tracing": [
+      "arag/explain.py",
+      "arag/audit.py"
+    ],
     "tests": "tests",
     "evals": "evals/golden.jsonl",
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/design.md", "docs/ai-act"]
-  }
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/design.md",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": [
+        "arag/identity.py#who",
+        "arag/server.py"
+      ],
+      "rbac": [
+        "arag/search.py#search",
+        "arag/config.py#groups",
+        "arag/index.py#readable"
+      ],
+      "residency": [
+        "arag/llm.py"
+      ],
+      "pii": "arag/guard.py#redact",
+      "audit": "arag/audit.py#verify",
+      "network": [
+        "arag/llm.py"
+      ],
+      "vendor": "uv.lock",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/golden.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "localhost",
+        "purpose": "an open-weight model on the same machine (Ollama), when no vendor model is set",
+        "processor": "none: it runs where the agent runs",
+        "region": "local"
+      },
+      {
+        "host": "127.0.0.1",
+        "purpose": "an open-weight model on the same machine (Ollama), when no vendor model is set",
+        "processor": "none: it runs where the agent runs",
+        "region": "local"
+      },
+      {
+        "host": "api.anthropic.com",
+        "purpose": "the model, when [llm] provider is anthropic: the question and the cited sections",
+        "processor": "Anthropic",
+        "region": "TODO: the processing region agreed for this account"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "names and contact details in the documents",
+          "what people ask"
+        ],
+        "special": "TODO: salary bands are confidential, not special category; confirm"
+      }
+    }
+  },
+  "eval_line": "`uv run -m arag eval --gate` scores the golden questions at the three levels (recall@5; grounded rate and safety violations; answer and refusal accuracy) and `uv run -m arag stats --gate` reads the audit log at the same levels"
 }

@@ -17,6 +17,8 @@ DEFAULTS: dict = {
     "users": {"employee": ["all"], "manager": ["all", "managers"], "hr": ["all", "hr", "managers"],
               "finance": ["all", "finance"], "eu_employee": ["all", "eu"]},
     "audit": {"path": ".arag/audit.jsonl", "store_question": True},
+    "identity": {"mode": "demo", "issuer": "", "audience": "", "jwks_url": "", "groups_claim": "groups",
+                 "trusted_proxies": ["127.0.0.1/32", "::1/128"], "group_map": {}},
     "eval": {"golden": "evals/golden.jsonl", "thresholds": "evals/thresholds.json", "results": "evals/results"},
     "dense": {"embedder": "hash", "model": "BAAI/bge-small-en-v1.5", "cache": ""},
     "rerank": {"reranker": "overlap", "model": "Xenova/ms-marco-MiniLM-L-6-v2", "min_score": -7.0,

@@ -17,6 +17,7 @@ type evalCase struct {
 type input struct {
 	Message string `json:"message"`
 	Approve *bool  `json:"approve"`
+	Role    string `json:"role"`
 }
 
 func main() {
@@ -30,7 +31,7 @@ func main() {
 	if err := json.Unmarshal(c.Input, &in); err != nil {
 		_ = json.Unmarshal(c.Input, &in.Message)
 	}
-	res, err := agent.Run(context.Background(), agent.NewModel(), in.Message, agent.Fixed(in.Approve))
+	res, err := agent.RunAs(context.Background(), agent.NewModel(), in.Message, agent.Fixed(in.Approve), agent.Who{Role: in.Role})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -145,6 +145,7 @@ def standards(dest: Path, name: str, meta: dict) -> list[str]:
         rel.write_text(release_recipe(name, slug(name), meta), encoding="utf-8")
         written.append("docs/release.md")
     written += shape_files(dest, name, meta)
+    written += golive_files(dest, name, meta)
     if meta.get("vendors"):
         f = dest / ".qz" / "practices.json"
         cur = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
@@ -183,6 +184,16 @@ def shape_files(dest: Path, name: str, meta: dict) -> list[str]:
     return out
 
 
+def golive_files(dest: Path, name: str, meta: dict) -> list[str]:
+    """The go-live record (.qz/golive.json, `qz golive`): where each of the nine gates lives in this starter, every host
+    it may call with its processor, and the questions only the client can answer, as TODOs."""
+    from ..auditkit import golive
+    if not meta.get("golive"):
+        return []
+    f = golive.write_record(dest, golive.propose(dest, {**meta["golive"], "name": name}))
+    return [golive.RECORD] if f else []
+
+
 def release_recipe(name: str, sl: str, m: dict) -> str:
     """How a release moves: one image per tag, three steps to everyone, and a rollback that is one switch."""
     return f"""# Release: {name}
@@ -195,15 +206,16 @@ built once per tag, checked in CI (`{m.get('container_check', 'docker run --rm -
 |---|---|---|
 | dev0 | deploys automatically when a release is tagged | the pipeline |
 | qa0 | a change request | a person |
-| prod0 | a change request, then the three steps below | a person |
+| prod0 | a change request, then the three steps below; the first time, all nine go-live gates signed (`qz golive --gate`) | a person |
 
 ## Three steps to everyone
 
 1. **Shadow.** The new tag runs beside the live one on copies of real requests; its replies are compared and never
-   sent. Gate: the live gold set passes, no new kind of guard finding, tokens per run within a fifth of the live tag.
-2. **A small share.** 5% of requests for a day, then 25%. Gate: errors and declined approvals no worse than the live
-   tag, and no serious incident (`docs/ai-act/incident-runbook.md`).
-3. **Everyone.**
+   sent. Gate: the live gold set passes at the tool, response and outcome levels, no new kind of guard finding,
+   tokens per run within a fifth of the live tag.
+2. **A small share.** 5% of requests for a day, then 25%. Gate: `qz eval monitor` raises no alert at any of the three
+   levels against the live tag, and no serious incident (`docs/ai-act/incident-runbook.md`).
+3. **Everyone.** The monitor keeps running on a schedule; an alert is a reason to roll back.
 
 ## What is versioned
 
@@ -231,9 +243,12 @@ def house_sections(name: str, m: dict) -> str:
     """The two sections every project's README carries: the QualiZeal standards and how its image is released."""
     kit = m.get("kit", True)
     qz = "python3 .claude/qz/scripts/qz.py" if kit else "qz"
-    lead = (f"CI checks every change against five standards; `{qz} standards` shows the scorecard here." if kit else
-            "Five standards apply to every change: the Studio's `qz standards` shows the scorecard, and the Deliver lane "
+    lead = (f"CI checks every change against seven standards; `{qz} standards` shows the scorecard here." if kit else
+            "Seven standards apply to every change: the Studio's `qz standards` shows the scorecard, and the Deliver lane "
             "runs it before a change is called done.")
+    golive = f"`{qz} golive`" if kit else "`qz golive`"
+    evals = ("`" + qz + " eval run` scores the gold set and `" + qz + " eval monitor` scores live traffic from the audit log"
+             if kit else m.get("eval_line") or "the kit's own eval gate scores the golden set, and its audit log is read at the same levels")
     ai = m.get("ai_act") or {}
     marks = [x for x, on in (("`ai_notice` (show it before the first reply)", ai.get("people")),
                              ("`ai_generated` (a machine-readable mark)", ai.get("generates"))) if on]
@@ -250,6 +265,8 @@ def house_sections(name: str, m: dict) -> str:
 - **Open source first:** {m.get('open_line', 'open-source options first at every layer.')}
 - **Cost levers:** {m.get('cost_line', AGENT_COST)}
 - **Solution shape:** the fourteen parts every solution has, each named in `.qz/solution.json` where it lives or why it does not apply (`{qz} structure`); `.env.example` names every variable the code reads, with no values.
+- **Go-live readiness:** the nine gates an enterprise checks before go-live (single sign-on, roles, data residency, personal data, audit log, network isolation, vendor review, data processing terms, penetration test). The code carries each control, named in `.qz/golive.json`; a named person signs each gate off before production: {golive}.
+- **Agent evals:** every case is checked at three levels: tool (the right tool, arguments and order), response (one reply, grounded in what the tools returned) and outcome (what the session changed and how it ended). Each level has a floor and at least three cases; {evals}, and CI proves the log carries all three.
 
 ## Container and release
 
@@ -284,7 +301,7 @@ def readme(name: str, m: dict) -> str:
 - One read-only tool and one tool that moves money, which waits for a person's approval.
 - Limits in one file: `{m['policy']}` (model, turn limit, token cap, approval list).
 - An offline stub model, so tests and the gold set run with no key and no spend.
-- A gold set of 11 cases in `evals/gold.jsonl`: lookups, the approval gate, injection attempts and the input filter.
+- A gold set of 14 cases in `evals/gold.jsonl`, each checked at the tool, response and outcome levels: lookups, the approval gate, a made-up tracking number, injection attempts and the input filter. `evals/monitor.json` scores live traffic at the same three levels.
 - Tracing with OpenTelemetry, a CI workflow, a runbook and rules for coding agents (`CLAUDE.md`).
 
 {house_sections(name, m)}## Run it

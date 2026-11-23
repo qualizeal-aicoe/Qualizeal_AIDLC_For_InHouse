@@ -10,7 +10,9 @@ play). Everything lives in `arch/` and is driven by the `arch` tool. The order i
    action that cannot be undone.
    Challenge anything vague: ask for the number. `arch [req]` until it says READY. Pull context with `kf_search` and,
    when a Jira or Confluence connector is present, read the epic and linked pages (reading needs no approval).
-   Classify it under the EU AI Act: `qz aiact init` (risk class, role, EU link); a person confirms it.
+   Classify it under the EU AI Act: `qz aiact init` (risk class, role, EU link); a person confirms it. Start the
+   go-live record now (`qz golive init`): its questions (identity, regions, processors, pen test) go to the client
+   this week.
 2. **Options and stack** (`stage feasibility`). In `arch/decision.json` write the criteria with weights that add to
    100 and anchors for 1, 3 and 5, the knock-outs, and at least three options. One option is always the no-agent
    baseline (a fixed workflow with one model call). Open source first: each option's model, runner, store and evals

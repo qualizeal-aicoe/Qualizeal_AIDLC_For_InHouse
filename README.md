@@ -1,4 +1,4 @@
-# QualiZeal AI-DLC Studio · 1.0.2
+# QualiZeal AI-DLC Studio · 1.1.0
 
 How the QualiZeal AI Center of Excellence (AI CoE) builds with Claude Code, in one install. An AI full-stack developer
 or a generative AI (GenAI) engineer gets tested starters for the stacks our projects use, lanes that carry a piece of
@@ -57,19 +57,19 @@ of evaluation cases gates each change, and CI and a runbook come with it.
 
 | Starter | What it is | Checked in CI on every push |
 |---|---|---|
-| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 10 tests and 11 gold cases, with interrupt and resume; Windows and Linux |
-| `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 12 tests and 11 gold cases, with an approval, a declined refund and a resume from saved state; Windows and Linux |
-| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 9 tests and 11 gold cases; Windows and Linux |
-| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 7 tests and 11 gold cases; Linux |
-| `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 8 tests and 8 contract cases through a real MCP client; Windows and Linux |
-| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 72 tests; 41 of 43 golden questions with the real models, against 38 for keyword search alone; no safety violations; Windows and Linux |
-| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 62 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
+| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 13 tests and 14 gold cases at three levels, with interrupt and resume; Windows and Linux |
+| `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 15 tests and 14 gold cases at three levels, with an approval, a declined refund and a resume from saved state; Windows and Linux |
+| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 12 tests and 14 gold cases at three levels; Windows and Linux |
+| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 8 tests and 14 gold cases at three levels; Linux |
+| `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 8 tests and 9 contract cases through a real MCP client; Windows and Linux |
+| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 83 tests; 41 of 43 golden questions with the real models, against 38 for keyword search alone; no safety violations; Windows and Linux |
+| `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 73 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
 | `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 18 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
-| `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 43 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
+| `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 54 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
 | `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 31 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
-| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 10 tests and 11 gold cases; Linux |
-| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 9 tests and 11 gold cases; Linux |
-| `go-anthropic` | Go on the Anthropic API | vet, tests and 11 gold cases; Linux |
+| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 13 tests and 14 gold cases at three levels; Linux |
+| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 12 tests and 14 gold cases at three levels; Linux |
+| `go-anthropic` | Go on the Anthropic API | vet, tests and 14 gold cases at three levels; Linux |
 
 The Python starters use uv with a lock file, so a laptop gets the versions CI tested (the Strands starter keeps a
 requirements file). Only the TypeScript starter needs
@@ -84,7 +84,7 @@ Studio's CI builds all 13 images on a release branch, on a tag, or when asked, a
 
 ## The QualiZeal standards
 
-Everything the Studio builds, and the Studio itself, meets five standards. `qz standards` prints one scorecard, and on
+Everything the Studio builds, and the Studio itself, meets seven standards. `qz standards` prints one scorecard, and on
 GitHub it lands on the pull request's checks page. The CI of every starter that carries the Studio's kit (11 of the 13)
 fails without it; the two RAG kits carry no kit and gate on their own golden questions, so the Deliver lane runs the
 scorecard for them before a change is called done.
@@ -96,8 +96,10 @@ scorecard for them before a change is called done.
 | Open source first | Each AI layer (model, runtime, framework, vector store, evals, tracing) is open, or tied to a vendor by a recorded choice. The framework-neutral starters run live on an open-weight model on your own machine by default (`qwen3:8b` on Ollama); picking a vendor starter records the vendor |
 | Cost levers | Prompt caching on the fixed prefix, easy turns routed to a smaller model (`AGENT_MODEL_SMALL`), batch where work can wait, a cache for repeat questions that never crosses an access boundary, capped context, and smaller models for narrow work |
 | Solution shape | The same fourteen parts in every solution (entry, agent, tools, model, prompts, guardrails, limits, interface, knowledge, tracing, tests, evals, delivery, docs), each named in `.qz/solution.json` where it lives or why it does not apply; `.env` ignored and never tracked; `.env.example` names every variable the code reads. `qz structure pack` writes `docs/solution.md` with the same eight sections every time |
+| Go-live readiness | The nine gates an enterprise checks before go-live (single sign-on, roles, data residency, personal data, audit log, network isolation, vendor review, data processing, penetration test), each built into the code and named in `.qz/golive.json`. Before production a named person signs each one (`qz golive --gate`); see [docs/GO-LIVE.md](docs/GO-LIVE.md) |
+| Agent evals | Every case is checked at three levels: tool (the right tool, arguments and order), response (one reply, grounded in what the tools returned) and outcome (what the session changed and how it ended), each with a floor and at least three cases; CI runs the set, and `qz eval monitor` scores live traffic from the audit log at the same levels; see [docs/EVALS.md](docs/EVALS.md) |
 
-All 13 starters meet all five the moment they are created; `tests/test_standards.py` creates each one and checks.
+All 13 starters meet all seven the moment they are created; `tests/test_standards.py` creates each one and checks.
 
 ## Lanes
 
@@ -157,7 +159,12 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
 ## How it keeps prompts, keys and pricing safe
 
 - Every tool call passes a policy guard (deny, ask, allow), and the guard reads every command on a shell line, not
-  only the first. Writes to Jira, Confluence and GitHub wait for a person. Agents never merge.
+  only the first. Writes to Jira, Confluence, GitHub and Azure DevOps wait for a person. Agents never merge.
+- An unattended run answers yes only to the questions a person signed for in `.qz/autonomy.json`: named rules, tool
+  and argument patterns, an expiry within 90 days and a cap. Any change voids it until someone signs again; it never
+  turns a denial into an allow or answers the questions that guard the harness itself, and each yes is a line in the
+  audit chain ([docs/GO-LIVE.md](docs/GO-LIVE.md)). Go-live sign-offs and this one are a person's step: an agent
+  cannot run them or write their files.
 - Content from tickets, pages, files and tools is data. Text that addresses the model is flagged: documents that carry
   it are quarantined from the Knowledge Fabric, and both RAG kits quarantine such sentences when they read a document.
 - The text-to-SQL starter only reads, and only what the asker's role may read: the SQL is checked as a parsed tree,
@@ -232,7 +239,7 @@ Not run:
 - **A person working in a live Claude Code session with the hooks.** The hooks were started exactly as Claude Code
   starts them, with the input it sends, but no interactive session was recorded.
 - The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
-- Cursor and Codex. 1.0.2 is for Claude Code; they are planned for 1.1.
+- Cursor and Codex. 1.1.0 is for Claude Code; they are on the roadmap.
 
 ## How a release ships
 

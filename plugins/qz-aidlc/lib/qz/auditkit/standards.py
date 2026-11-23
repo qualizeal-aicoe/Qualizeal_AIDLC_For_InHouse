@@ -5,6 +5,8 @@
     3 Open source first     the open option at every layer, unless a vendor is a recorded choice
     4 Cost levers           prompt caching, model routing, batch, semantic cache, trimmed context, smaller models
     5 Solution shape        the same fourteen parts in every solution, each named where it lives or why it does not apply
+    6 Go-live readiness     the nine gates before an enterprise go-live, built into the code (the sign-offs are qz golive)
+    7 Agent evals           tool, response and outcome levels, each with a floor and 3+ cases, run in CI, watched live
 
     qz standards [PATH] [--json] [--gate]     with --gate, exit 1 when any standard fails
     qz standards --studio                     the Studio's own scorecard
@@ -18,10 +20,10 @@ import os
 import sys
 from pathlib import Path
 
-from . import aiact, cost, gates, oss, shape
+from . import aiact, cost, evals, gates, golive, oss, shape
 
 PARTS = [("guardrails", "Six guardrails", gates), ("aiact", "EU AI Act", aiact), ("stack", "Open source first", oss), ("cost", "Cost levers", cost),
-         ("shape", "Solution shape", shape)]
+         ("shape", "Solution shape", shape), ("golive", "Go-live readiness", golive), ("evals", "Agent evals", evals)]
 
 
 def run(root: Path | None = None, studio: bool = False) -> dict:

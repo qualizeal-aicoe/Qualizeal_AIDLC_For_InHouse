@@ -36,7 +36,19 @@
     "Swap InMemorySaver for SqliteSaver or PostgresSaver in agent/app.py before anything runs longer than one process.",
     "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
   ],
-  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "agent/guardrails.py"], "marking": ["every result carries ai_generated", "agent/guardrails.py"]},
+  "ai_act": {
+    "purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.",
+    "people": true,
+    "generates": true,
+    "notice": [
+      "You're chatting with an AI assistant, not a person.",
+      "agent/guardrails.py"
+    ],
+    "marking": [
+      "every result carries ai_generated",
+      "agent/guardrails.py"
+    ]
+  },
   "vendors": [],
   "open_line": "Live runs default to an open-weight model on your own machine (qwen3:8b on Ollama, Apache-2.0); set AGENT_MODEL to use a vendor.",
   "container_check": "docker run --rm --network none app:ci",
@@ -44,16 +56,98 @@
     "entry": "agent/app.py#run",
     "agent": "agent/app.py#build",
     "tools": "agent/tools.py",
-    "model": ["agent/app.py#_model", "agent/stub.py"],
+    "model": [
+      "agent/app.py#_model",
+      "agent/stub.py"
+    ],
     "prompts": "agent/policy.py#SYSTEM",
     "guardrails": "agent/guardrails.py",
     "limits": "agent/policy.py",
-    "api": {"none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"},
-    "knowledge": {"none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"},
+    "api": {
+      "none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"
+    },
+    "knowledge": {
+      "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
+    },
     "tracing": "agent/telemetry.py",
     "tests": "tests",
-    "evals": ["evals/gold.jsonl", "evals/eval.json"],
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/decisions", "docs/ai-act"]
+    "evals": [
+      "evals/gold.jsonl",
+      "evals/eval.json"
+    ],
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/adr",
+      "docs/decisions",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": {
+        "none": "a command-line agent: nothing listens on the network, so nobody signs in to it; served, it sits behind the client's identity provider"
+      },
+      "rbac": [
+        "agent/policy.py#ROLES",
+        "agent/guardrails.py#tools_for"
+      ],
+      "residency": [
+        "agent/guardrails.py#check_endpoint",
+        "agent/policy.py#ALLOWED_HOSTS"
+      ],
+      "pii": "agent/guardrails.py#mask",
+      "audit": "agent/audit.py#verify",
+      "network": [
+        "agent/guardrails.py#check_endpoint",
+        "agent/policy.py#ALLOWED_HOSTS"
+      ],
+      "vendor": "uv.lock",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/gold.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "localhost",
+        "purpose": "an open-weight model on the same machine (Ollama), when no vendor model is set",
+        "processor": "none: it runs where the agent runs",
+        "region": "local"
+      },
+      {
+        "host": "127.0.0.1",
+        "purpose": "an open-weight model on the same machine (Ollama), when no vendor model is set",
+        "processor": "none: it runs where the agent runs",
+        "region": "local"
+      },
+      {
+        "host": "api.anthropic.com",
+        "purpose": "the model: prompts, tool results and replies",
+        "processor": "Anthropic",
+        "region": "TODO: the processing region agreed for this account"
+      },
+      {
+        "host": "api.openai.com",
+        "purpose": "the model: prompts, tool results and replies",
+        "processor": "OpenAI",
+        "region": "TODO: the processing region agreed for this project"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "order numbers",
+          "order notes",
+          "refund reasons",
+          "what customers write"
+        ],
+        "special": "TODO: none expected; confirm"
+      }
+    }
   }
 }

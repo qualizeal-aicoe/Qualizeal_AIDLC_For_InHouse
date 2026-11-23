@@ -5,13 +5,22 @@ import re
 
 from claude_agent_sdk import PermissionResultAllow, ToolPermissionContext
 
-from . import policy
+from . import guardrails, policy
 from .tools import TOOLS
 
 ORDER = re.compile(r"\bORD-\d+\b", re.I)
 
 
-def decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
+NOT_ALLOWED = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help."
+
+
+def decide(user_text: str, results: list[tuple[str, dict]], available=None) -> dict:
+    """A model only calls the tools it was given, so a tool outside `available` (the role's tools) is never called."""
+    d = _decide(user_text, results)
+    return {"say": NOT_ALLOWED} if "call" in d and available is not None and d["call"] not in available else d
+
+
+def _decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
     m = ORDER.search(user_text or "")
     if not m:
         return {"say": "I can help once I have an order number, for example ORD-1001."}
@@ -37,7 +46,7 @@ async def run_stub(message: str, can_use_tool, calls: list[dict]) -> tuple[str, 
     for _ in range(policy.MAX_TURNS):
         usage["input_tokens"] += (len(message) + sum(len(json.dumps(r)) for _, r in results)) // 4 + 60
         usage["output_tokens"] += 24
-        d = decide(message, results)
+        d = decide(message, results, [n for n in TOOLS if n in policy.ROLES.get(guardrails.role(), ())])
         if "say" in d:
             return d["say"], usage
         full = f"mcp__{policy.SERVER}__{d['call']}"

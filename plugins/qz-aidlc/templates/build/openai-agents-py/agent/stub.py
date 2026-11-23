@@ -12,7 +12,16 @@ from openai.types.responses import ResponseFunctionToolCall, ResponseOutputMessa
 ORDER = re.compile(r"\bORD-\d+\b", re.I)
 
 
-def decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
+NOT_ALLOWED = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help."
+
+
+def decide(user_text: str, results: list[tuple[str, dict]], available=None) -> dict:
+    """A model only calls the tools it was given, so a tool outside `available` (the role's tools) is never called."""
+    d = _decide(user_text, results)
+    return {"say": NOT_ALLOWED} if "call" in d and available is not None and d["call"] not in available else d
+
+
+def _decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
     """Shared rule set: returns {"say": text} or {"call": name, "args": {...}}."""
     m = ORDER.search(user_text or "")
     if not m:
@@ -64,7 +73,7 @@ class StubModel(Model):
         user = next((_text(i.get("content")) for i in reversed(items) if i.get("role") == "user"), "")
         names = {i["call_id"]: i["name"] for i in items if i.get("type") == "function_call"}
         results = [(names.get(i["call_id"], "?"), _body(i.get("output"))) for i in items if i.get("type") == "function_call_output"]
-        d = decide(user, results)
+        d = decide(user, results, [getattr(t, "name", "") for t in tools or []])
         n = len(results) + 1
         if "say" in d:
             out = [ResponseOutputMessage(id=f"msg_{n}", type="message", role="assistant", status="completed",
