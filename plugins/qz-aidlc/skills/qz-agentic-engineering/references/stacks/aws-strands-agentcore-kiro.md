@@ -15,6 +15,7 @@ no free tier, and add platform learning to the plan.
 | Tools | `@strands.tool` on a typed function; return `{"status": "success", "content": [{"json": {...}}]}` for structured results |
 | Human gate | a `HookProvider` registering `BeforeToolCallEvent`; call `event.interrupt(name, reason=...)`; set `event.cancel_tool = "message"` to refuse |
 | Resume | the result has `stop_reason == "interrupt"` and `interrupts`; call the agent again with `[{"interruptResponse": {"interruptId": id, "response": ...}}]` |
+| Waiting runs (the starter) | `agent/durable.py` keeps the run and its interrupt in SQLite; `answer(thread, approve)` from any process runs the tool once (`once()` keys each change) |
 | Limits | `agent(prompt, limits={"turns": n, "total_tokens": n, "output_tokens": n})`; the result's `stop_reason` reports `limit_turns` and similar |
 | Usage | `result.metrics.accumulated_usage` |
 | Tracing | `StrandsTelemetry().setup_otlp_exporter()` (OpenTelemetry) |

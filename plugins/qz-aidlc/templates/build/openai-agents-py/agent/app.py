@@ -1,4 +1,7 @@
-"""The agent: OpenAI Agents SDK, a person's approval before any refund, hard limits, OpenTelemetry spans."""
+"""The agent: OpenAI Agents SDK, a person's approval before any refund, hard limits, OpenTelemetry spans.
+
+A run that waits for a person keeps the SDK's run state (as text) in the state database (agent/durable.py), so
+answer() carries it on from any process: after a restart, a deploy, or from the HTTP interface (agent/server.py)."""
 import asyncio
 import json
 import os
@@ -75,6 +78,14 @@ async def resume(saved: str, approve: bool, agent: Agent | None = None) -> dict:
 @guardrails.guarded
 def run(message: str, approve: bool | None = None, agent: Agent | None = None) -> dict:
     return asyncio.run(arun(message, approve, agent))
+
+
+@guardrails.guarded_resume
+def answer(thread: str, approve: bool, saved: dict, agent: Agent | None = None) -> dict:
+    """A person's answer to a run that waits, from this process or any other, from its saved run state."""
+    if not saved.get("state"):
+        raise RuntimeError(f"thread {thread} has no saved run state")
+    return asyncio.run(resume(saved["state"], approve, agent or build(policy.pick_model(saved.get("message") or ""))))
 
 
 def _parsed(x):

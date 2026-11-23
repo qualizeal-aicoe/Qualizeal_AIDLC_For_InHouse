@@ -1,6 +1,6 @@
 # QualiZeal AI-DLC Studio · quick guide
 
-Version 1.2.0. Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE).
+Version 1.3.0. Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE).
 
 AI-DLC is the AI-Driven Development Life Cycle. The Studio is two Claude Code plugins: `qz-aidlc` (the lanes, tools and harness) and `qz-console` (a live map of the run, desktop only). Inside Claude, `/qz-aidlc:qz-help` shows any section of this page.
 

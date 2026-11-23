@@ -5,6 +5,8 @@ Usage: python container_check.py <starter name> <project folder>     (the image 
 1. The project's container check from the starter's scaffold.json (the gold set, or the RAG gate), with no network.
 2. The image's HEALTHCHECK: a server image (one that exposes a port) is started with no network and must report
    healthy; any other image runs its health-check command once and must exit 0.
+3. An agent starter with an HTTP interface ("serve" in scaffold.json): the interface is started inside the image with
+   no network and must report healthy through the image's own health check.
 """
 from __future__ import annotations
 
@@ -50,7 +52,7 @@ def main() -> int:
     if not test or test[0] != "CMD":
         print(f"FAIL: the image has no exec-form HEALTHCHECK: {test}")
         return 1
-    if cfg.get("ExposedPorts"):
+    if cfg.get("ExposedPorts") and not meta.get("serve"):     # a starter that names its serve command is started that way in step 3
         cid = sh(["docker", "run", "-d", "--network", "none", "--health-interval", "2s", "--health-timeout", "5s", "app:ci"], proj).stdout.strip()
         try:
             for _ in range(60):
@@ -69,7 +71,27 @@ def main() -> int:
         print("FAIL: the health-check command")
         return 1
     print("OK: the health-check command passes with no network")
+    if meta.get("serve"):
+        return healthy(proj, ["docker", "run", "-d", "--network", "none", "--health-interval", "2s", "--health-timeout", "5s", "app:ci", *meta["serve"]],
+                       "the HTTP interface")
     return 0
+
+
+def healthy(proj: Path, run: list[str], what: str) -> int:
+    cid = sh(run, proj).stdout.strip()
+    state = ""
+    try:
+        for _ in range(60):
+            state = subprocess.run(["docker", "inspect", cid, "--format", "{{.State.Health.Status}}"], capture_output=True, text=True).stdout.strip()
+            if state == "healthy":
+                print(f"OK: {what} reports healthy with no network")
+                return 0
+            time.sleep(2)
+        print(f"FAIL: {what} never reported healthy (last state: {state})")
+        subprocess.run(["docker", "logs", "--tail", "40", cid])
+        return 1
+    finally:
+        subprocess.run(["docker", "rm", "-f", cid], capture_output=True)
 
 
 if __name__ == "__main__":

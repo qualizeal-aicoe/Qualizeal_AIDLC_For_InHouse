@@ -23,8 +23,9 @@ runs the same check on each reply at run time and records it in the audit log.
   result, as `effect`) and the outcome.
 - `qz eval run` reports each level and fails on a breach; `qz eval compare` fails when a level drops. `qz eval lint`
   shows the coverage per level.
-- The agent starters' gold sets have 14 cases, every one checking all three levels, including a made-up tracking
-  number and a refund that must not happen. The kits map theirs: retrieval recall, grounded rate and safety, answer
+- The agent starters' gold sets have 16 cases, every one checking all three levels, including a made-up tracking
+  number, a refund that must not happen, a refund approved from a new process after a restart, and a crash right after
+  a refund that must still leave exactly one refund. The kits map theirs: retrieval recall, grounded rate and safety, answer
   and refusal accuracy for the RAG kits; execution accuracy as the outcome for text-to-SQL; what the memory holds at
   the end for agent memory; what changed on the server for the command-line harness.
 

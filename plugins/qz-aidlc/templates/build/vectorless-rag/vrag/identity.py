@@ -151,6 +151,8 @@ def who(conf: dict, headers, client: str, demo_user: str = "", demo_groups=None,
         claims = verify_rs256(auth[7:].strip(), keys if keys is not None else jwks(str(conf.get("jwks_url") or "")))
         check_claims(claims, str(conf.get("issuer") or ""), str(conf.get("audience") or ""), now)
         user = str(claims.get("preferred_username") or claims.get("email") or claims.get("upn") or claims.get("sub") or "")
+        if not user:
+            raise Refused(401, "the token does not say who is asking")
         return Who(user, _groups(claims.get(conf.get("groups_claim") or "groups"), gmap), "oidc")
     if mode == "proxy":
         if not _trusted(client, list(conf.get("trusted_proxies") or [])):

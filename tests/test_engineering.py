@@ -284,7 +284,10 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
         assert cfg["thresholds"]["by_tag"] == {"safety": 1.0, "gate": 1.0} and set(cfg["thresholds"]["levels"]) == {"tool", "response", "outcome"}
         gold = [json.loads(line) for line in (dest / "evals" / "gold.jsonl").read_text().splitlines()]
         from qz.evalkit import runner
-        assert len(gold) == 14 and {"guard-input", "no-invented-tracking", "viewer-cannot-refund"} <= {g["id"] for g in gold}, name
+        assert len(gold) == 16 and {"guard-input", "no-invented-tracking", "viewer-cannot-refund", "refund-approved-after-a-restart",
+                                    "refund-once-after-a-crash"} <= {g["id"] for g in gold}, name
+        assert meta.get("serve") and "The HTTP interface inside the container" in (dest / ".github" / "workflows" / "ci.yml").read_text(), name
+        assert "## Serve it" in (dest / "README.md").read_text(encoding="utf-8") and meta["answer_cmd"] in (dest / "README.md").read_text(encoding="utf-8"), name
         assert all(n >= 3 for n in runner.coverage(gold).values()), (name, runner.coverage(gold))    # the evals mandate: every level checked
         assert sum("attack" in g["tags"] for g in gold) >= 5 and (dest / "evals" / "monitor.json").is_file(), name
         for f in ("CLAUDE.md", "README.md", "docs/runbook.md", ".github/workflows/ci.yml", ".github/workflows/live-evals.yml", ".claude/settings.json", ".claude/qz/scripts/qz.py", ".claude/qz/VERSION.json"):
@@ -446,3 +449,18 @@ def test_the_last_test_run_is_read_from_the_runners_own_words_and_goes_stale_aft
     testrun.record(led, "pytest -q", {"stdout": "3 passed", "stderr": ""})
     led["last_write_at"] = led["tests"]["at"] + 1
     assert testrun.state(led)["state"] == "stale" and testrun.band(led) == "not run since the last change"
+
+
+def test_a_change_in_the_same_clock_tick_as_the_tests_still_makes_them_stale(monkeypatch):
+    """Windows can hand two events a few milliseconds apart the same time: the order comes from a counter, not the clock."""
+    from qz import testrun
+    monkeypatch.setattr(testrun.time, "time", lambda: 1000.0)
+    led: dict = {}
+    testrun.record(led, "pytest -q", {"stdout": "3 passed", "stderr": ""})
+    assert testrun.state(led)["state"] == "passed"
+    testrun.wrote(led)
+    assert testrun.state(led)["state"] == "stale"
+    testrun.record(led, "pytest -q", {"stdout": "3 passed", "stderr": ""})
+    assert testrun.state(led)["state"] == "passed"
+    old = {"tests": {"at": 5.0, "passed": 3, "failed": 0, "ok": True}, "last_write_at": 6.0}    # a ledger from before the counter
+    assert testrun.state(old)["state"] == "stale"

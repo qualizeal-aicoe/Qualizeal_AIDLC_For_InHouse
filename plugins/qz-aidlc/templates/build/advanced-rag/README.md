@@ -39,6 +39,8 @@ uv run -m arag serve
 ```
 
 The first `ingest` downloads the two models (about 150 MB) into `~/.cache/qz-aidlc/models`, once per person.
+Each `ingest` after that embeds only the sections whose text changed and keeps the rest from the index it replaces, so
+re-indexing an unchanged corpus embeds nothing; the line it prints says how many were embedded and how many kept.
 `uv run -m pytest -q` needs no download: tests use an offline embedder and reranker.
 
 ## What else it does

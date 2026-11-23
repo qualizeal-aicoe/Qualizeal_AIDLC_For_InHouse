@@ -191,11 +191,15 @@ def _record(actor: str, who: str, message: str, result: dict, run_id: str) -> No
 def guarded(run):
     """Wrap an agent's run(message, ...): the input is screened before the agent reads it, the reply before it is
     returned, and what either filter found is in the result's `guard` field (and the trace, where the agent has one).
-    role= and actor= say who is asking (defaults: policy.ROLE and policy.ACTOR); the run is written to the audit log."""
+    role= and actor= say who is asking (defaults: policy.ROLE and policy.ACTOR); the run is written to the audit log.
+    Every run has a thread (thread_id=, or a new one) and is kept in the state database: one that waits for a person
+    is answered later, from any process, with the agent's answer() (agent/durable.py)."""
     @functools.wraps(run)
-    def wrapper(message: str, *args, role: str | None = None, actor: str | None = None, **kwargs):
+    def wrapper(message: str, *args, role: str | None = None, actor: str | None = None, thread_id: str | None = None, **kwargs):
+        from . import durable
         who, by = role or policy.ROLE, actor or policy.ACTOR
-        token = _ROLE.set(who)
+        thread = thread_id or durable.new_thread()
+        token, tt = _ROLE.set(who), durable.THREAD.set(thread)
         inp = screen_input(message)
         try:
             if inp.blocked:
@@ -211,16 +215,73 @@ def guarded(run):
                                           and not result.get("awaiting_approval"))                  # texts no model wrote
         except Exception as e:                                # a run that fails is recorded as failed, then raised as before
             failed = {"output": "", "tool_calls": [], "outcome": "failed", "error": type(e).__name__, "guard": {"input": inp.findings, "output": []}}
-            _record(by, who, mask(message)[0], failed, uuid.uuid4().hex)
+            _record(by, who, mask(message)[0], failed, thread)
+            durable.save(thread, status="failed", message=inp.text, role=who, actor=by)
             raise
         finally:
             _ROLE.reset(token)
-        result["role"] = who
-        result["effects"] = effects(result.get("tool_calls") or [])
-        result["outcome"] = outcome(result, inp.blocked)
-        if result["outcome"] in ("acted", "answered", "declined"):
-            bad = ungrounded(result["output"], [inp.text, policy.SYSTEM] + [c.get("result") for c in result.get("tool_calls") or [] if c.get("result") is not None])
-            result["checks"] = {"grounded": not bad, "ungrounded": len(bad)}
-        _record(by, who, mask(message)[0], result, str(result.get("thread_id") or uuid.uuid4().hex))   # never a card or ID number, even hashed
+            durable.THREAD.reset(tt)
+        result["thread_id"] = thread
+        result = _finish(result, inp.text, mask(message)[0], who, by, inp.blocked)
+        _keep(thread, result, inp.text, who, by)
+        return result
+    return wrapper
+
+
+def _finish(result: dict, text: str, masked: str, who: str, by: str, refused: bool) -> dict:
+    """The three levels and the audit line, the same for a first run and for an answered one."""
+    result["role"] = who
+    result["effects"] = effects(result.get("tool_calls") or [])
+    result["outcome"] = outcome(result, refused)
+    if result["outcome"] in ("acted", "answered", "declined"):
+        bad = ungrounded(result["output"], [text, policy.SYSTEM] + [c.get("result") for c in result.get("tool_calls") or [] if c.get("result") is not None])
+        result["checks"] = {"grounded": not bad, "ungrounded": len(bad)}
+    _record(by, who, masked, result, str(result.get("thread_id") or uuid.uuid4().hex))   # never a card or ID number, even hashed
+    return result
+
+
+def _keep(thread: str, result: dict, text: str, who: str, by: str, answered_by: str | None = None) -> None:
+    """The run in the state database: what waits is kept with the framework's own state, a finished run with its result."""
+    from . import durable
+    calls = result.get("tool_calls") or []
+    waiting = bool(result.get("awaiting_approval"))
+    durable.save(thread, status="awaiting_approval" if waiting else "done", message=text, role=who, actor=by, calls=calls,
+                 pending=[c for c in calls if c.get("status") == "pending"], state=result.get("state") if waiting else None,
+                 answer=None if waiting else json.dumps({k: v for k, v in result.items() if k != "state"}, default=str),
+                 **({"answered_by": answered_by} if answered_by else {}))
+
+
+def guarded_resume(resume):
+    """Wrap an agent's resume(thread, approve, saved): a person's answer to a waiting run, in this process or any other.
+    Who asked, and in which role, come from the saved run, never from whoever answers; the reply is screened like any
+    other, and the audit log has the run with who answered. A run already answered returns what it returned then."""
+    @functools.wraps(resume)
+    def wrapper(thread: str, approve: bool, approver: str | None = None, **kwargs):
+        from . import durable
+        saved = durable.load(thread)
+        if saved is None:
+            raise KeyError(f"no run {thread} in the state database")
+        if saved["status"] != "awaiting_approval":
+            done = json.loads(saved["answer"]) if saved.get("answer") else {"output": "", "tool_calls": saved["calls"]}
+            return {**done, "thread_id": thread, "already_answered": True}
+        who, by = saved.get("role") or policy.ROLE, saved.get("actor") or policy.ACTOR
+        token, tt = _ROLE.set(who), durable.THREAD.set(thread)
+        try:
+            result = resume(thread, approve, saved, **kwargs)
+            out = screen_output(str(result.get("output") or ""))
+            result["output"] = out.text
+            result["guard"] = {"input": [], "output": out.findings}
+            result["ai_notice"] = AI_NOTICE
+            result["ai_generated"] = result.get("ai_generated", True) and not out.blocked and not result.get("awaiting_approval")
+        except Exception as e:
+            _record(approver or by, who, mask(saved.get("message") or "")[0], {"output": "", "tool_calls": [], "outcome": "failed",
+                                                                                "error": type(e).__name__}, thread)
+            raise
+        finally:
+            _ROLE.reset(token)
+            durable.THREAD.reset(tt)
+        result["thread_id"], result["answered_by"] = thread, approver or by
+        result = _finish(result, saved.get("message") or "", mask(saved.get("message") or "")[0], who, by, False)
+        _keep(thread, result, saved.get("message") or "", who, by, answered_by=approver or by)
         return result
     return wrapper

@@ -142,7 +142,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             stats = idx.build(cfg, res)
             flags = stats["flags"]
-            print(f"Indexed {stats['docs']} documents, {stats['nodes']} sections into {stats['index']}.")
+            print(f"Indexed {stats['docs']} documents, {stats['nodes']} sections into {stats['index']} "
+                  f"({stats['embedded']} embedded, {stats['reused']} unchanged and kept).")
         for p in res.problems:
             print(f"  skipped: {p}")
         if flags:

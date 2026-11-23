@@ -1,14 +1,14 @@
 {
   "title": "Go agent on the Anthropic API",
   "summary": "A hand-written tool loop on anthropic-sdk-go behind a small Model interface, an approval gate before side-effecting tools, a turn limit, and OpenTelemetry (the SDK emits a span per request).",
-  "verified": "RUN: go vet and go test passed here and the gold set ran against the offline stub with Go 1.26 and anthropic-sdk-go 1.84.0. The live Messages API path compiled against the SDK; no live model call was made here.",
+  "verified": "RUN: go vet and go test passed here and the gold set ran against the offline stub with Go 1.26 and anthropic-sdk-go 1.84.0. The live Messages API path compiled against the SDK; no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (modernc.org/sqlite, pure Go) and answered from another process, the refund made once after a crash, and the HTTP interface with OIDC token checks, all in its tests and gold set.",
   "stack_line": "A Go agent on the Anthropic API (anthropic-sdk-go 1.84). There is no official Claude Agent SDK for Go, so the loop is explicit.",
   "policy": "internal/agent/policy.go",
   "agent_dir": "internal/agent/",
   "adapter": [
     "go",
     "run",
-    "./cmd/evaladapter"
+    "./evals/adapter"
   ],
   "pass_env": [
     "ANTHROPIC_API_KEY",
@@ -25,10 +25,9 @@
   ],
   "live": "Set ANTHROPIC_API_KEY and AGENT_MODE=live.",
   "next": [
-    "Replace the two Run bodies in internal/agent/tools.go with calls to your systems.",
-    "Replace agent.Fixed with an Approver that asks a real person and persists the waiting call.",
-    "For long-running or multi-step work, put the loop in a durable workflow engine (Temporal) so a restart resumes instead of repeating.",
-    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+    "Replace the get_order body and payments in internal/agent/tools.go with calls to your systems; pass the idempotency key to the system that makes the change.",
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags.",
+    "Set AGENT_IDENTITY=oidc (or proxy) and the AGENT_OIDC_* settings before the HTTP interface is reachable by anyone; demo identities are refused in production."
   ],
   "ai_act": {
     "purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.",
@@ -59,16 +58,19 @@
     "prompts": "internal/agent/policy.go#System",
     "guardrails": "internal/agent/guardrails.go",
     "limits": "internal/agent/policy.go",
-    "api": {
-      "none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"
-    },
+    "api": [
+      "internal/agent/server.go#NewServer",
+      "internal/agent/durable.go"
+    ],
     "knowledge": {
       "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
     },
     "tracing": "internal/agent/telemetry.go",
     "tests": [
       "internal/agent/agent_test.go",
-      "internal/agent/guardrails_test.go"
+      "internal/agent/guardrails_test.go",
+      "internal/agent/durable_test.go",
+      "internal/agent/server_test.go"
     ],
     "evals": [
       "evals/gold.jsonl",
@@ -90,9 +92,10 @@
   },
   "golive": {
     "controls": {
-      "sso": {
-        "none": "a command-line agent: nothing listens on the network, so nobody signs in to it; served, it sits behind the client's identity provider"
-      },
+      "sso": [
+        "internal/agent/server.go#NewServer",
+        "internal/agent/identity.go#VerifyRS256"
+      ],
       "rbac": [
         "internal/agent/policy.go#Roles",
         "internal/agent/access.go#ToolsFor"
@@ -130,5 +133,12 @@
         "special": "TODO: none expected; confirm"
       }
     }
-  }
+  },
+  "serve": [
+    "/server",
+    "--host",
+    "0.0.0.0"
+  ],
+  "serve_cmd": "go run ./cmd/server",
+  "answer_cmd": "go run ./cmd/runs answer <thread> --approve"
 }

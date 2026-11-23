@@ -86,7 +86,8 @@ def build(cfg, result) -> dict:
                             [(d.doc_id, f["node_id"], f["kind"], f["detail"]) for f in d.flags])
         con.execute("INSERT INTO nodes_fts(nodes_fts) VALUES ('rebuild')")
         from . import embed, vectors                      # dense vectors go into the same file, in the same swap
-        vectors.build(con, embed.get(cfg))
+        model = embed.get(cfg)
+        dense = vectors.build(con, model, reuse=vectors.previous(dest, model))   # only changed sections are embedded
         con.execute("INSERT INTO meta VALUES ('built_at', ?)", (time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),))
         con.commit()
         con.close()
@@ -95,7 +96,7 @@ def build(cfg, result) -> dict:
         Path(tmp).unlink(missing_ok=True)
         raise
     return {"docs": len(result.docs), "nodes": sum(len(d.nodes) for d in result.docs),
-            "flags": sum(len(d.flags) for d in result.docs), "index": str(dest)}
+            "flags": sum(len(d.flags) for d in result.docs), "index": str(dest), **dense}
 
 
 def connect(cfg) -> sqlite3.Connection:

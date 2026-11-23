@@ -1,4 +1,7 @@
-"""The agent: a LangGraph agent with a human approval gate, a checkpointer and hard limits."""
+"""The agent: a LangGraph agent with a human approval gate, a durable checkpointer and hard limits.
+
+A run that waits for a person is checkpointed in the state database (agent/durable.py), so answer() carries it on
+from any process: after a restart, a deploy, or from the HTTP interface (agent/server.py)."""
 import json
 import os
 import uuid
@@ -7,10 +10,9 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import ClearToolUsesEdit, ContextEditingMiddleware, HumanInTheLoopMiddleware, ModelCallLimitMiddleware
 from langchain_anthropic.middleware import AnthropicPromptCachingMiddleware
 from langchain_core.messages import AIMessage, ToolMessage
-from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
-from . import guardrails, policy
+from . import durable, guardrails, policy
 from .telemetry import tracer
 from .tools import TOOLS
 
@@ -30,9 +32,18 @@ def _model(model_id: str | None = None):
                            api_key=os.environ.get("OPENAI_API_KEY") or "local", **common)
 
 
+def saver():
+    """The graph's checkpoints in the state database (SQLite: nothing to run). For several machines, PostgresSaver."""
+    import sqlite3
+    from langgraph.checkpoint.sqlite import SqliteSaver
+    p = durable.path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return SqliteSaver(sqlite3.connect(p, check_same_thread=False))
+
+
 def build(checkpointer=None, model_id: str | None = None):
-    """For anything longer than one process, pass a durable checkpointer (SqliteSaver, PostgresSaver)."""
-    return create_agent(_model(model_id), tools=guardrails.tools_for(TOOLS), system_prompt=policy.SYSTEM, checkpointer=checkpointer or InMemorySaver(),
+    """The checkpointer is the state database unless another is given (PostgresSaver when several machines share runs)."""
+    return create_agent(_model(model_id), tools=guardrails.tools_for(TOOLS), system_prompt=policy.SYSTEM, checkpointer=checkpointer or saver(),
                         middleware=[HumanInTheLoopMiddleware(interrupt_on=policy.NEEDS_APPROVAL), ModelCallLimitMiddleware(run_limit=policy.MAX_MODEL_CALLS, exit_behavior="end"),
                                     AnthropicPromptCachingMiddleware(unsupported_model_behavior="ignore"),        # caches system prompt and tools on Claude
                                     ContextEditingMiddleware(edits=[ClearToolUsesEdit(trigger=policy.CLEAR_TOOL_RESULTS_AT)])])
@@ -42,7 +53,7 @@ def build(checkpointer=None, model_id: str | None = None):
 def run(message: str, approve: bool | None = None, thread_id: str | None = None, agent=None) -> dict:
     """approve: True or False answers the approval request; None leaves it waiting (resume later with the same thread_id)."""
     agent = agent or build(model_id=policy.pick_model(message))
-    thread_id = thread_id or uuid.uuid4().hex
+    thread_id = thread_id or durable.THREAD.get() or uuid.uuid4().hex
     cfg = {"configurable": {"thread_id": thread_id}, "recursion_limit": policy.RECURSION_LIMIT}
     with tracer().start_as_current_span("agent.run") as span:
         span.set_attribute("agent.thread_id", thread_id)
@@ -60,6 +71,33 @@ def run(message: str, approve: bool | None = None, thread_id: str | None = None,
         span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in result["tool_calls"]]))
         span.set_attribute("gen_ai.usage.input_tokens", result["usage"]["input_tokens"])
         span.set_attribute("gen_ai.usage.output_tokens", result["usage"]["output_tokens"])
+        return result
+
+
+@guardrails.guarded_resume
+def answer(thread: str, approve: bool, saved: dict, agent=None) -> dict:
+    """A person's answer to a run that waits, from this process or any other: the checkpoint carries it on where it
+    stopped. answer(thread, True) approves; False declines. approver= names who answered (the audit log keeps it)."""
+    agent = agent or build(model_id=policy.pick_model(saved.get("message") or ""))
+    cfg = {"configurable": {"thread_id": thread}, "recursion_limit": policy.RECURSION_LIMIT}
+    with tracer().start_as_current_span("agent.answer") as span:
+        span.set_attribute("agent.thread_id", thread)
+        snap = agent.get_state(cfg)
+        waiting = list(getattr(snap, "interrupts", None) or [i for task in snap.tasks for i in (task.interrupts or [])])
+        if waiting:
+            n = len(waiting[0].value["action_requests"])
+            decision = {"type": "approve"} if approve else {"type": "reject", "message": "A person declined this action. Do not retry it."}
+            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg)
+        elif snap.next:
+            # The answer was given and the process stopped part-way through the step (a crash, a deploy): carry on from
+            # the checkpoint, which holds the answer. The change itself is made once (agent/durable.py).
+            span.set_attribute("agent.continued", True)
+            state = agent.invoke(None, cfg)
+        else:
+            raise RuntimeError(f"thread {thread} has no action waiting in its checkpoint")
+        gate = "pending" if state.get("__interrupt__") else ("ok" if approve else "denied")
+        result = _result(state, gate, thread)
+        span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in result["tool_calls"]]))
         return result
 
 

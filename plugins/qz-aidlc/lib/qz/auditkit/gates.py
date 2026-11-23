@@ -32,7 +32,8 @@ READ_ONLY = S.READONLY + r"|set_authorizer|mode=ro|query_only|read-only connecti
 FORMAT = r"json_schema|response_format|output_type|model_validate|BaseModel|zod|jsonschema|schema\.validate|structured_output"
 ALLOWLIST = S.TOOLDEF + r"|allowed_tools|allowedTools|AllowedTools|ALLOWED_TOOLS|tool_allowlist|allow_?list|disallowed_tools|TOOLS\s*=|tools\s*:\s*\["
 ARGCHECK = r"input_schema|args_schema|inputSchema|InputSchema|pydantic|BaseModel|jsonschema|validate|Annotated\[|Field\(|z\.object|ArgumentException|raise ValueError|throw new Error\(|errors\.New\(|IsMatch\(|fullmatch\(|MatchString\("
-SANDBOXED = S.SANDBOX + r"|set_authorizer|mode=ro|read_only|readonly|query_only|--network[ =]none|cap-drop|no-new-privileges"
+# C# marks fields `readonly`: only ReadOnly (an open mode, a property) or a readonly= / readonly: option says the data access is read-only.
+SANDBOXED = S.SANDBOX + r"|set_authorizer|mode=ro|read_only|\b(?-i:ReadOnly)\b|readonly\s*[:=]|query_only|--network[ =]none|cap-drop|no-new-privileges"
 GATES = [
     ("input", "Input filter", "what comes in is checked for injection and personal data before the agent reads it"),
     ("output", "Output filter", "the reply is checked for personal data, toxicity or format before anyone sees it"),

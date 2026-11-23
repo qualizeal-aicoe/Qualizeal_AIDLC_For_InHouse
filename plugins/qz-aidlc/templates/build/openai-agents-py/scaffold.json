@@ -1,7 +1,7 @@
 {
   "title": "OpenAI Agents SDK (Python)",
   "summary": "An Agent with function tools, needs_approval on the refund, a saved RunState that resumes when the person answers, turn and token limits, OpenTelemetry. The SDK's own trace upload to OpenAI is off.",
-  "verified": "RUN: the scaffold's 12 tests and its gold set (11 of 11) ran here against the offline stub with openai-agents 0.25.0, including the approval interruption, a declined refund and a resume from saved state; the project audit reads READY. Not run against a live model here.",
+  "verified": "RUN: the scaffold's 34 tests and its gold set (16 of 16) ran in CI on Linux and Windows against the offline stub with openai-agents 0.25.0, including the approval interruption, a declined refund and a resume from saved state; the project audit reads READY, with its manual items open. Not run against a live model here. 1.3.0: runs that wait for a person kept in SQLite and answered from another process, the refund made once after a crash, and the HTTP interface, all in its tests and gold set.",
   "stack_line": "An OpenAI Agents SDK agent in Python (openai-agents 0.25).",
   "policy": "agent/policy.py",
   "agent_dir": "agent/",
@@ -31,7 +31,8 @@
   "next": [
     "Replace the two tool bodies in agent/tools.py with calls to your systems.",
     "Store result[\"state\"] while a refund waits (it holds the conversation: treat it like one) and call resume() when the person answers.",
-    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags.",
+    "Set AGENT_IDENTITY=oidc (or proxy) and the AGENT_OIDC_* settings before the HTTP interface is reachable by anyone; demo identities are refused in production."
   ],
   "ai_act": {
     "purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.",
@@ -60,9 +61,10 @@
     "prompts": "agent/policy.py#SYSTEM",
     "guardrails": "agent/guardrails.py",
     "limits": "agent/policy.py",
-    "api": {
-      "none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"
-    },
+    "api": [
+      "agent/server.py#make_handler",
+      "agent/durable.py"
+    ],
     "knowledge": {
       "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
     },
@@ -88,9 +90,10 @@
   },
   "golive": {
     "controls": {
-      "sso": {
-        "none": "a command-line agent: nothing listens on the network, so nobody signs in to it; served, it sits behind the client's identity provider"
-      },
+      "sso": [
+        "agent/server.py#make_handler",
+        "agent/identity.py#verify_rs256"
+      ],
       "rbac": [
         "agent/policy.py#ROLES",
         "agent/guardrails.py#tools_for"
@@ -140,5 +143,14 @@
         "special": "TODO: none expected; confirm"
       }
     }
-  }
+  },
+  "serve": [
+    "python",
+    "-m",
+    "agent.server",
+    "--host",
+    "0.0.0.0"
+  ],
+  "serve_cmd": "uv run python -m agent.server",
+  "answer_cmd": "uv run python -m agent.durable answer <thread> --approve"
 }

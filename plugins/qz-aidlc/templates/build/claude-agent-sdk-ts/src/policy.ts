@@ -52,3 +52,30 @@ export function modelUrl(): string {
   if (env.CLAUDE_CODE_USE_FOUNDRY) return env.ANTHROPIC_FOUNDRY_BASE_URL || `https://${env.ANTHROPIC_FOUNDRY_RESOURCE ?? ""}.services.ai.azure.com`;
   return env.ANTHROPIC_BASE_URL || "https://api.anthropic.com";
 }
+
+// The HTTP interface (src/server.ts). Who asks comes from the identity provider (AGENT_IDENTITY: demo, oidc or proxy);
+// their groups name their role here, first match wins. Approving a waiting action needs an approver group, and nobody
+// approves their own request unless selfApproval is set (it should not be, outside a demo).
+export const access = {
+  groupRoles: { "order-support": "support", "order-viewers": "viewer" } as Record<string, string>,
+  approverGroups: ["refund-approvers"],
+  selfApproval: false,
+  demoUsers: { sam: ["order-support"], ana: ["order-support", "refund-approvers"], vic: ["order-viewers"] } as Record<string, string[]>,   // demo mode only
+};
+
+// The reply after a person answers a waiting action: a fixed text from what the tool returned (no model wrote it, so
+// ai_generated is false), and one for a decline.
+const AFTER_APPROVAL: Record<string, (a: Record<string, any>) => string> = {
+  issue_refund: (a) => `Refund ${a.refund_id} of ${a.amount} has been issued for order ${a.order_id}.`,
+};
+
+export function afterApproval(calls: Array<{ name: string; status: string; args?: Record<string, unknown>; result?: unknown }>, approve: boolean): string {
+  if (!approve) return `A person declined ${[...new Set(calls.filter((c) => c.status === "denied").map((c) => c.name))].sort().join(", ") || "the action"}, so nothing was changed.`;
+  const out: string[] = [];
+  for (const c of calls) {
+    const r = (c.result && typeof c.result === "object" ? c.result : {}) as Record<string, any>;
+    if (c.status !== "ok" || !AFTER_APPROVAL[c.name]) continue;
+    out.push(r.ok === false ? `${c.name} did not go through: ${r.error ?? "the system refused it"}.` : AFTER_APPROVAL[c.name]({ ...(c.args ?? {}), ...r }));
+  }
+  return out.join(" ") || "The approved action is done.";
+}

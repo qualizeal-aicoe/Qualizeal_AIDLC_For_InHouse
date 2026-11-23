@@ -48,7 +48,7 @@ __SETUP_STEPS__
         run: docker build -t app:ci .
       - name: The gold set inside the container (offline, no key)
         run: __CONTAINER_CHECK__
-
+__SERVE_STEP__
   vulnerabilities:
     # Go-live gate 7 (vendor review): every lockfile here is checked against the OSV database (osv.dev) on every change,
     # and a known vulnerability fails the build. Open source (Apache-2.0), no account. Results stay in the run: uploading
