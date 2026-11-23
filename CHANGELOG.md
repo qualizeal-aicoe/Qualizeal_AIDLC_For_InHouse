@@ -67,6 +67,8 @@ evidence changed.
 - The .NET, TypeScript and Go images install Python for their gold set with no prompt, retries and a 30-second
   network timeout, so a slow package mirror no longer stalls the build until the CI limit. The .NET image reads only
   Ubuntu's main component and takes `UBUNTU_MIRROR` (a company's own mirror; the CI workflows set GitHub's).
+- The demo pages' meters grow with a transform instead of a width transition. The design review flags an animated
+  layout property only when its probe lands mid-animation, so the story site failed its review now and then.
 
 ## 1.0.0 · 21 November 2026
 
