@@ -121,3 +121,36 @@ def test_a_model_answer_with_a_figure_its_section_does_not_hold_is_replaced_by_t
     ans = A.answer(con, cfg, "How many days of annual leave do full-time employees get?", "employee", "hybrid", Unfaithful())
     assert "model answer rejected; extractive answer used" in ans.flags and "30 working days" not in ans.text
     assert "22" in ans.text and not ans.ai_generated
+
+
+def test_re_indexing_embeds_only_what_changed(project):
+    """An unchanged corpus embeds nothing; a changed document re-embeds its own sections and no others."""
+    from arag import embed, index, ingest
+    calls: list[int] = []
+    model = embed.get(project)
+    real = model.passages
+
+    def counted(texts):
+        calls.append(len(texts))
+        return real(texts)
+
+    model.passages = counted
+    try:
+        first = index.build(project, ingest.ingest(project))
+        assert first["embedded"] == first["nodes"] and first["reused"] == 0 and sum(calls) == first["nodes"]
+        calls.clear()
+        again = index.build(project, ingest.ingest(project))
+        assert again["embedded"] == 0 and again["reused"] == again["nodes"] and calls == []
+        res = ingest.ingest(project)
+        doc = next(d for d in res.docs if d.path.suffix == ".md")
+        doc.path.write_text(doc.path.read_text(encoding="utf-8") + "\n\n## Late addition\n\nA paragraph added after the first index.\n",
+                            encoding="utf-8")
+        changed = index.build(project, ingest.ingest(project))
+        assert 0 < changed["embedded"] < changed["nodes"], changed
+        con = index.connect(project)
+        try:
+            assert con.execute("SELECT COUNT(*) FROM vecs").fetchone()[0] == changed["nodes"]
+        finally:
+            con.close()
+    finally:
+        model.passages = real

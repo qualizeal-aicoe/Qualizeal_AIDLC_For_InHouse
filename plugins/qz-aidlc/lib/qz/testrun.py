@@ -44,12 +44,20 @@ def record(led: dict, command: str, resp: dict) -> dict | None:
     code = resp.get("exit_code", resp.get("returncode"))
     bad = bool(failed) or (isinstance(code, int) and code != 0) or bool(resp.get("interrupted"))
     ok = False if bad else (True if (passed or 0) > 0 or code == 0 else None)       # None: the output did not say
-    led["tests"] = {"at": time.time(), "command": " ".join(command.split())[:120], "passed": passed, "failed": failed or 0, "ok": ok}
+    led["tests"] = {"at": time.time(), "n": _tick(led), "command": " ".join(command.split())[:120], "passed": passed, "failed": failed or 0, "ok": ok}
     return led["tests"]
+
+
+def _tick(led: dict) -> int:
+    """The order of events in this run. A clock cannot say it: on Windows two events a few milliseconds apart can
+    carry the same time, and a change right after a test run would read as tested."""
+    led["events"] = int(led.get("events") or 0) + 1
+    return led["events"]
 
 
 def wrote(led: dict) -> None:
     led["last_write_at"] = time.time()
+    led["last_write_n"] = _tick(led)
 
 
 def state(led: dict) -> dict:
@@ -60,7 +68,8 @@ def state(led: dict) -> dict:
     n = f"{t['passed']} passed" if t.get("passed") is not None else "passed"
     if t["failed"]:
         n = f"{t['failed']} failed" + (f", {t['passed']} passed" if t.get("passed") is not None else "")
-    if led.get("last_write_at", 0) > t["at"]:
+    changed = led.get("last_write_n", 0) > t["n"] if "n" in t and "last_write_n" in led else led.get("last_write_at", 0) > t["at"]
+    if changed:
         return {**t, "state": "stale", "label": f"tests not run since the last change (last run: {n})"}
     if t["ok"] is None:
         return {**t, "state": "unknown", "label": "tests ran; their output did not say whether they passed"}

@@ -62,6 +62,10 @@ type Result struct {
 	Effects []map[string]any `json:"effects"`
 	Outcome string           `json:"outcome"`
 	Checks  *Checks          `json:"checks,omitempty"`
+	// The run's thread: Answer(ctx, thread, ...) finishes one that waits, from this process or any other.
+	Thread          string `json:"thread_id,omitempty"`
+	AnsweredBy      string `json:"answered_by,omitempty"`
+	AlreadyAnswered bool   `json:"already_answered,omitempty"`
 }
 
 // Checks is the response-level check run on every reply.
@@ -103,12 +107,21 @@ func Run(ctx context.Context, model Model, message string, approve Approver) (Re
 
 // RunAs drives the loop behind the two filters: the input is checked before the model reads it (gate 1), the reply
 // before it is returned (gate 2). The model sees only the role's tools, and the run goes to the audit log.
+//
+// The run is kept in the state database (durable.go) under its thread, from ctx (WithThread) or a new one. One that
+// waits for a person is kept with the call it waits on, so Answer finishes it from any process: after a restart, a
+// deploy, or from the HTTP interface (server.go).
 func RunAs(ctx context.Context, model Model, message string, approve Approver, who Who) (Result, error) {
 	if who.Role == "" {
 		who.Role = Role()
 	}
 	if who.Actor == "" {
 		who.Actor = Actor()
+	}
+	thread := ThreadOf(ctx)
+	if thread == "" {
+		thread = NewThread()
+		ctx = WithThread(ctx, thread)
 	}
 	in := ScreenInput(message)
 	var res Result
@@ -139,11 +152,101 @@ func RunAs(ctx context.Context, model Model, message string, approve Approver, w
 		bad := Ungrounded(res.Output, sources)
 		res.Checks = &Checks{Grounded: len(bad) == 0, Ungrounded: len(bad)}
 	}
+	res.Thread = thread
 	masked, _ := Mask(message)
-	if aerr := record(who, masked, res, err); aerr != nil && err == nil {
+	if aerr := record(who, masked, res, err, thread); aerr != nil && err == nil {
 		err = fmt.Errorf("audit log: %w", aerr)
 	}
+	if serr := keep(thread, res, masked, who, ""); serr != nil && err == nil {
+		err = fmt.Errorf("state database: %w", serr)
+	}
 	return res, err
+}
+
+// keep writes the run to the state database: one that waits with its calls, a finished one with its result.
+func keep(thread string, res Result, message string, who Who, answeredBy string) error {
+	s := Saved{Thread: thread, Status: "done", Message: message, Role: who.Role, Actor: who.Actor, Calls: res.ToolCalls, AnsweredBy: answeredBy}
+	switch {
+	case res.Outcome == "failed":
+		s.Status = "failed"
+	case res.AwaitingApproval:
+		s.Status = "awaiting_approval"
+		for _, c := range res.ToolCalls {
+			if c.Status == "pending" {
+				s.Pending = append(s.Pending, c)
+			}
+		}
+	default:
+		s.Answer = &res
+	}
+	return saveRun(s)
+}
+
+// Answer is a person's answer to a run that waits, from this process or any other: approve runs the call exactly as
+// it was asked for, once, through the same tool; no runs nothing. Who asked, and in which role, come from the saved
+// run, never from whoever answers. A run already answered returns what it returned then.
+func Answer(ctx context.Context, thread string, approve bool, approver string) (Result, error) {
+	s, err := Load(thread)
+	if err != nil {
+		return Result{}, fmt.Errorf("state database: %w", err)
+	}
+	if s == nil {
+		return Result{}, fmt.Errorf("no run %s in the state database", thread)
+	}
+	if s.Status != "awaiting_approval" {
+		res := Result{ToolCalls: s.Calls, Effects: []map[string]any{}, Outcome: s.Status, AINotice: AINotice, Role: s.Role}
+		if s.Answer != nil {
+			res = *s.Answer
+		}
+		res.Thread, res.AlreadyAnswered = thread, true
+		return res, nil
+	}
+	if approver == "" {
+		approver = s.Actor
+	}
+	ctx = WithThread(ctx, thread)
+	byName := map[string]Tool{}
+	for _, t := range Tools() {
+		byName[t.Name] = t
+	}
+	calls := append([]Call{}, s.Calls...)
+	for i, c := range calls {
+		if c.Status != "pending" {
+			continue
+		}
+		tool, known := byName[c.Name]
+		switch {
+		case !known:
+			return Result{}, fmt.Errorf("run %s waits on %s, which is not on this agent's tool list", thread, c.Name)
+		case approve:
+			calls[i].Status, calls[i].Result = "ok", tool.Run(ctx, c.Args)
+		default:
+			calls[i].Status = "denied"
+		}
+	}
+	out := ScreenOutput(AfterApproval(calls, approve))
+	res := Result{Output: out.Text, ToolCalls: calls, Guard: &Guard{Input: []string{}, Output: out.Findings}, AINotice: AINotice,
+		AIGenerated: false, Role: s.Role, Thread: thread, AnsweredBy: approver}
+	res.Effects = Effects(calls)
+	res.Outcome = Outcome(res, false)
+	if res.Outcome == "acted" || res.Outcome == "answered" || res.Outcome == "declined" {
+		sources := []string{s.Message, System}
+		for _, c := range calls {
+			if c.Result != nil {
+				sources = append(sources, toJSON(c.Result))
+			}
+		}
+		bad := Ungrounded(res.Output, sources)
+		res.Checks = &Checks{Grounded: len(bad) == 0, Ungrounded: len(bad)}
+	}
+	who := Who{Role: s.Role, Actor: approver}
+	if err := record(who, s.Message, res, nil, thread); err != nil {
+		return res, fmt.Errorf("audit log: %w", err)
+	}
+	if err := keep(thread, res, s.Message, Who{Role: s.Role, Actor: s.Actor}, approver); err != nil {
+		return res, fmt.Errorf("state database: %w", err)
+	}
+	return res, nil
 }
 
 func runID() string {
@@ -154,8 +257,7 @@ func runID() string {
 
 // record writes one audit line per tool call and one for the run: masked arguments, never the reply or the message.
 // The run line carries what the live monitor scores: how it ended, what it changed, whether the reply was grounded.
-func record(who Who, message string, res Result, runErr error) error {
-	id := runID()
+func record(who Who, message string, res Result, runErr error, id string) error {
 	for _, c := range res.ToolCalls {
 		args, _ := Mask(toJSON(c.Args))
 		if len(args) > 500 {
@@ -220,12 +322,12 @@ func run(ctx context.Context, model Model, message string, approve Approver, rol
 				span.SetAttributes(attribute.String("agent.gate", "pending"))
 				return res, nil
 			case approved:
-				call.Status, out = "ok", tool.Run(call.Args)
+				call.Status, out = "ok", tool.Run(ctx, call.Args)
 			default:
 				call.Status, out = "denied", map[string]any{"ok": false, "error": "A person declined this action. Do not retry it."}
 			}
 		default:
-			call.Status, out = "ok", tool.Run(call.Args)
+			call.Status, out = "ok", tool.Run(ctx, call.Args)
 		}
 		if call.Status == "ok" {
 			call.Result = out // what the tool returned: the grounded check and the effects read it

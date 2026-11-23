@@ -99,6 +99,21 @@ def test_open_source_first_names_the_vendor_and_respects_a_recorded_choice(tmp_p
     assert {r["layer"]: r["status"] for r in oss.audit(tmp_path, vendors=["pinecone"])["layers"]}["model"] == "open"
 
 
+def test_a_source_available_durable_execution_service_is_flagged_with_the_open_option(tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\ndependencies = ["inngest==0.5", "langgraph==1.2"]\n', encoding="utf-8")
+    x = oss.audit(tmp_path, vendors=[])
+    by = {r["layer"]: r for r in x["layers"]}
+    assert not x["ok"] and by["durable execution"]["status"] == "vendor"
+    assert "SSPL" in by["durable execution"]["why"] and "Temporal (MIT)" in by["durable execution"]["why"] and "DBOS" in by["durable execution"]["why"]
+    assert {r["layer"]: r["status"] for r in oss.audit(tmp_path, vendors=["inngest"])["layers"]}["durable execution"] == "chosen"
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\ndependencies = ["temporalio==1.9"]\n', encoding="utf-8")
+    assert {r["layer"]: r["status"] for r in oss.audit(tmp_path, vendors=[])["layers"]}["durable execution"] == "open"
+    (tmp_path / "pyproject.toml").unlink()
+    (tmp_path / "package.json").write_text('{"dependencies": {"@restatedev/restate-sdk": "1.4.0"}}', encoding="utf-8")
+    r = {r["layer"]: r for r in oss.audit(tmp_path, vendors=[])["layers"]}["durable execution"]
+    assert r["status"] == "vendor" and "Business Source License" in r["why"]
+
+
 def test_the_cost_levers_fail_where_they_should(tmp_path):
     (tmp_path / "agent.py").write_text('import datetime\nfrom anthropic import Anthropic\nSYSTEM = f"Today is {datetime.date.today()}. You answer questions from the knowledge base."\n'
                                        'client = Anthropic()\nMAX_TURNS = 8\nmax_tokens = 1024\n\ndef answer_question(q):\n    return client.messages.create(model="claude-sonnet-5-5", system=SYSTEM)\n', encoding="utf-8")

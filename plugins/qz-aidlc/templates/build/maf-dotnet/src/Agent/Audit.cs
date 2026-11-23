@@ -40,53 +40,73 @@ public static class Audit
 
     public static void Append(string evt, string actor, string role, IDictionary<string, object?> fields)
     {
-        lock (Lock)
+        lock (Lock)   // one writer at a time in this process; the exclusive open below does the same across processes
         {
             string file = FilePath;
-            long seq = 0;
-            string prev = Genesis;
             if (file == "-")
             {
-                seq = _streamSeq;
-                prev = _streamHash;
-            }
-            else
-            {
-                string? dir = Path.GetDirectoryName(file);
-                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-                string? last = File.Exists(file) ? File.ReadLines(file).LastOrDefault(l => l.Trim().Length > 0) : null;
-                if (last is not null && JsonNode.Parse(last) is JsonObject lastRecord)
-                {
-                    seq = lastRecord["seq"]?.GetValue<long>() ?? 0;
-                    prev = lastRecord["hash"]?.GetValue<string>() ?? Genesis;
-                }
+                (string streamLine, string streamHash) = Line(_streamSeq, _streamHash, evt, actor, role, fields);
+                _streamSeq += 1;
+                _streamHash = streamHash;
+                Console.Error.WriteLine(streamLine);
+                return;
             }
 
-            JsonObject body = new()
+            string? dir = Path.GetDirectoryName(file);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            using FileStream f = OpenExclusive(file);
+            (long seq, string prev) = Tail(f);
+            (string line, _) = Line(seq, prev, evt, actor, role, fields);
+            f.Seek(0, SeekOrigin.End);
+            f.Write(Encoding.UTF8.GetBytes(line + "\n"));
+        }
+    }
+
+    private static (string Line, string Hash) Line(long seq, string prev, string evt, string actor, string role, IDictionary<string, object?> fields)
+    {
+        JsonObject body = new()
+        {
+            ["seq"] = seq + 1,
+            ["ts"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
+            ["event"] = evt,
+            ["actor"] = actor,
+            ["role"] = role,
+        };
+        foreach (KeyValuePair<string, object?> field in fields) body[field.Key] = field.Value is null ? null : JsonSerializer.SerializeToNode(field.Value);
+        string hash = Digest(prev, body);
+        JsonObject record = JsonNode.Parse(body.ToJsonString())!.AsObject();
+        record["prev"] = prev;
+        record["hash"] = hash;
+        return (Canon(record), hash);
+    }
+
+    /// <summary>The log, opened so no other process writes it meanwhile (an advisory lock on Linux and macOS, a sharing lock
+    /// on Windows): the HTTP interface and an --answer from the command line can run side by side.</summary>
+    private static FileStream OpenExclusive(string file)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            try
             {
-                ["seq"] = seq + 1,
-                ["ts"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
-                ["event"] = evt,
-                ["actor"] = actor,
-                ["role"] = role,
-            };
-            foreach (KeyValuePair<string, object?> field in fields) body[field.Key] = field.Value is null ? null : JsonSerializer.SerializeToNode(field.Value);
-            string hash = Digest(prev, body);
-            JsonObject record = JsonNode.Parse(body.ToJsonString())!.AsObject();
-            record["prev"] = prev;
-            record["hash"] = hash;
-            string line = Canon(record);
-            if (file == "-")
-            {
-                _streamSeq = seq + 1;
-                _streamHash = hash;
-                Console.Error.WriteLine(line);
+                return new FileStream(file, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             }
-            else
+            catch (IOException) when (attempt < 3000)   // another process is writing: wait, up to 30 seconds
             {
-                File.AppendAllText(file, line + "\n");
+                Thread.Sleep(10);
             }
         }
+    }
+
+    /// <summary>The last line's sequence number and hash, read from the end of the open log.</summary>
+    private static (long Seq, string Prev) Tail(FileStream f)
+    {
+        if (f.Length == 0) return (0, Genesis);
+        f.Seek(Math.Max(0, f.Length - 65536), SeekOrigin.Begin);
+        using StreamReader reader = new(f, Encoding.UTF8, false, 4096, leaveOpen: true);
+        string? last = reader.ReadToEnd().Split('\n').LastOrDefault(l => l.Trim().Length > 0);
+        return last is not null && JsonNode.Parse(last) is JsonObject rec
+            ? (rec["seq"]?.GetValue<long>() ?? 0, rec["hash"]?.GetValue<string>() ?? Genesis)
+            : (0, Genesis);
     }
 
     public static Check Verify(string? file = null)

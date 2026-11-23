@@ -1,12 +1,17 @@
-/** The agent: Claude Agent SDK with in-process tools, a permission callback as the approval gate, and hard limits. */
+/** The agent: Claude Agent SDK with in-process tools, a permission callback as the approval gate, and hard limits.
+ *
+ * A run that waits for a person is kept in the state database (src/durable.ts) with the call it waits on, so
+ * answer() finishes it from any process: after a restart, a deploy, or from the HTTP interface (src/server.ts).
+ * The approved call runs exactly as it was asked for and approved, through the same tool, once. */
 import { query, type CanUseTool, type Options } from "@anthropic-ai/claude-agent-sdk";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { createHash, randomUUID } from "node:crypto";
 import { append as audit } from "./audit.ts";
 import { AI_NOTICE, checkEndpoint, effects, mask, outcome, screenInput, screenOutput, ungrounded } from "./guardrails.ts";
-import { modelUrl, pickModel, policy } from "./policy.ts";
+import { load, newThread, save, thread } from "./durable.ts";
+import { afterApproval, modelUrl, pickModel, policy } from "./policy.ts";
 import { tracer } from "./telemetry.ts";
-import { server } from "./tools.ts";
+import { handlers, server } from "./tools.ts";
 
 export type ToolCall = { name: string; args: Record<string, unknown>; status: "ok" | "pending" | "denied" | "not_allowed"; result?: unknown };
 /** Who is asking: set by whoever starts the agent (an interface: the identity provider's groups), never by the message. */
@@ -21,6 +26,9 @@ export type RunResult = { output: string; tool_calls: ToolCall[]; usage: { input
   error?: string;
   ai_notice?: string;      // EU AI Act Article 50(1): show it before the first reply
   ai_generated?: boolean;  // Article 50(2): a machine-readable mark; false for fixed texts no model wrote
+  thread_id?: string;      // the run's thread: answer(thread_id, ...) finishes one that waits
+  answered_by?: string;
+  already_answered?: boolean;
 };
 
 /** The approval gate. Read-only tools are pre-approved in allowedTools; everything else lands here.
@@ -53,7 +61,12 @@ export function options(gate: CanUseTool, model: string = policy.model, role: st
   };
 }
 
-export async function run(message: string, approve?: boolean, who: Who = {}): Promise<RunResult> {
+export async function run(message: string, approve?: boolean, who: Who = {}, threadId?: string): Promise<RunResult> {
+  const t = threadId || newThread();
+  return thread.run(t, () => runIn(t, message, approve, who));
+}
+
+async function runIn(t: string, message: string, approve: boolean | undefined, who: Who): Promise<RunResult> {
   const role = who.role || policy.role;
   const actor = who.actor || policy.actor;
   let r: RunResult;
@@ -61,9 +74,11 @@ export async function run(message: string, approve?: boolean, who: Who = {}): Pr
     r = await guardedRun(message, approve, role);
   } catch (e) {   // a run that fails is recorded as failed, then thrown as before
     record(actor, role, mask(message).text, { output: "", tool_calls: [], usage: { input_tokens: 0, output_tokens: 0 }, cost_usd: null, awaiting_approval: false,
-      outcome: "failed", error: (e as Error).name }, randomUUID());
+      outcome: "failed", error: (e as Error).name }, t);
+    save(t, { status: "failed", message: mask(message).text, role, actor });
     throw e;
   }
+  r.thread_id = t;
   r.role = role;
   r.effects = effects(r.tool_calls);
   r.outcome = outcome(r, r.refused === true);
@@ -72,8 +87,52 @@ export async function run(message: string, approve?: boolean, who: Who = {}): Pr
     r.checks = { grounded: bad.length === 0, ungrounded: bad.length };
   }
   delete r.refused;
-  record(actor, role, mask(message).text, r, randomUUID());   // go-live gate 5
+  record(actor, role, mask(message).text, r, t);   // go-live gate 5
+  keep(t, r, screenInput(message).text, role, actor);
   return r;
+}
+
+/** The run in the state database: what waits is kept with its calls, a finished run with its result. */
+function keep(t: string, r: RunResult, message: string, role: string, actor: string, answeredBy?: string): void {
+  save(t, { status: r.awaiting_approval ? "awaiting_approval" : "done", message, role, actor, calls: r.tool_calls,
+    pending: r.tool_calls.filter((c) => c.status === "pending"), answer: r.awaiting_approval ? null : JSON.stringify(r),
+    ...(answeredBy ? { answered_by: answeredBy } : {}) });
+}
+
+/** A person's answer to a run that waits, from this process or any other. Who asked, and in which role, come from the
+ *  saved run, never from whoever answers. A run already answered returns what it returned then. */
+export async function answer(t: string, approve: boolean, approver?: string): Promise<RunResult> {
+  const saved = load(t);
+  if (!saved) throw new Error(`no run ${t} in the state database`);
+  if (saved.status !== "awaiting_approval") {
+    return { ...(saved.answer ? JSON.parse(saved.answer) : { output: "", tool_calls: saved.calls, usage: { input_tokens: 0, output_tokens: 0 }, cost_usd: null,
+      awaiting_approval: false }), thread_id: t, already_answered: true };
+  }
+  return thread.run(t, async () => {
+    const calls: ToolCall[] = saved.calls.map((c: ToolCall) => ({ ...c }));
+    for (const c of calls) {
+      if (c.status !== "pending") continue;
+      if (!approve) {
+        c.status = "denied";
+        continue;
+      }
+      const out = await handlers[c.name](c.args ?? {});
+      c.status = "ok";
+      c.result = JSON.parse(out.content[0].text);
+    }
+    const reply = screenOutput(afterApproval(calls, approve));
+    const r: RunResult = { output: reply.text, tool_calls: calls, usage: { input_tokens: 0, output_tokens: 0 }, cost_usd: null, awaiting_approval: false,
+      guard: { input: [], output: reply.findings }, ai_notice: AI_NOTICE, ai_generated: false, thread_id: t, answered_by: approver ?? saved.actor, role: saved.role };
+    r.effects = effects(calls);
+    r.outcome = outcome(r, false);
+    if (["acted", "answered", "declined"].includes(r.outcome)) {
+      const bad = ungrounded(r.output, [saved.message, policy.system, ...calls.filter((c) => c.result !== undefined).map((c) => c.result)]);
+      r.checks = { grounded: bad.length === 0, ungrounded: bad.length };
+    }
+    record(approver ?? saved.actor, saved.role, saved.message, r, t);
+    keep(t, r, saved.message, saved.role, saved.actor, approver ?? saved.actor);
+    return r;
+  });
 }
 
 /** One audit line per tool call and one for the run: masked arguments, never the reply or the message itself. The run

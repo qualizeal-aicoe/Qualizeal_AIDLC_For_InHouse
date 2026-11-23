@@ -20,6 +20,8 @@ from pathlib import Path
 from . import scan as S
 from .cost import _matched
 
+OPEN_DURABLE = ("Temporal (MIT) or DBOS Transact (MIT, a library on Postgres); on one machine, the starters' own SQLite state "
+                "database: a waiting run kept across restarts, a key per change so a retry never does it twice")
 OPEN_MODEL = ("an open-weight model (Qwen3, Gemma 4, gpt-oss or Granite: Apache-2.0; DeepSeek-R1: MIT) on Ollama or llama.cpp "
               "locally, or vLLM or SGLang in production, behind LiteLLM")
 # (dependency pattern, layer, vendor or "", what it is, the open option when it is a vendor)
@@ -38,6 +40,12 @@ CATALOG = [
     (r"^ollama$|ollama/ollama|^OllamaSharp$|^llama-cpp-python$|^mlx-lm$|^vllm$|^sglang$|^litellm$", "model", "", "an open runner, server or gateway", ""),
     (r"^langgraph$|^langchain$|^@langchain/langgraph$|^openai-agents$|^@openai/agents$|^ai$|^Microsoft\.Agents\.AI$|^Microsoft\.Extensions\.AI|tmc/langchaingo|^llama-index|^haystack-ai$|^crewai$|^autogen|^pydantic-ai$|^dspy",
      "framework", "", "an open-source agent framework", ""),
+    (r"^inngest|^@inngest/|inngest/inngestgo", "durable execution", "inngest",
+     "Inngest: the server it needs is source-available (SSPL 1.0), not open source", OPEN_DURABLE),
+    (r"^@restatedev/|^restate[-_]sdk|restatedev/sdk-go|^dev\.restate", "durable execution", "restate",
+     "Restate: MIT SDKs, but the server they need is source-available (Business Source License 1.1)", OPEN_DURABLE),
+    (r"^temporalio$|^@temporalio/|^go\.temporal\.io/sdk|^Temporalio$|^dbos$|^@dbos-inc/|dbos-inc/dbos-transact|^hatchet-sdk$|^@hatchet-dev/|hatchet-dev/hatchet|^langgraph-checkpoint",
+     "durable execution", "", "an open durable-execution engine or library (Temporal, DBOS, Hatchet: MIT; LangGraph's savers)", ""),
     (r"^pinecone|^@pinecone-database/", "vector store", "pinecone", "Pinecone (managed only)", "Qdrant, pgvector, Milvus or Weaviate"),
     (r"^qdrant|^@qdrant/|qdrant/go-client|^Qdrant\.Client$|^pgvector|^pymilvus$|^weaviate|^chromadb$|^lancedb$|^faiss", "vector store", "", "an open-source vector store", ""),
     (r"^langsmith$", "observability", "langchain", "LangSmith (hosted)", "Langfuse or Arize Phoenix, on OpenTelemetry"),
@@ -115,7 +123,7 @@ def audit(root: Path, vendors: list[str] | None = None) -> dict:
         L = layers.setdefault(c["layer"], {"layer": c["layer"], "open": [], "vendor": [], "files": set()})
         (L["vendor"] if c["vendor"] else L["open"]).append(c)
         L["files"].update(c["files"])
-    order = ["model", "runtime", "framework", "vector store", "embeddings", "evals", "observability", "fine-tuning"]
+    order = ["model", "runtime", "framework", "durable execution", "vector store", "embeddings", "evals", "observability", "fine-tuning"]
     if vendor_ids and "model" not in layers:
         layers["model"] = {"layer": "model", "open": [], "vendor": [], "files": set(vendor_ids[:2])}
     rows = []
@@ -136,7 +144,8 @@ def audit(root: Path, vendors: list[str] | None = None) -> dict:
         elif all(v in vendors for v in vend):
             status, why = "chosen", f"{', '.join(vend)}: a recorded choice (practices standards.vendors)"
         else:
-            status, why = "vendor", f"tied to {', '.join(vend)}; open option: {alt}"
+            licence = "; ".join(sorted({c["what"] for c in L["vendor"] if "source-available" in c["what"]}))   # why it is not open
+            status, why = "vendor", f"tied to {', '.join(vend)}" + (f" ({licence})" if licence else "") + f"; open option: {alt}"
         rows.append({"layer": name, "status": status, "vendors": vend, "why": why,
                      "deps": sorted({d for c in L["open"] + L["vendor"] for d in c["deps"]})[:6], "files": sorted(L["files"])[:3]})
     return finish(str(root), rows, vendors, open_ids, repo)

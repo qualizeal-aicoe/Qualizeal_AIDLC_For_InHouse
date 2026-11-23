@@ -13,12 +13,16 @@ namespace OrderAgent;
 public sealed record ToolCall(string name, IDictionary<string, object?>? args, string status, JsonElement? result = null, [property: JsonIgnore] string? call_id = null);
 
 /// <summary>ai_notice: shown before the first reply (EU AI Act Article 50(1)); ai_generated: a machine-readable mark, false for fixed texts (50(2)).
-/// effects, outcome and checks are the outcome and response levels the evals and the live monitor score.</summary>
+/// effects, outcome and checks are the outcome and response levels the evals and the live monitor score.
+/// thread_id is the run's thread: AnswerAsync(thread_id, ...) finishes one that waits, from this process or any other.</summary>
 public sealed record RunResult(string output, List<ToolCall> tool_calls, Dictionary<string, long> usage, bool awaiting_approval, Dictionary<string, List<string>>? guard = null,
     string? ai_notice = null, bool ai_generated = false, string? role = null, List<JsonElement>? effects = null, string? outcome = null,
-    Dictionary<string, object>? checks = null);
+    Dictionary<string, object>? checks = null, string? thread_id = null, string? answered_by = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool already_answered = false);
 
-/// <summary>The agent: Microsoft Agent Framework with approval-required tools, a session, limits and OpenTelemetry.</summary>
+/// <summary>The agent: Microsoft Agent Framework with approval-required tools, a session, limits and OpenTelemetry.
+/// A run is kept in the state database (Durable.cs) under its thread; one that waits for a person is kept with the call
+/// it waits on, so AnswerAsync finishes it from any process: after a restart, a deploy, or from the HTTP interface.</summary>
 public static class OrderSupport
 {
     /// <summary>The model sees only the role's tools (go-live gate 2); a live model is called only on a listed host (gates 3 and 6).</summary>
@@ -45,17 +49,20 @@ public static class OrderSupport
 
     /// <summary>approve: true or false answers the approval request; null leaves it waiting (keep the session to resume).
     /// role and actor say who is asking (defaults: Policy.Role and Policy.Actor); the run goes to the audit log.</summary>
-    public static async Task<RunResult> RunAsync(string message, bool? approve = null, AIAgent? agent = null, string? role = null, string? actor = null)
+    public static async Task<RunResult> RunAsync(string message, bool? approve = null, AIAgent? agent = null, string? role = null, string? actor = null, string? thread = null)
     {
-        string who = role ?? Policy.Role, by = actor ?? Policy.Actor, masked = Guardrails.Mask(message ?? "").Text;
+        string who = role ?? Policy.Role, by = actor ?? Policy.Actor, masked = Guardrails.Mask(message ?? "").Text, t = thread ?? Durable.NewThread();
+        using IDisposable scope = Durable.Enter(t);
         RunResult result;
         try
         {
-            result = await GuardedAsync(message ?? "", approve, agent, who) with { role = who };
+            result = await GuardedAsync(message ?? "", approve, agent, who) with { role = who, thread_id = t };
         }
         catch (Exception e)   // a run that fails is recorded as failed, then thrown as before
         {
-            Record(by, who, masked, new RunResult("", [], new() { ["input_tokens"] = 0, ["output_tokens"] = 0 }, false, outcome: "failed"), e.GetType().Name);
+            RunResult failed = new("", [], new() { ["input_tokens"] = 0, ["output_tokens"] = 0 }, false, outcome: "failed", thread_id: t);
+            Record(by, who, masked, failed, t, e.GetType().Name);
+            Durable.Save(t, "failed", masked, who, by, [], null, null);
             throw;
         }
 
@@ -69,15 +76,73 @@ public static class OrderSupport
             result = result with { checks = new() { ["grounded"] = bad.Count == 0, ["ungrounded"] = bad.Count } };
         }
 
-        Record(by, who, masked, result);   // go-live gate 5
+        Record(by, who, masked, result, t);   // go-live gate 5
+        Keep(t, result, masked, who, by);
+        return result;
+    }
+
+    /// <summary>The run in the state database: what waits is kept with its calls, a finished run with its result.</summary>
+    private static void Keep(string thread, RunResult r, string message, string role, string actor, string? answeredBy = null) =>
+        Durable.Save(thread, r.awaiting_approval ? "awaiting_approval" : "done", message, role, actor, r.tool_calls,
+            r.awaiting_approval ? null : JsonSerializer.Serialize(r), answeredBy);
+
+    /// <summary>A person's answer to a run that waits, from this process or any other: approve runs the call exactly as it
+    /// was asked for, once, through the same tool; no runs nothing. Who asked, and in which role, come from the saved run,
+    /// never from whoever answers. A run already answered returns what it returned then.</summary>
+    public static async Task<RunResult> AnswerAsync(string thread, bool approve, string? approver = null)
+    {
+        Durable.Saved saved = Durable.Load(thread) ?? throw new KeyNotFoundException($"no run {thread} in the state database");
+        if (saved.status != "awaiting_approval")
+        {
+            RunResult before = saved.answer is { } a ? JsonSerializer.Deserialize<RunResult>(a)!
+                : new RunResult("", saved.calls, new() { ["input_tokens"] = 0, ["output_tokens"] = 0 }, false, outcome: saved.status, ai_notice: Guardrails.AiNotice);
+            return before with { thread_id = thread, already_answered = true };
+        }
+
+        string by = approver ?? saved.actor;
+        using IDisposable scope = Durable.Enter(thread);
+        Dictionary<string, AIFunction> tools = Tools.All().OfType<AIFunction>().ToDictionary(f => f.Name);
+        List<ToolCall> calls = [];
+        foreach (ToolCall c in saved.calls)
+        {
+            if (c.status != "pending")
+            {
+                calls.Add(c);
+                continue;
+            }
+
+            if (!approve)
+            {
+                calls.Add(c with { status = "denied" });
+                continue;
+            }
+
+            AIFunction tool = tools.TryGetValue(c.name, out AIFunction? f) ? f : throw new InvalidOperationException($"run {thread} waits on {c.name}, which is not on this agent's tool list");
+            object? done = await tool.InvokeAsync(new AIFunctionArguments(c.args ?? new Dictionary<string, object?>()));
+            calls.Add(c with { status = "ok", result = done is JsonElement je ? je.Clone() : JsonSerializer.SerializeToElement(done) });
+        }
+
+        Guardrails.Screened output = Guardrails.ScreenOutput(Policy.AfterApproval(calls, approve));
+        RunResult result = new(output.Text, calls, new() { ["input_tokens"] = 0, ["output_tokens"] = 0 }, false, new() { ["input"] = [], ["output"] = output.Findings },
+            Guardrails.AiNotice, false, saved.role, thread_id: thread, answered_by: by);
+        List<JsonElement> effects = Guardrails.Effects(calls);
+        result = result with { effects = effects, outcome = Guardrails.Outcome(result with { effects = effects }, false) };
+        if (result.outcome is "acted" or "answered" or "declined")
+        {
+            List<string> sources = [saved.message, Policy.System, .. calls.Where(c => c.result is not null).Select(c => c.result!.Value.GetRawText())];
+            List<string> bad = Guardrails.Ungrounded(result.output, sources);
+            result = result with { checks = new() { ["grounded"] = bad.Count == 0, ["ungrounded"] = bad.Count } };
+        }
+
+        Record(by, saved.role, saved.message, result, thread);
+        Keep(thread, result, saved.message, saved.role, saved.actor, by);
         return result;
     }
 
     /// <summary>One audit line per tool call and one for the run: masked arguments, never the reply or the message itself.
     /// The run line carries what the live monitor scores: how it ended, what it changed, whether the reply was grounded.</summary>
-    private static void Record(string actor, string role, string message, RunResult r, string? error = null)
+    private static void Record(string actor, string role, string message, RunResult r, string runId, string? error = null)
     {
-        string runId = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16));
         foreach (ToolCall c in r.tool_calls)
         {
             string args = Guardrails.Mask(JsonSerializer.Serialize(c.args)).Text;

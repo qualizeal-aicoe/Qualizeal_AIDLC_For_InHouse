@@ -16,6 +16,7 @@ features and AutoGen. **Think twice when** the team is Python-only with no Azure
 | Tools | `AIFunctionFactory.Create(method, name: "...")` with `[Description]` attributes |
 | Human gate | wrap the function: `new ApprovalRequiredAIFunction(function)` |
 | Approval round-trip | `AgentSession session = await agent.CreateSessionAsync()`; after `RunAsync`, collect `ToolApprovalRequestContent` from `response.Messages`; answer with `new ChatMessage(ChatRole.User, [request.CreateResponse(approved)])` on the same session; loop until none remain |
+| Waiting runs (the starter) | the session lives in one process, so `src/Agent/Durable.cs` keeps the run and its pending call in SQLite (Microsoft.Data.Sqlite); `OrderSupport.AnswerAsync(thread, approve)` invokes the same `AIFunction` once, from any process; `Durable.OnceAsync` keys each change |
 | Usage | `response.Usage?.InputTokenCount`, `OutputTokenCount` |
 | Tracing | `agent.AsBuilder().UseOpenTelemetry(sourceName, o => o.EnableSensitiveData = false).Build()` and register the source with an OpenTelemetry tracer provider |
 | Orchestration beyond one agent | Agent Framework workflows (executors and edges, checkpoints, human input) |

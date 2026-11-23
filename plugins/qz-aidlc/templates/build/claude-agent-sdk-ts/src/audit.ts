@@ -9,7 +9,7 @@
  * tampering; it does not stop it, so production ships each line to the organisation's log store (a SIEM) as it is written.
  */
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync } from "node:fs";
 import { dirname } from "node:path";
 
 const GENESIS = "0".repeat(64);
@@ -29,6 +29,33 @@ function lines(file: string): string[] {
 }
 
 const stream = { seq: 0, hash: GENESIS };   // the chain so far, when lines go to standard error
+const nap = new Int32Array(new SharedArrayBuffer(4));
+
+/** One writer at a time, across processes too (the HTTP interface and `src/runs.ts answer` side by side): a lock file
+ *  beside the log, made only if it is not there. A lock left by a process that died is taken over after 10 seconds. */
+function locked<T>(file: string, fn: () => T): T {
+  const lock = `${file}.lock`;
+  for (let i = 0; ; i++) {
+    try {
+      closeSync(openSync(lock, "wx"));
+      break;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      try {
+        if (Date.now() - statSync(lock).mtimeMs > 10_000) unlinkSync(lock);   // its writer died
+      } catch { /* gone already */ }
+      if (i > 3000) throw new Error(`the audit log ${file} stays locked`);
+      Atomics.wait(nap, 0, 0, 10);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try {
+      unlinkSync(lock);
+    } catch { /* taken over */ }
+  }
+}
 
 export function append(event: string, actor: string, role: string, fields: Record<string, unknown> = {}): Record<string, unknown> {
   const file = auditPath();
@@ -40,12 +67,14 @@ export function append(event: string, actor: string, role: string, fields: Recor
     return rec;
   }
   mkdirSync(dirname(file), { recursive: true });
-  const all = lines(file);
-  const last = all.length ? JSON.parse(all[all.length - 1]) : { seq: 0, hash: GENESIS };
-  const body = { seq: Number(last.seq) + 1, ts: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"), event, actor, role, ...fields };
-  const rec = { ...body, prev: last.hash, hash: digest(last.hash, body) };
-  appendFileSync(file, canon(rec) + "\n", "utf8");
-  return rec;
+  return locked(file, () => {
+    const all = lines(file);
+    const last = all.length ? JSON.parse(all[all.length - 1]) : { seq: 0, hash: GENESIS };
+    const body = { seq: Number(last.seq) + 1, ts: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"), event, actor, role, ...fields };
+    const rec = { ...body, prev: last.hash, hash: digest(last.hash, body) };
+    appendFileSync(file, canon(rec) + "\n", "utf8");
+    return rec;
+  });
 }
 
 export function verify(file: string = auditPath()): { ok: boolean; records: number; broken_at: number | null } {

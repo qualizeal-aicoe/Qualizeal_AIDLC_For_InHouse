@@ -12,7 +12,7 @@ team wants explicit state. **Think twice when** one model call or a fixed chain 
 | Model | `"provider:model"` string or `init_chat_model(...)`; Bedrock through `bedrock_converse:<model id>` |
 | Human gate | `HumanInTheLoopMiddleware(interrupt_on={"tool_name": True})`; the run returns with `__interrupt__` |
 | Resume | `agent.invoke(Command(resume={"decisions": [{"type": "approve"}]}), config)` or `{"type": "reject", "message": ...}`; one decision per pending request, same `thread_id` |
-| State | a checkpointer is required for interrupts: `InMemorySaver` in tests, `SqliteSaver` or `PostgresSaver` beyond one process |
+| State | a checkpointer is required for interrupts: `InMemorySaver` in tests, `SqliteSaver` (the starter's default, on `AGENT_STATE_DB`) or `PostgresSaver` beyond one machine |
 | Limits | `ModelCallLimitMiddleware(run_limit=..., exit_behavior="end")`, `ToolCallLimitMiddleware`, and `recursion_limit` in the run config |
 | Other middleware worth knowing | `PIIMiddleware`, `ModelRetryMiddleware`, `ToolRetryMiddleware`, `ModelFallbackMiddleware`, `SummarizationMiddleware` |
 | Custom graph | `StateGraph`, `interrupt()` inside a node, `Command(resume=...)` |

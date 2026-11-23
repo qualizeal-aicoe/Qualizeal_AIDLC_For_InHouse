@@ -57,3 +57,35 @@ HARD = re.compile(r"\b(refund|cancel|charge|money|pay|complain|dispute|wrong|bro
 def pick_model(message: str) -> str:
     """The model for this turn: the small one for an easy question, the main one otherwise."""
     return SMALL_MODEL if SMALL_MODEL and not HARD.search(message or "") else MODEL
+
+
+# The HTTP interface (agent/server.py). Who asks comes from the identity provider (AGENT_IDENTITY: demo, oidc or proxy);
+# their groups name their role here, first match wins. Approving a waiting action needs an approver group, and nobody
+# approves their own request unless SELF_APPROVAL is set (it should not be, outside a demo).
+GROUP_ROLES = {"order-support": "support", "order-viewers": "viewer"}
+APPROVER_GROUPS = ["refund-approvers"]
+SELF_APPROVAL = False
+DEMO_USERS = {"sam": ["order-support"], "ana": ["order-support", "refund-approvers"], "vic": ["order-viewers"]}   # demo mode only
+
+# The reply after a person answers a waiting action, when the framework does not write one: a fixed text from what the
+# tool returned (no model wrote it, so ai_generated is false), and one for a decline.
+AFTER_APPROVAL = {"issue_refund": "Refund {refund_id} of {amount} has been issued for order {order_id}."}
+AFTER_DECLINE = "A person declined {tools}, so nothing was changed."
+
+
+def after_approval(calls: list[dict], approve: bool) -> str:
+    """The reply for the calls a person just answered."""
+    if not approve:
+        return AFTER_DECLINE.format(tools=", ".join(sorted({c["name"] for c in calls if c.get("status") == "denied"})) or "the action")
+    out = []
+    for c in calls:
+        r = c.get("result") if isinstance(c.get("result"), dict) else {}
+        if c.get("status") == "ok" and c["name"] in AFTER_APPROVAL:
+            if r.get("ok") is False:
+                out.append(f"{c['name']} did not go through: {r.get('error') or 'the system refused it'}.")
+                continue
+            try:
+                out.append(AFTER_APPROVAL[c["name"]].format(**{**(c.get("args") or {}), **r}))
+            except (KeyError, IndexError):
+                out.append(f"{c['name']} is done.")
+    return " ".join(out) or "The approved action is done."

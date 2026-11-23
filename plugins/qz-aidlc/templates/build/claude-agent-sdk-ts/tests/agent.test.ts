@@ -1,8 +1,12 @@
 /** Wiring tests against the offline stub: tools, permission callback and limits. No key, no network. */
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 process.env.AGENT_MODE = "stub";
+process.env.AGENT_STATE_DB = join(mkdtempSync(join(tmpdir(), "agent-test-")), "state.db");
 const { makeGate, options, run } = await import("../src/agent.ts");
 const { policy } = await import("../src/policy.ts");
 

@@ -3,6 +3,62 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
+## 1.3.0 · 23 November 2026
+
+Durable runs and an HTTP interface in every agent starter: a run that waits for a person survives a restart, a change
+is never made twice, and an approver answers what waits over the API, signed in through the client's identity provider.
+
+### Added
+
+- **Durable runs in all seven agent starters** (LangGraph, the OpenAI Agents SDK, the Claude Agent SDK in Python and
+  TypeScript, Strands, Microsoft Agent Framework and Go). A run that waits for a person is kept in a SQLite state
+  database (`AGENT_STATE_DB`, default `.agent/state.db`) with the call it waits on, and is finished from any process:
+  after a restart, a deploy, or over the HTTP interface; each starter's command line lists what waits and answers it.
+  LangGraph carries its graph on from its SQLite saver and the OpenAI Agents SDK from its saved run; the others run
+  the approved call exactly as it was asked for, once, through the same tool. Every change a tool makes is keyed by the
+  run, the tool and its arguments: a retry after a crash returns the first result, and the same key goes to the system
+  that makes the change as its idempotency key, so a crash between the change and its record cannot make it twice.
+  Temporary errors (a timeout, a dropped connection, a 408, 425, 429 or 5xx) are retried after a short wait that
+  grows; anything else stops with the reason; both are events on the trace and lines in the audit log. SQLite comes
+  through Python's sqlite3, Node's built-in node:sqlite (still marked experimental in Node 22), modernc.org/sqlite (pure
+  Go, no cgo) and Microsoft.Data.Sqlite (which bundles SQLite): nothing else to install and no server to run.
+- **An HTTP interface in every agent starter**: `POST /ask`, `GET /runs/<thread>`, `POST /runs/<thread>/approve` and
+  `/decline`, and `GET /health`. Who asks comes from the identity provider, never from the request: an OIDC (OpenID
+  Connect) access token checked against the provider's published keys (RS256), issuer, audience and expiry; an
+  identity-aware proxy's headers, Azure App Service authentication's included, taken only from the proxy's own
+  addresses; or demo users on a laptop, refused in production. Groups map to roles, approving needs an approver
+  group, and nobody approves their own request. A run that waits answers 202 with its thread; a second answer gets
+  409. Each project's CI starts the interface inside its image with no network and waits for the image's own health
+  check to report it healthy; the README says how to serve it and answer from the command line.
+- Two gold cases in every agent starter, 16 in all: a refund approved from a new process after a restart, and a crash
+  right after the refund that still leaves exactly one refund.
+- **The hybrid kit embeds only what changed.** Each section's vector is kept under the fingerprint of what was
+  embedded; re-indexing an unchanged corpus embeds nothing, a changed document re-embeds only its changed sections, and
+  `ingest` says how many were embedded and how many kept.
+- **`qz stack` names the open option for durable execution.** A project that adds Inngest (its server is under the
+  SSPL 1.0) or Restate (its server is under the Business Source License 1.1) is flagged as tied to a vendor, with
+  Temporal (MIT), DBOS Transact (MIT) and the starters' own SQLite state database as the open options; Temporal,
+  DBOS, Hatchet and LangGraph's savers count as open. A team that picks one records the choice in `standards.vendors`.
+
+### Changed
+
+- The Go starter's evaluation adapter moved from `cmd/evaladapter` to `evals/adapter`, and the Microsoft Agent
+  Framework starter's to a project of its own in `evals/Adapter`, beside the gold set: the agents' own builds never
+  start a process. The Go image also ships `/server` and `/runs` beside `/agent`; the .NET one takes `--serve`,
+  `--health`, `--waiting` and `--answer`, and runs on `aspnet:10.0`.
+- Every agent starter's audit log takes one writer at a time across processes as well as threads, so the HTTP
+  interface and a command-line answer can write side by side and the chain stays whole.
+- The sandbox guardrail no longer takes C#'s `readonly` keyword, or a type name such as `IReadOnlyList`, as a sign of
+  read-only data access.
+- Every OIDC check (the agent starters and both RAG kits) refuses a token that names no user, email or subject.
+- The agent starters' READMEs describe serving and answering, and no longer call the state a placeholder.
+
+### Fixed
+
+- On Windows, a file written within the same clock tick as a test run could leave the tests marked as passed. The
+  run's events are now ordered by a counter, not the clock. It made one of the Studio's outcome evals fail at random
+  on Windows CI.
+
 ## 1.2.0 · 23 November 2026
 
 The harness: each write made once, a second look at risky calls, tokens the agent never holds, and a bench that

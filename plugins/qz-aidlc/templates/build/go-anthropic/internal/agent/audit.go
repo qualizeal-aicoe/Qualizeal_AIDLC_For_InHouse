@@ -56,21 +56,33 @@ func auditLines(path string) []string {
 
 // stream is the chain so far, when lines go to standard error.
 var stream = struct {
-	sync.Mutex
 	seq  int
 	hash string
 }{hash: genesis}
 
+// auditMu keeps one writer at a time in this process (the HTTP interface serves requests side by side); lockFile does
+// the same across processes on Linux and macOS.
+var auditMu sync.Mutex
+
 // Audit appends one chained event.
 func Audit(event, actor, role string, fields map[string]any) error {
+	auditMu.Lock()
+	defer auditMu.Unlock()
 	path := AuditPath()
 	seq, prev := 0, genesis
+	var f *os.File
 	if path == "-" {
-		stream.Lock()
-		defer stream.Unlock()
 		seq, prev = stream.seq, stream.hash
-	} else if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
+	} else {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		var err error
+		if f, err = os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o640); err != nil {
+			return err
+		}
+		defer f.Close()
+		defer lockFile(f)()
 	}
 	if lines := auditLines(path); path != "-" && len(lines) > 0 {
 		var last map[string]any
@@ -99,11 +111,6 @@ func Audit(event, actor, role string, fields map[string]any) error {
 		_, err = os.Stderr.Write(append(line, '\n'))
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o640)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
 	_, err = f.Write(append(line, '\n'))
 	return err
 }

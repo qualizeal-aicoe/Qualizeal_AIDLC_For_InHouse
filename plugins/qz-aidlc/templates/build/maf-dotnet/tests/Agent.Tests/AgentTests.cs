@@ -5,7 +5,7 @@ namespace Agent.Tests;
 /// <summary>Wiring tests against the offline stub: tools, approval and limits. No key, no network.</summary>
 public class AgentTests
 {
-    public AgentTests() => Environment.SetEnvironmentVariable("AGENT_MODE", "stub");
+    public AgentTests() => Setup.Fresh();
 
     [Fact]
     public async Task Lookup_calls_the_read_tool_only()

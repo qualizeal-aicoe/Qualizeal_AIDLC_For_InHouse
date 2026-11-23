@@ -1,7 +1,7 @@
 {
   "title": "Microsoft Agent Framework (.NET)",
   "summary": "ChatClientAgent with ApprovalRequiredAIFunction for the approval gate, AgentSession for resume, output-token limit, UseOpenTelemetry, Anthropic provider for live runs.",
-  "verified": "RUN: built with the .NET SDK 10.0.404 against Microsoft.Agents.AI 1.28.0, and the xUnit tests plus gold set ran here against the offline stub chat client through the real framework, including approval request, approve and reject. The live Anthropic provider path compiled; no live model call was made here.",
+  "verified": "RUN: built with the .NET SDK 10.0.404 against Microsoft.Agents.AI 1.28.0, and the xUnit tests plus gold set ran here against the offline stub chat client through the real framework, including approval request, approve and reject. The live Anthropic provider path compiled; no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (Microsoft.Data.Sqlite) and answered from another process, the refund made once after a crash, and the HTTP interface on ASP.NET Core with OIDC token checks, all in its tests and gold set.",
   "stack_line": "A Microsoft Agent Framework agent in C# on .NET 10 (Microsoft.Agents.AI 1.28).",
   "policy": "src/Agent/Policy.cs",
   "agent_dir": "src/Agent/",
@@ -9,9 +9,7 @@
     "dotnet",
     "run",
     "--project",
-    "src/Agent",
-    "--",
-    "--eval"
+    "evals/Adapter"
   ],
   "pass_env": [
     "ANTHROPIC_API_KEY",
@@ -32,10 +30,10 @@
   ],
   "live": "Set ANTHROPIC_API_KEY and AGENT_MODE=live. For Azure OpenAI or Microsoft Foundry, swap the client in OrderSupport.Build(); the tools, approval loop and tracing stay the same.",
   "next": [
-    "Replace the two method bodies in src/Agent/Tools.cs with calls to your systems.",
-    "Persist the AgentSession so a waiting approval survives a restart, and route the approval to a real person.",
-    "For multi-agent or long-running work, move to Agent Framework workflows; keep the same tools and approval wrappers.",
-    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+    "Replace GetOrder and Payments in src/Agent/Tools.cs with calls to your systems; pass the idempotency key to the system that makes the change.",
+    "For multi-agent work, move to Agent Framework workflows; keep the same tools, approval wrappers and state database.",
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags.",
+    "Set AGENT_IDENTITY=oidc (or proxy) and the AGENT_OIDC_* settings before the HTTP interface is reachable by anyone; demo identities are refused in production."
   ],
   "ai_act": {
     "purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.",
@@ -66,13 +64,14 @@
     "prompts": "src/Agent/Policy.cs#System",
     "guardrails": "src/Agent/Guardrails.cs",
     "limits": "src/Agent/Policy.cs",
-    "api": {
-      "none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"
-    },
+    "api": [
+      "src/Agent/Server.cs#Build",
+      "src/Agent/Durable.cs"
+    ],
     "knowledge": {
       "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
     },
-    "tracing": "src/Agent/Program.cs",
+    "tracing": "src/Agent/Telemetry.cs",
     "tests": "tests",
     "evals": [
       "evals/gold.jsonl",
@@ -94,9 +93,10 @@
   },
   "golive": {
     "controls": {
-      "sso": {
-        "none": "a command-line agent: nothing listens on the network, so nobody signs in to it; served, it sits behind the client's identity provider"
-      },
+      "sso": [
+        "src/Agent/Server.cs#Build",
+        "src/Agent/Identity.cs#VerifyRs256"
+      ],
       "rbac": [
         "src/Agent/Policy.cs#Roles",
         "src/Agent/Access.cs#ToolsFor"
@@ -134,5 +134,12 @@
         "special": "TODO: none expected; confirm"
       }
     }
-  }
+  },
+  "serve": [
+    "--serve",
+    "--host",
+    "0.0.0.0"
+  ],
+  "serve_cmd": "dotnet run --project src/Agent -- --serve",
+  "answer_cmd": "dotnet run --project src/Agent -- --answer <thread> --approve"
 }

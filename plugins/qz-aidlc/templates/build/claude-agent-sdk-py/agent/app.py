@@ -1,4 +1,8 @@
-"""The agent: Claude Agent SDK with in-process tools, a permission callback as the approval gate, and hard limits."""
+"""The agent: Claude Agent SDK with in-process tools, a permission callback as the approval gate, and hard limits.
+
+A run that waits for a person is kept in the state database (agent/durable.py) with the call it waits on, so
+answer() finishes it from any process: after a restart, a deploy, or from the HTTP interface (agent/server.py).
+The approved call runs exactly as it was asked for and approved, through the same tool, once."""
 import asyncio
 import json
 import logging
@@ -9,7 +13,7 @@ from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ClaudeSDKCli
                               ResultMessage, TextBlock, ToolUseBlock)
 
 from . import guardrails, policy
-from .tools import RESULTS, SERVER
+from .tools import RESULTS, SERVER, TOOLS
 
 # One line per run (tools and their status, tokens, whether it waits): never the message or the reply. Claude Code's own
 # OpenTelemetry export adds spans and metrics when CLAUDE_CODE_ENABLE_TELEMETRY=1.
@@ -85,6 +89,28 @@ async def run_async(message: str, approve: bool | None = None) -> dict:
 @guardrails.guarded
 def run(message: str, approve: bool | None = None) -> dict:
     return asyncio.run(run_async(message, approve))
+
+
+async def _answer(saved: dict, approve: bool) -> dict:
+    calls = [dict(c) for c in saved.get("calls") or []]
+    RESULTS.set([])
+    for c in calls:
+        if c.get("status") != "pending":
+            continue
+        if not approve:
+            c["status"] = "denied"
+            continue
+        out = await TOOLS[c["name"]].handler(c.get("args") or {})
+        c["status"], c["result"] = "ok", json.loads(out["content"][0]["text"])
+    log.info("answer tools=%s", [f"{c['name']}:{c['status']}" for c in calls])
+    return {"output": policy.after_approval(calls, approve), "tool_calls": calls, "usage": {"input_tokens": 0, "output_tokens": 0},
+            "awaiting_approval": False, "ai_generated": False}
+
+
+@guardrails.guarded_resume
+def answer(thread: str, approve: bool, saved: dict) -> dict:
+    """A person's answer to a run that waits, from this process or any other."""
+    return asyncio.run(_answer(saved, approve))
 
 
 if __name__ == "__main__":

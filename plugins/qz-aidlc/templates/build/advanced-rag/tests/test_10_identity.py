@@ -54,11 +54,11 @@ def test_a_signed_token_names_the_person_and_their_groups():
     assert (w.user, w.groups, w.via) == ("asha@example.org", ["all", "hr"], "oidc")
 
 
-@pytest.mark.parametrize("bad", ["expired", "issuer", "audience", "tampered", "alg", "unknown key", "no token"])
+@pytest.mark.parametrize("bad", ["expired", "issuer", "audience", "tampered", "alg", "unknown key", "no token", "no user"])
 def test_anything_else_is_refused(bad):
     t = {"expired": token(claims(exp=int(time.time()) - 3600)), "issuer": token(claims(iss="https://elsewhere.example")),
          "audience": token(claims(aud="api://another-app")), "alg": token(claims(), alg="HS256"),
-         "unknown key": token(claims(), kid="k2")}.get(bad)
+         "unknown key": token(claims(), kid="k2"), "no user": token(claims(preferred_username=""))}.get(bad)
     if bad == "tampered":
         h, _, s = token(claims()).split(".")
         t = ".".join([h, b64(json.dumps(claims(groups=["g-admin"])).encode()), s])

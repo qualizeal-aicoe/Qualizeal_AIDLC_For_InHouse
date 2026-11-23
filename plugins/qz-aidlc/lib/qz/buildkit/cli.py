@@ -28,6 +28,18 @@ def stacks() -> dict[str, dict]:
     return {p.parent.name: read_json(p) for p in sorted(ROOT.glob("*/scaffold.json"))}
 
 
+def serve_step(cmd: list[str] | None) -> str:
+    """The CI step that starts the HTTP interface inside the image with no network and waits for it to report healthy."""
+    if not cmd:
+        return ""
+    args = " ".join(cmd)
+    return ("      - name: The HTTP interface inside the container (no network), reported healthy by the image's own check\n"
+            "        run: |\n"
+            f"          cid=$(docker run -d --network none --health-interval 2s --health-timeout 5s app:ci {args})\n"
+            "          for i in $(seq 1 60); do s=$(docker inspect \"$cid\" --format '{{.State.Health.Status}}'); [ \"$s\" = healthy ] && break; sleep 2; done\n"
+            "          docker logs --tail 20 \"$cid\"; docker rm -f \"$cid\" > /dev/null; test \"$s\" = healthy\n")
+
+
 def staging(stack: str) -> dict | None:
     p = ROOT / stack / "stages.json"
     return read_json(p) if p.exists() else None
@@ -80,6 +92,7 @@ def new(stack: str, dest: Path, name: str, module: str | None = None, kit: bool 
         "__PASS_ENV__": json.dumps(meta.get("pass_env", [])), "__SETUP_STEPS__": "\n".join("      " + s for s in meta.get("setup_steps", [])),
         "__SECRET_ENV__": "\n".join(f"          {k}: ${{{{ secrets.{k} }}}}" for k in meta.get("secret_env", [])),
         "__CONTAINER_CHECK__": meta.get("container_check", "docker run --rm --network none app:ci"),
+        "__SERVE_STEP__": serve_step(meta.get("serve")),
     }
     for p in dest.rglob("*"):
         if p.is_file() and (p.suffix in TEXT or p.name in ("CODEOWNERS", ".gitignore")) and p.name not in ("go.sum", "packages.lock.json"):
@@ -256,6 +269,8 @@ def house_sections(name: str, m: dict) -> str:
            "No person talks to it and it makes no content of its own, so Article 50 asks nothing of it; the record says why.")
     check = m.get("container_check", "docker run --rm --network none app:ci")
     staged = f" A staged project builds it from stage {m['stages']}, once every stage is in." if m.get("stages") else ""
+    served = (" It also starts the HTTP interface inside the image with no network, and waits for the image's own health check "
+              "to report it healthy." if m.get("serve") else "")
     return f"""## QualiZeal standards
 
 {lead}
@@ -270,7 +285,7 @@ def house_sections(name: str, m: dict) -> str:
 
 ## Container and release
 
-`docker build -t {slug(name)} .` builds the image.{staged} CI builds it on every push and runs `{check}`, with no network and no key.
+`docker build -t {slug(name)} .` builds the image.{staged} CI builds it on every push and runs `{check}`, with no network and no key.{served}
 
 `docs/release.md` is the recipe: one image per release tag, shadow, a small share, then everyone, and a rollback that is one switch.
 
@@ -290,8 +305,36 @@ def add_house_sections(path: Path, name: str, m: dict) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def serve_section(m: dict) -> str:
+    """How to serve an agent starter over HTTP and answer what waits, for a starter with an interface."""
+    if not m.get("serve_cmd"):
+        return ""
+    return f"""## Serve it
+
+`{m['serve_cmd']}` serves the agent on http://127.0.0.1:8080. On a laptop it runs with demo identities: name one in the
+`X-Demo-User` header (sam asks, ana asks and approves, vic may only look orders up). Demo identities are refused when
+`APP_ENV` says production.
+
+- `POST /ask` with `{{"message": "..."}}`: the result. A refund waits for a person: 202, with its `thread_id`.
+- `GET /runs/<thread>`: how the run stands and what waits, for the person who asked or an approver.
+- `POST /runs/<thread>/approve` or `/decline`: an approver's answer. Nobody approves their own request; a second answer gets 409.
+- `GET /health`: no sign-in.
+
+A run that waits is kept in the state database (`AGENT_STATE_DB`, default `.agent/state.db`), so a restart or a deploy
+loses nothing, and any instance can answer it; `{m['answer_cmd']}` answers one from the command line. Each change a tool
+makes is made once: a retry after a crash returns the first result, and the same key goes to the system that makes the
+change. Before anyone else can reach the interface, set `AGENT_IDENTITY=oidc` with `AGENT_OIDC_ISSUER`,
+`AGENT_OIDC_AUDIENCE` and `AGENT_OIDC_JWKS_URL` (or `proxy` behind an identity-aware proxy, with
+`AGENT_TRUSTED_PROXIES`), and map your groups to roles in `{m['policy']}`.
+
+"""
+
+
 def readme(name: str, m: dict) -> str:
     steps = "\n".join(f"{i}. {s}" for i, s in enumerate(m["next"], 1))
+    durable = ("\n- Durable runs and an HTTP interface: a run that waits for a person is kept in SQLite and finished from any "
+               "process or over the API; each change a tool makes is made once; temporary errors are retried and permanent ones stop."
+               if m.get("serve_cmd") else "")
     return f"""# {name}
 
 {m['stack_line']} Started from the QualiZeal agent scaffold: {m['summary']}
@@ -301,7 +344,7 @@ def readme(name: str, m: dict) -> str:
 - One read-only tool and one tool that moves money, which waits for a person's approval.
 - Limits in one file: `{m['policy']}` (model, turn limit, token cap, approval list).
 - An offline stub model, so tests and the gold set run with no key and no spend.
-- A gold set of 14 cases in `evals/gold.jsonl`, each checked at the tool, response and outcome levels: lookups, the approval gate, a made-up tracking number, injection attempts and the input filter. `evals/monitor.json` scores live traffic at the same three levels.
+- A gold set of 16 cases in `evals/gold.jsonl`, each checked at the tool, response and outcome levels: lookups, the approval gate, a made-up tracking number, injection attempts, the input filter, a refund approved from a new process after a restart, and a crash right after the refund that still refunds once. `evals/monitor.json` scores live traffic at the same three levels.{durable}
 - Tracing with OpenTelemetry, a CI workflow, a runbook and rules for coding agents (`CLAUDE.md`).
 
 {house_sections(name, m)}## Run it
@@ -314,7 +357,7 @@ Gold set: `python3 .claude/qz/scripts/qz.py eval run` (writes `evals/results/rep
 
 Live: {m['live']} Then `python3 .claude/qz/scripts/qz.py eval run --config evals/eval.live.json`.
 
-## What was checked before you got this
+{serve_section(m)}## What was checked before you got this
 
 {m['verified']}
 
@@ -326,7 +369,7 @@ The stub follows fixed rules. A green offline run proves the wiring (tools, appr
 
 ## Before it goes anywhere near production
 
-Run the Architect lane (`/qz-aidlc:qz-architect`) for requirements, the option decision, feasibility and diagrams, and the project audit (`python3 .claude/qz/scripts/qz.py audit-project scan`). The sample data, the fixed approver and the in-memory state are placeholders.
+Run the Architect lane (`/qz-aidlc:qz-architect`) for requirements, the option decision, feasibility and diagrams, and the project audit (`python3 .claude/qz/scripts/qz.py audit-project scan`). The sample data and the demo identities are placeholders, and one SQLite state database serves one machine: several instances share Postgres instead (the same two tables).
 """
 
 

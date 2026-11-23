@@ -1,4 +1,8 @@
-"""The agent: a Strands agent with an approval hook on side-effecting tools and hard limits per request."""
+"""The agent: a Strands agent with an approval hook on side-effecting tools and hard limits per request.
+
+A run that waits for a person is kept in the state database (agent/durable.py) with the call it waits on, so
+answer() finishes it from any process: after a restart, a deploy, or from the HTTP interface (agent/server.py).
+The approved call runs exactly as it was asked for and approved, through the same tool, once."""
 import json
 import os
 
@@ -60,6 +64,29 @@ def run(message: str, approve: bool | None = None, agent: Agent | None = None) -
         gate = "ok" if approve else "denied"
         result = agent([{"interruptResponse": {"interruptId": i.id, "response": "approve" if approve else "decline"}} for i in result.interrupts], limits=limits)
     return _result(agent, result, gate)
+
+
+def _call(name: str, args: dict) -> dict:
+    """Run one tool as the agent would, and return what it returned (the JSON block of its result)."""
+    tool = next(t for t in TOOLS if getattr(t, "tool_name", getattr(t, "__name__", "")) == name)
+    out = tool(**args)
+    body = ((out or {}).get("content") or [{}])[0]
+    return body.get("json", body.get("text"))
+
+
+@guardrails.guarded_resume
+def answer(thread: str, approve: bool, saved: dict) -> dict:
+    """A person's answer to a run that waits, from this process or any other."""
+    calls = [dict(c) for c in saved.get("calls") or []]
+    for c in calls:
+        if c.get("status") != "pending":
+            continue
+        if approve:
+            c["status"], c["result"] = "ok", _call(c["name"], c.get("args") or {})
+        else:
+            c["status"] = "denied"
+    return {"output": policy.after_approval(calls, approve), "tool_calls": calls, "usage": {"input_tokens": 0, "output_tokens": 0},
+            "stop_reason": "end_turn", "awaiting_approval": False, "ai_generated": False}
 
 
 def _result(agent: Agent, result, gate: str) -> dict:

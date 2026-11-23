@@ -15,6 +15,7 @@ model, a custom loop, or a small footprint: the SDK drives a bundled Claude Code
 | Human gate | `can_use_tool(tool_name, input, context)` returning `PermissionResultAllow` or `PermissionResultDeny(message, interrupt)` | `canUseTool` returning `{ behavior: "allow" }` or `{ behavior: "deny", message, interrupt }` |
 | Least privilege | `tools=[]` removes built-in tools; `allowed_tools` pre-approves; `setting_sources=[]` ignores local settings | `tools: []`, `allowedTools`, `settingSources: []` |
 | Limits | `max_turns`, `max_budget_usd` | `maxTurns`, `maxBudgetUsd` |
+| Waiting runs (the starters) | `agent/durable.py`: the run and its pending call in SQLite, `answer(thread, approve)` from any process runs the call through the same handler, `once()` keys each change | `src/durable.ts` (node:sqlite), `answer()` in `src/agent.ts`, `once()` |
 | Usage and cost | `ResultMessage.usage`, `.total_cost_usd` | result message `usage`, `total_cost_usd` |
 | Hooks | `hooks={"PreToolUse": [HookMatcher(...)]}` | `hooks` option |
 

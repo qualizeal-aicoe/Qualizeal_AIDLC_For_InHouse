@@ -2,9 +2,12 @@
 package agent
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"regexp"
+	"sort"
+	"strings"
 )
 
 // The agent's limits, in one place. Change behaviour here, and add a gold case for every change.
@@ -78,4 +81,67 @@ func PickModel(message string) string {
 		return small
 	}
 	return ModelID()
+}
+
+// Access is the HTTP interface's share of go-live gates 1 and 2 (server.go). Who asks comes from the identity provider
+// (AGENT_IDENTITY: demo, oidc or proxy); their groups name their role here, first match wins. Approving a waiting
+// action needs one of ApproverGroups, and nobody approves their own request unless SelfApproval is set (it should not
+// be, outside a demo).
+var Access = struct {
+	GroupRoles     [][2]string // group, role
+	ApproverGroups []string
+	SelfApproval   bool
+	DemoUsers      map[string][]string // demo mode only
+}{
+	GroupRoles:     [][2]string{{"order-support", "support"}, {"order-viewers", "viewer"}},
+	ApproverGroups: []string{"refund-approvers"},
+	DemoUsers:      map[string][]string{"sam": {"order-support"}, "ana": {"order-support", "refund-approvers"}, "vic": {"order-viewers"}},
+}
+
+// afterApproval is the reply after a person approves a waiting action: a fixed text from what the tool returned (no
+// model wrote it, so ai_generated is false), one per tool in NeedsApproval.
+var afterApproval = map[string]func(args, result map[string]any) string{
+	"issue_refund": func(a, r map[string]any) string {
+		return fmt.Sprintf("Refund %v of %v has been issued for order %s.", r["refund_id"], r["amount"], str(a, "order_id"))
+	},
+}
+
+// AfterApproval is the reply once a person has answered: what each approved call did, or that nothing changed.
+func AfterApproval(calls []Call, approve bool) string {
+	if !approve {
+		seen := map[string]bool{}
+		names := []string{}
+		for _, c := range calls {
+			if c.Status == "denied" && !seen[c.Name] {
+				seen[c.Name] = true
+				names = append(names, c.Name)
+			}
+		}
+		sort.Strings(names)
+		what := strings.Join(names, ", ")
+		if what == "" {
+			what = "the action"
+		}
+		return "A person declined " + what + ", so nothing was changed."
+	}
+	out := []string{}
+	for _, c := range calls {
+		say, ok := afterApproval[c.Name]
+		if c.Status != "ok" || !ok {
+			continue
+		}
+		if done, _ := c.Result["ok"].(bool); !done {
+			why, _ := c.Result["error"].(string)
+			if why == "" {
+				why = "the system refused it"
+			}
+			out = append(out, fmt.Sprintf("%s did not go through: %s.", c.Name, why))
+			continue
+		}
+		out = append(out, say(c.Args, c.Result))
+	}
+	if len(out) == 0 {
+		return "The approved action is done."
+	}
+	return strings.Join(out, " ")
 }

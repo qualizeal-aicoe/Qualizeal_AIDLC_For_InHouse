@@ -13,6 +13,7 @@ are yours to write: the scaffold keeps them in one file behind a small `Model` i
 | Tools | `anthropic.ToolParam{Name, Description, InputSchema}`; results with `anthropic.NewToolResultBlock(id, json, isError)` |
 | Loop | `agent.Run`: model decides, gate checks, tool runs, repeat until text or `MaxTurns` |
 | Human gate | an `Approver` function called before any tool in `NeedsApproval`; unanswered means the run returns as waiting |
+| Waiting runs | `internal/agent/durable.go`: the run and its pending call in SQLite (modernc.org/sqlite, no cgo); `Answer(ctx, thread, approve, by)` from any process; `Once` keys each change and passes the key on as the idempotency key |
 | Limits | `MaxTurns`, `MaxOutputTokens`, `option.WithRequestTimeout`, `option.WithMaxRetries` |
 | Tracing | the SDK emits an OpenTelemetry span per request on the registered tracer provider; content stays out unless switched on |
 
@@ -21,4 +22,4 @@ Other routes, named so a decision can score them (not run here):
   `tool.ApprovalRequiredFunc`, with an Anthropic provider.
 - Google Agent Development Kit for Go (`google.golang.org/adk`): agent runtime with tools and sessions.
 - The MCP Go SDK (`github.com/modelcontextprotocol/go-sdk`) for exposing or consuming tools.
-- A durable workflow engine (Temporal) when a run must survive restarts or wait days for an approval.
+- A durable workflow engine (Temporal, MIT) when a workflow spans many services or machines; one process's waiting runs need only the starter's SQLite state.

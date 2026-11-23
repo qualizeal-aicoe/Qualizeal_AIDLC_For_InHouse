@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace OrderAgent;
@@ -54,4 +56,46 @@ public static class Policy
     /// move money, and anything unclear, goes to the main model. A rule decides, not a model call.</summary>
     public static string PickModel(string message) =>
         SmallModel.Length > 0 && !Hard.IsMatch(message ?? "") ? SmallModel : Model;
+
+    // The HTTP interface (Server.cs). Who asks comes from the identity provider (AGENT_IDENTITY: demo, oidc or proxy);
+    // their groups name their role here, first match wins. Approving a waiting action needs an approver group, and
+    // nobody approves their own request unless SelfApproval is set (it should not be, outside a demo).
+    public static readonly List<(string Group, string Role)> GroupRoles = [("order-support", "support"), ("order-viewers", "viewer")];
+    public static readonly List<string> ApproverGroups = ["refund-approvers"];
+    public static readonly bool SelfApproval = false;
+    public static readonly Dictionary<string, List<string>> DemoUsers = new()   // demo mode only
+    {
+        ["sam"] = ["order-support"],
+        ["ana"] = ["order-support", "refund-approvers"],
+        ["vic"] = ["order-viewers"],
+    };
+
+    /// <summary>The reply after a person approves a waiting action: a fixed text from what the tool returned (no model
+    /// wrote it, so ai_generated is false), one per tool in NeedsApproval.</summary>
+    private static readonly Dictionary<string, Func<IDictionary<string, object?>, JsonElement, string>> AfterApprovalText = new()
+    {
+        ["issue_refund"] = (args, r) =>
+            $"Refund {r.GetProperty("refund_id").GetString()} of {r.GetProperty("amount").GetString()} has been issued for order {Convert.ToString(args["order_id"], CultureInfo.InvariantCulture)?.Trim().ToUpperInvariant()}.",
+    };
+
+    /// <summary>The reply once a person has answered: what each approved call did, or that nothing changed.</summary>
+    public static string AfterApproval(List<ToolCall> calls, bool approve)
+    {
+        if (!approve)
+        {
+            string what = string.Join(", ", calls.Where(c => c.status == "denied").Select(c => c.name).Distinct().Order(StringComparer.Ordinal));
+            return $"A person declined {(what.Length > 0 ? what : "the action")}, so nothing was changed.";
+        }
+
+        List<string> said = [];
+        foreach (ToolCall c in calls)
+        {
+            if (c.status != "ok" || !AfterApprovalText.TryGetValue(c.name, out var say) || c.result is not { ValueKind: JsonValueKind.Object } r) continue;
+            bool ok = r.TryGetProperty("ok", out JsonElement k) && k.ValueKind == JsonValueKind.True;
+            string why = r.TryGetProperty("error", out JsonElement e) && e.GetString() is { Length: > 0 } w ? w : "the system refused it";
+            said.Add(ok ? say(c.args ?? new Dictionary<string, object?>(), r) : $"{c.name} did not go through: {why}.");
+        }
+
+        return said.Count > 0 ? string.Join(" ", said) : "The approved action is done.";
+    }
 }

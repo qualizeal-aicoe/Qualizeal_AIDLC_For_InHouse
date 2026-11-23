@@ -45,6 +45,16 @@ def test_a_project_missing_gates_is_told_which_and_why(tmp_path):
     assert json.loads(qz(tmp_path, "guardrails", "--studio", "--json").stdout)["ok"]
 
 
+def test_a_csharp_readonly_field_is_not_a_sandbox(tmp_path):
+    """C# marks fields readonly: that keyword is no sign that the code a tool runs is contained."""
+    (tmp_path / "Tools.cs").write_text("using System.Diagnostics;\npublic static class Tools\n{\n    private static readonly object Lock = new();\n    private static IReadOnlyList<string> Names = [];\n"
+                                       "    public static string Run(string cmd) => Process.Start(\"sh\", \"-c \" + cmd)!.StandardOutput.ReadToEnd();\n}\n", encoding="utf-8")
+    by = {g["id"]: g for g in G.audit(tmp_path)["gates"]}
+    assert by["sandbox"]["status"] == "missing", by["sandbox"]
+    (tmp_path / "Data.cs").write_text("var db = new SqliteConnection(\"Data Source=orders.db;Mode=ReadOnly\");\n", encoding="utf-8")
+    assert {g["id"]: g for g in G.audit(tmp_path)["gates"]}["sandbox"]["status"] == "pass"
+
+
 def test_a_prompt_with_a_card_number_is_never_sent(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
     monkeypatch.setenv("QZ_HOME", str(tmp_path / ".qz-home"))
