@@ -20,6 +20,7 @@ Governed long-term memory for agents, in Python on SQLite, with an MCP server.
 - Run before you push: `uv run -m pytest -q` and `uv run -m mem eval --gate`.
 - Branches are `<KEY>-<short-slug>` (QZ-123-rate-quote), never master; commits are `<type>: <KEY> <description>` with any Conventional Commit type (`<KEY>-0` when there is no ticket). One merge request per story, squash-merged by a person: its title is the squash commit, and its type decides the release.
 - Test-first. Unit tests mock every SDK (cloud, model, payment); only integration tests call real services. A write rejected on its condition comes back as a named result, never swallowed.
+- The solution's fourteen parts are named in `.qz/solution.json`, each where it lives or why it does not apply. When a part moves or a new one appears, update it in the same change; `qz structure` checks it, and CI fails without it. A new variable the code reads goes in `.env.example`, by name only.
 
 ## Where things are
 

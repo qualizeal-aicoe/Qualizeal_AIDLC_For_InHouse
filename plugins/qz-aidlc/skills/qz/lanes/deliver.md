@@ -30,7 +30,7 @@ tools this session has. Reading needs no approval; every write waits for the per
    changed symbols with risk, callers and tests, and the merge danger. A changed symbol with no test gets one, or a
    sentence saying why not. Run the tests it lists. `decisions [check]` holds the branch against the team's
    decisions: fix a conflict, or, if the person agrees, say why with `Overrides <id>: <why>` in the commit message.
-   `qz standards` must meet all four; a vendor dependency nobody chose gets the open option. Then review the change
+   `qz standards` must meet all five; a vendor dependency nobody chose gets the open option. Then review the change
    as `qz-engineering-loops` says, must-fix findings first.
 7. **Seal outputs.** `output_seal` each approved artefact: requirements, design, test design, the pull-request text.
 8. **Merge request**, one per story. Its title is the squash commit: `ship_check` suggests the type, which decides

@@ -19,5 +19,21 @@
   "vendors": [],
   "open_line": "Embeddings and the reranker are open models that run on your machine; answers can come from an open-weight model through any OpenAI-compatible server.",
   "cost_line": "the system block cached on every model call; outline navigation on its own `navigate_model` (a small model is enough) and answers on `answer_model`; repeat questions answered from a cache kept per reader's access and index version; embeddings and reranking on the CPU, so retrieval costs no tokens; at most five sections reach the model.",
-  "container_check": "docker run --rm --network none app:ci uv run -m arag eval --gate"
+  "container_check": "docker run --rm --network none app:ci uv run -m arag eval --gate",
+  "roles": {
+    "entry": "arag/__main__.py",
+    "agent": ["arag/answer.py", "arag/hybrid.py"],
+    "tools": {"none": "it answers from documents and takes no actions"},
+    "model": ["arag/embed.py", "arag/rerank.py", "arag/llm.py"],
+    "prompts": "arag/llm.py",
+    "guardrails": "arag/guard.py",
+    "limits": "arag.toml",
+    "api": "arag/server.py",
+    "knowledge": ["corpus/manifest.json", "web.toml"],
+    "tracing": ["arag/explain.py", "arag/audit.py"],
+    "tests": "tests",
+    "evals": "evals/golden.jsonl",
+    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
+    "docs": ["README.md", "docs/runbook.md", "docs/design.md", "docs/ai-act"]
+  }
 }

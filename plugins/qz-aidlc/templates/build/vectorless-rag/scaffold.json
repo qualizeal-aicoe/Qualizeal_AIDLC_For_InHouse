@@ -20,5 +20,21 @@
   "vendors": [],
   "open_line": "No vector database and no embedding service; answers can come from an open-weight model through any OpenAI-compatible server.",
   "cost_line": "the system block cached on every model call; outline navigation on its own `navigate_model` (a small model is enough) and answers on `answer_model`; repeat questions answered from a cache kept per reader's access and index version; at most five sections reach the model.",
-  "container_check": "docker run --rm --network none app:ci uv run -m vrag eval --gate"
+  "container_check": "docker run --rm --network none app:ci uv run -m vrag eval --gate",
+  "roles": {
+    "entry": "vrag/__main__.py",
+    "agent": ["vrag/answer.py", "vrag/tree.py"],
+    "tools": {"none": "it answers from documents and takes no actions"},
+    "model": "vrag/llm.py",
+    "prompts": "vrag/tree.py#SYSTEM",
+    "guardrails": "vrag/guard.py",
+    "limits": "vrag.toml",
+    "api": "vrag/server.py",
+    "knowledge": ["corpus/manifest.json", "web.toml"],
+    "tracing": "vrag/audit.py",
+    "tests": "tests",
+    "evals": "evals/golden.jsonl",
+    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
+    "docs": ["README.md", "docs/runbook.md", "docs/designs", "docs/ai-act"]
+  }
 }

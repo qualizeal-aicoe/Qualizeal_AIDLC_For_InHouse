@@ -32,5 +32,21 @@
   "vendors": [],
   "open_line": "The offline extractor needs no model; an open-weight model works through any OpenAI-compatible server.",
   "cost_line": "the extractor's fixed instructions cached on every model call; recall and turns capped; extraction on a small model. No shared answer cache: what one person said is never served to another.",
-  "container_check": "docker run --rm --network none app:ci"
+  "container_check": "docker run --rm --network none app:ci",
+  "roles": {
+    "entry": "mem/__main__.py",
+    "agent": "mem/agent.py",
+    "tools": "mem/mcp_server.py#build",
+    "model": "mem/extract.py",
+    "prompts": "mem/extract.py#SYSTEM",
+    "guardrails": "mem/policy.py",
+    "limits": "mem.toml",
+    "api": "mem/mcp_server.py",
+    "knowledge": "mem/store.py",
+    "tracing": "mem/telemetry.py",
+    "tests": "tests",
+    "evals": ["evals/gold.jsonl", "evals/eval.json"],
+    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
+    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/ai-act"]
+  }
 }

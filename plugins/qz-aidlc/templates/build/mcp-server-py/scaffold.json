@@ -32,5 +32,21 @@
   "vendors": [],
   "open_line": "No model and no vendor SDK: the server is plain Python on the open MCP standard.",
   "cost_line": "it calls no model, so there is no token spend to cut; `python3 .claude/qz/scripts/qz.py cost` reads not applicable on all six.",
-  "container_check": "docker run --rm --network none app:ci"
+  "container_check": "docker run --rm --network none app:ci",
+  "roles": {
+    "entry": "server/app.py#main",
+    "agent": {"none": "a tool server: other agents run the loop and call it"},
+    "tools": "server/app.py#get_order",
+    "model": {"none": "it serves data to agents and calls no model itself"},
+    "prompts": {"none": "it calls no model; its tool descriptions are pinned in server/pin.py"},
+    "guardrails": "server/guard.py",
+    "limits": "server/policy.py",
+    "api": "server/app.py",
+    "knowledge": "server/data.py",
+    "tracing": "server/audit.py",
+    "tests": "tests",
+    "evals": ["evals/gold.jsonl", "evals/eval.json"],
+    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
+    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/ai-act"]
+  }
 }

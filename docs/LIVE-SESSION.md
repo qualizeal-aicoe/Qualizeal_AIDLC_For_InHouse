@@ -1,6 +1,6 @@
 # A live session with the Studio
 
-Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE). For Studio 1.0.1.
+Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE). For Studio 1.0.2.
 
 One small use case, start to finish: a knowledge assistant over a company handbook, built with the hybrid RAG
 (retrieval-augmented generation) kit. It answers from the documents and cites the section it used. It refuses when the
@@ -95,8 +95,8 @@ What each step shows:
    Article 50), and a repeat question comes back from the cache with no search and no model call.
 7. **The QualiZeal standards.** Ask Claude to "check the QualiZeal standards on the handbook": one scorecard, with the
    six guardrails, the EU AI Act record in `docs/ai-act/`, open source first (the embeddings and reranker are open
-   models on the laptop) and the cost levers, each MET with the file that shows it. Every starter's CI runs the same
-   check.
+   models on the laptop), the cost levers and the solution shape (the fourteen parts, each where it lives), each MET
+   with the file that shows it. Every starter's CI runs the same check.
 
 In Claude Code the same can be asked in plain words ("build the handbook demo with the advanced RAG kit"); the
 commands above are what it runs.

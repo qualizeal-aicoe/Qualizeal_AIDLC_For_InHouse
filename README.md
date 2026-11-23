@@ -1,4 +1,4 @@
-# QualiZeal AI-DLC Studio · 1.0.1
+# QualiZeal AI-DLC Studio · 1.0.2
 
 How the QualiZeal AI Center of Excellence (AI CoE) builds with Claude Code, in one install. An AI full-stack developer
 or a generative AI (GenAI) engineer gets tested starters for the stacks our projects use, lanes that carry a piece of
@@ -84,7 +84,7 @@ Studio's CI builds all 13 images on a release branch, on a tag, or when asked, a
 
 ## The QualiZeal standards
 
-Everything the Studio builds, and the Studio itself, meets four standards. `qz standards` prints one scorecard, every
+Everything the Studio builds, and the Studio itself, meets five standards. `qz standards` prints one scorecard, every
 starter's CI fails without it, and on GitHub it lands on the pull request's checks page.
 
 | Standard | What it checks |
@@ -93,8 +93,9 @@ starter's CI fails without it, and on GitHub it lands on the pull request's chec
 | EU AI Act | A record in `docs/ai-act/`: the risk class (prohibited, high-risk, limited or minimal), the role, the EU link, and evidence for every obligation that brings. Every agent result carries `ai_notice` and a machine-readable `ai_generated`; the knowledge kits show the notice on the page. The Studio builds to the Act whether or not a system reaches the EU, and the class is a draft until a person confirms it |
 | Open source first | Each AI layer (model, runtime, framework, vector store, evals, tracing) is open, or tied to a vendor by a recorded choice. The framework-neutral starters run live on an open-weight model on your own machine by default (`qwen3:8b` on Ollama); picking a vendor starter records the vendor |
 | Cost levers | Prompt caching on the fixed prefix, easy turns routed to a smaller model (`AGENT_MODEL_SMALL`), batch where work can wait, a cache for repeat questions that never crosses an access boundary, capped context, and smaller models for narrow work |
+| Solution shape | The same fourteen parts in every solution (entry, agent, tools, model, prompts, guardrails, limits, interface, knowledge, tracing, tests, evals, delivery, docs), each named in `.qz/solution.json` where it lives or why it does not apply; `.env` ignored and never tracked; `.env.example` names every variable the code reads. `qz structure pack` writes `docs/solution.md` with the same eight sections every time |
 
-All 13 starters meet all four the moment they are created; `tests/test_standards.py` creates each one and checks.
+All 13 starters meet all five the moment they are created; `tests/test_standards.py` creates each one and checks.
 
 ## Lanes
 
@@ -229,7 +230,7 @@ Not run:
 - **A person working in a live Claude Code session with the hooks.** The hooks were started exactly as Claude Code
   starts them, with the input it sends, but no interactive session was recorded.
 - The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
-- Cursor and Codex. 1.0.1 is for Claude Code; they are planned for 1.1.
+- Cursor and Codex. 1.0.2 is for Claude Code; they are planned for 1.1.
 
 ## How a release ships
 

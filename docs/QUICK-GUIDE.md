@@ -1,6 +1,6 @@
 # QualiZeal AI-DLC Studio · quick guide
 
-Version 1.0.1. Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE).
+Version 1.0.2. Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE).
 
 AI-DLC is the AI-Driven Development Life Cycle. The Studio is two Claude Code plugins: `qz-aidlc` (the lanes, tools and harness) and `qz-console` (a live map of the run, desktop only). Inside Claude, `/qz-aidlc:qz-help` shows any section of this page.
 
@@ -21,7 +21,8 @@ Type a command, then one line saying what you need. Every command starts a run, 
 | A shared AI-DLC workspace for a team | `/qz-aidlc:qz-setup team` · `qz aidlc check` | One repository for the records (intents, memory, code knowledge, team knowledge) with the service repositories beside it; per-user cursors and runtime files ignored; a check that says where each output goes and whether git agrees |
 | The branch, the commits and the merge request | `qz conventions` on a story branch (also inside `ship_check`) | Whether the branch (`<KEY>-<short-slug>`) and commits (`<type>: <KEY> <description>`) fit, the squash commit to use as the merge request's title, and what merging releases: the next version, dev0 on its own, qa0 and prod0 through change requests |
 | The six guardrails | `qz guardrails` on a project · `qz guardrails --studio` | Input filter, output filter, tool allowlist, human approval, step limits and sandboxed execution, each PASS, PARTIAL, MISSING or not applicable, with the file and line that shows it. Every starter and the Studio pass all six in CI |
-| The QualiZeal standards | `qz standards` on a project · `qz standards --studio` | One scorecard: the six guardrails, the EU AI Act, open source first and the cost levers, MET or NOT MET with the evidence for each. The CI gate in every starter; it also lands on the pull request's checks page |
+| The QualiZeal standards | `qz standards` on a project · `qz standards --studio` | One scorecard: the six guardrails, the EU AI Act, open source first, the cost levers and the solution shape, MET or NOT MET with the evidence for each. The CI gate in every starter; it also lands on the pull request's checks page |
+| The same shape in every solution | `qz structure` · `qz structure init` · `qz structure pack` | The fourteen parts every solution has (entry, agent, tools, model, prompts, guardrails, limits, interface, knowledge, tracing, tests, evals, delivery, docs), each where it lives or why it does not apply, and the secrets hygiene; `init` drafts the map for a project the Studio did not start; `pack` writes `docs/solution.md` with the same eight sections every time |
 | The EU AI Act record | `qz aiact init` · `qz aiact` · `qz aiact confirm --yes` | The system's risk class (prohibited, high-risk, limited or minimal), its role, the obligations with their dates (Article 50 since 2 August 2026; Annex III high-risk from 2 December 2027) and evidence for each; a draft until a person confirms it |
 | Open source first | `qz stack` | Each AI layer (model, runtime, framework, vector store, evals, tracing) as open, vendor by recorded choice, or tied to a vendor with the open option; licence notes such as Open WebUI's branding clause |
 | The cost levers | `qz cost` | Prompt caching, model routing, batch, semantic cache, trimmed context and smaller models: evidence for each, or why it does not fit, and what quietly breaks one (a timestamp in the system prompt) |
@@ -128,7 +129,7 @@ The plugins, commands, agents, tool server, policy files, scripts, settings (`QZ
 | `qz-aiact` | the EU AI Act record every project keeps: risk class, role, the obligations they bring and evidence for each; a person confirms the class | `qz aiact, docs/ai-act/, lib/qz/auditkit/aiact.py` |
 | `qz-stack` | open source first: which layers of an AI stack are open, which are tied to a vendor by recorded choice, and the open option for each | `qz stack, lib/qz/auditkit/oss.py` |
 | `qz-cost` | the six cost levers (prompt caching, model routing, batch, semantic cache, trimmed context, smaller models), checked with evidence | `qz cost, lib/qz/auditkit/cost.py` |
-| `qz-standards` | one scorecard for the house standards: the six guardrails, the EU AI Act, open source first and the cost levers; the CI gate in every starter | `qz standards, lib/qz/auditkit/standards.py` |
+| `qz-standards` | one scorecard for the house standards: the six guardrails, the EU AI Act, open source first, the cost levers and the solution shape; the CI gate in every starter | `qz standards, lib/qz/auditkit/standards.py` |
 | `qz-route` | reads each request without a model call and names the lane, tool, agent, model and effort that fit, with what is in hand | `policy/qz-routes.json, lib/qz/router.py` |
 | `qz-office` | decks, planning and status workbooks, estimates and e-mails written for each reader | `lib/qz/office/` |
 | `qz-publish` | saves locally first, then pushes to a new, existing or team repository after a person's yes | `lib/qz/ws/publish.py` |
