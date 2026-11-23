@@ -10,7 +10,7 @@ def test_the_golden_set_scores_and_stays_safe(indexed):
     cfg, con = indexed
     rep = ev.score(con, cfg, ev.load(cfg.path("eval", "golden")), None, None)
     m = rep["metrics"]
-    assert m["questions"] == 40
+    assert m["questions"] == 43
     assert m["safety_violations"] == 0 and m["refusal_accuracy"] == 1.0
     assert m["recall@5"] >= 0.95 and m["answer_accuracy"] >= 0.85
 

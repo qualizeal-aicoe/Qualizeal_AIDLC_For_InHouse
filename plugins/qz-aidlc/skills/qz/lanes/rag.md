@@ -8,7 +8,7 @@ project, read `docs/contracts.md` and the story; do not read the codebase to beg
 Two tested references. `vectorless-rag` (BM25 over a heading tree; staged, for live builds and demos) and
 `advanced-rag` (BM25 and dense vectors over only what the asker may read, fused by reciprocal rank, reranked by a
 cross-encoder; CPU-only ONNX models, still no vector database). On the sample handbook, with no model writing
-answers: BM25 alone 35 of 40, hybrid 38 of 40. Pick `advanced-rag` when people ask in their own words, the
+answers: BM25 alone 38 of 43, hybrid 41 of 43. Pick `advanced-rag` when people ask in their own words, the
 documents run long, or a trace of every answer and portable knowledge cores are needed.
 
 Entry: a live build or demo → Live; the person's own documents → Adapt; "which retrieval is better" → Measure.

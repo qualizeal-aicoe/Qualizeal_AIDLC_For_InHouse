@@ -185,7 +185,7 @@ def check_git(rep: Report, ci: bool, repo: str) -> None:
         rep.add("PASS", f"GitHub: {repo} is readable without a prompt (so Claude Code can update the Studio)")
     else:
         rep.add("FAIL", f"GitHub: {repo} cannot be read without a prompt ({(err or '').strip().splitlines()[-1][:120] if err.strip() else 'no access'})",
-                f"accept the invitation to {repo.split('/')[0]}, then: gh auth login, then gh auth setup-git "
+                "check the network line below for a proxy; if GitHub asks for a sign-in: gh auth login, then gh auth setup-git "
                 f"(or run `git clone https://github.com/{repo}` once and sign in in the browser)")
 
 

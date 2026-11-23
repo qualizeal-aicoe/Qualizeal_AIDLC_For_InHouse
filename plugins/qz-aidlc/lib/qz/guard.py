@@ -444,6 +444,11 @@ def eval_own(tool_name: str, tool_input: dict, p: dict) -> Decision | None:
         return Decision("ask", "QZ-ASK-DECISION", "Record this as a team decision? Agents read it before they edit the code it names, and every "
                                                    "commit and pull request is checked against it." + (" It is marked always follow." if "--always" in args or "always: true" in text else "")
                                                    + (f" Decision: \"{text[:500]}\"" if text else ""))
+    if m.group(1) == "project_memory" and (tool_input.get("action") == "confirm" or args[:1] == ["confirm"]):
+        lines = tool_input.get("lines") or args[1:]
+        return Decision("ask", "QZ-ASK-MEMORY", "Mark these notes as still true? Their sources changed since they were kept, and confirming "
+                                                 "takes the [stale] mark off until the sources change again. "
+                                                 + (f"Lines: {', '.join(str(x) for x in lines)}." if lines else "Every note marked stale."))
     if m.group(1) == "project_memory" and (tool_input.get("action") in ("save", "undo", "tidy") or args[:1] in (["save"], ["undo"], ["tidy"])):
         text = str(tool_input.get("text") or " ".join(args[1:]))
         return Decision("ask", "QZ-ASK-MEMORY", "Keep this in the project's memory? It is read at the start of every later session here. "

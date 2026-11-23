@@ -17,5 +17,5 @@ to the AI CoE (AI Center of Excellence) if a line still says FAIL.
 | `install.ps1`, `install.sh` | IT installing many laptops: they add the marketplace and both plugins, nothing else |
 | `/qz-aidlc:qz-setup org`, in Claude Code | The organisation's admin: managed settings and rollout steps |
 
-The repository is private, so a laptop needs a GitHub account that can read it. The full guide is
+The repository is public, so a laptop needs no GitHub account to read it. The full guide is
 [docs/SETUP-GUIDE.md](../docs/SETUP-GUIDE.md).

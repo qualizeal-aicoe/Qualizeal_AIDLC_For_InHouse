@@ -142,5 +142,13 @@ def card(tables: dict[str, Table], names: list[str], deny: set[str], sem: dict) 
     used = [m for m in sem["metrics"].items() if any(re.search(rf"\b{re.escape(n)}\.", m[1].get("sql", "")) for n in names)]
     if used:
         out.append("Metrics (use these formulas):")
-        out += [f"  {k}: {m['sql']}. {m.get('description', '')}" for k, m in used]
+        for k, m in used:
+            since = [f"v{m['version']}" if "version" in m else "", f"since {m['effective']}" if m.get("effective") else "",
+                     f"owner {m['owner']}" if m.get("owner") else ""]
+            tag = f" ({', '.join(x for x in since if x)})" if any(since) else ""
+            out.append(f"  {k}{tag}: {m['sql']}. {m.get('description', '')}".rstrip())
+            if m.get("history"):
+                from .config import versions
+                for h in versions(m)[:-1]:
+                    out.append(f"    for a period from {h['effective']} to before {h['until']}: v{h['version']} {h['sql']}. {h.get('description', '')}".rstrip())
     return "\n".join(out)

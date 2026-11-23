@@ -62,7 +62,8 @@ def show(ans, as_json: bool) -> None:
         print(f"  (trace {ans.trace}: uv run -m arag explain {ans.trace})")
     for c in ans.citations:
         page = f", page {c['page']}" if c.get("page") else ""
-        print(f"  [{c['n']}] {c['doc_title']} › {c['section']}{page}")
+        scope = f" (applies to {c['scope']})" if c.get("scope") else ""
+        print(f"  [{c['n']}] {c['doc_title']} › {c['section']}{page}{scope}")
     if ans.refused and ans.reason:
         print(f"  (why: {ans.reason})")
     for f in ans.flags:
@@ -106,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
     w = sp.add_parser("crawl", help="fetch the web pages listed in web.toml into the corpus")
     w.add_argument("--prune", action="store_true", help="mark pages that are gone from the site as superseded")
     w.add_argument("--dry-run", action="store_true", help="say what would be fetched; fetch nothing")
+    sp.add_parser("stats", help="how often questions were refused, and why, from the audit log")
     fb = sp.add_parser("feedback", help="thumbs up and down from the chat page; --gold proposes gold candidates (--yes writes them)")
     fb.add_argument("--gold", action="store_true")
     fb.add_argument("--yes", action="store_true")
@@ -200,6 +202,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "eval":
         ev = need("evaluate")
         return ev.main(cfg, args.strategy, provider(cfg, args.llm), args.metric, args.gate, args.json)
+    if args.cmd == "stats":
+        r = need("audit").stats(cfg)
+        if not r["questions"]:
+            print("No questions in the audit log yet.")
+            return 0
+        print(f"{r['questions']} question(s), {r['refused']} refused ({r['refusal_rate']:.1%}).")
+        print("  Too high: people ask what the documents do not cover. Too low: check the threshold (uv run -m arag calibrate).")
+        for why, n in r["reasons"]:
+            print(f"  {n:4}  {why}")
+        for q in r["recent"]:
+            print(f"  refused: {q}")
+        return 0
     if args.cmd == "feedback":
         r = need("server").feedback(cfg, args.gold, args.yes)
         print(f"{r['up']} helpful, {r['down']} not helpful.")

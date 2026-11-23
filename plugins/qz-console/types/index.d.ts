@@ -19,7 +19,7 @@ export type Entry = {
 }
 
 /** What the harness last announced about the run (from its status line or from run_start / stage calls). */
-export type Run = { id?: string; lane?: string; key?: string; stage?: string; used?: number; limit?: number }
+export type Run = { id?: string; lane?: string; key?: string; stage?: string; used?: number; limit?: number; tests?: string }
 
 export type Board = {
   entries: Entry[]

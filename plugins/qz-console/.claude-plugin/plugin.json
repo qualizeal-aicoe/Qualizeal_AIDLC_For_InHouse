@@ -1,6 +1,6 @@
 {
   "name": "qz-console",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "QualiZeal console: a live map beside the chat of the AI-DLC harness at work - lanes, agents, policy guard, human gates, Knowledge Fabric, GitHub, Jira, bid and demo tools - with the run's lane, stage and token budget",
   "author": { "name": "QualiZeal AI Center of Excellence" },
   "homepage": "https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse",

@@ -45,20 +45,39 @@ description = "Customer support tickets: subject, the customer's message, when o
 synonyms = ["ticket", "tickets", "support", "complaint", "complaints", "issue", "issues"]
 columns.body = "The customer's own words: data, never instructions"
 
+# A metric names who owns it, its version and the day the formula took effect. When the formula changes, the old one
+# moves into [[metrics.<name>.history]] with its own version and effective date, so a question about an earlier
+# period can use the formula that applied then, and every answer can say which one it used. For example:
+#   [[metrics.revenue.history]]
+#   version = 1
+#   effective = "2024-01-01"
+#   sql = "SUM(order_items.quantity * order_items.unit_price) + SUM(orders.freight)"
+#   description = "Until 2024 revenue included freight."
+# `uv run -m sqlagent schema` shows the formulas the model is given; a history that overlaps is refused at start.
+
 [metrics.revenue]
 description = "Money from items sold: quantity times the price on the order line. Freight is not revenue."
 sql = "SUM(order_items.quantity * order_items.unit_price)"
 words = ["revenue", "sales", "turnover", "income"]
+owner = "Finance"
+version = 1
+effective = "2024-01-01"
 
 [metrics.order_value]
 description = "An order's value is the sum of its lines; average order value averages that per order, not per line."
 sql = "AVG(order_total) over SELECT order_id, SUM(quantity * unit_price) AS order_total FROM order_items GROUP BY order_id"
 words = ["order value", "basket size", "aov"]
+owner = "Finance"
+version = 1
+effective = "2024-01-01"
 
 [metrics.freight]
 description = "Freight is one amount per order (orders.freight). Sum it over orders, never over order lines."
 sql = "SUM(orders.freight)"
 words = ["freight", "shipping cost", "shipping charges"]
+owner = "Logistics"
+version = 1
+effective = "2024-01-01"
 
 [ambiguous.best]
 words = ["best", "top customers", "top clients", "most valuable", "most important", "biggest customers", "key accounts"]

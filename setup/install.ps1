@@ -1,5 +1,5 @@
 # QualiZeal AI-DLC Studio: add the marketplace and install both plugins in Claude Code (Windows PowerShell).
-# Safe to run again. The repository is private: sign in to GitHub on this machine first (GitHub CLI or Git Credential Manager).
+# Safe to run again. The repository is public: the machine only needs to reach github.com.
 param([string]$Repo = "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse")
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
   Write-Host "Claude Code is not installed on this machine. Install it, then run this again."

@@ -39,6 +39,7 @@ class Section:
     page_start: int | None = None
     page_end: int | None = None
     hidden: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)       # what a reader should know about this part of the file
 
     @property
     def text(self) -> str:
@@ -299,6 +300,19 @@ def parse_pdf(path: Path) -> list[Section]:
         walk(reader.outline, 0)
     except Exception:
         marks = []
+    sections = _pdf_sections(reader, pages, marks)
+    blank = [i for i, t in enumerate(pages, 1) if not t.strip()]
+    if blank:                                      # a scanned page is reported, never dropped without a word
+        many = len(blank) > 1
+        note = (f"page{'s' if many else ''} {', '.join(map(str, blank))} of {len(pages)} {'have' if many else 'has'} no text layer "
+                f"(a scan or an image): nothing on {'them' if many else 'it'} can be found until {'they are' if many else 'it is'} run through OCR")
+        if not sections:
+            return [Section(1, "", [], 1, len(pages), notes=[note])]
+        sections[0].notes.append(note)
+    return sections
+
+
+def _pdf_sections(reader, pages: list[str], marks: list[tuple[int, str, int]]) -> list[Section]:
     if not marks:
         return [Section(2, f"Page {i}", _pdf_lines(t), i, i) for i, t in enumerate(pages, 1) if t.strip()]
     marks.sort(key=lambda m: m[2])
@@ -380,6 +394,7 @@ def build(doc_id: str, meta: dict, sections: list[Section], mask: tuple | list =
             flags.append({"node_id": node.node_id, "kind": kind, "detail": h[:300]})
         if n_hidden:
             flags.append({"node_id": node.node_id, "kind": "hidden-characters", "detail": f"{n_hidden} removed"})
+        flags += [{"node_id": node.node_id, "kind": "no-text-layer", "detail": n} for n in s.notes]
         nodes.append(node)
         if ordinal:
             stack.append((s.level, node, path))
@@ -394,6 +409,12 @@ def _check(rel: str, meta: dict) -> str:
         return f"{rel}: the manifest entry needs 'acl', a list of the groups that may read it"
     if meta.get("status", "current") not in STATUSES:
         return f"{rel}: status must be one of {', '.join(sorted(STATUSES))}"
+    sc = meta.get("scope")
+    if sc is not None and not (isinstance(sc, dict) and isinstance(sc.get("label"), str) and sc["label"].strip()
+                               and isinstance(sc.get("groups"), list) and sc["groups"] and all(isinstance(g, str) and g for g in sc["groups"])
+                               and all(isinstance(w, str) and w for w in sc.get("words", []))):
+        return (f"{rel}: 'scope' needs a label (whom the rule applies to), groups (the askers it applies to) "
+                "and, if you like, words that name it in a question")
     return ""
 
 

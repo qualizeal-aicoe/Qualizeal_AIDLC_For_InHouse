@@ -99,14 +99,17 @@ def search(con: sqlite3.Connection, cfg, question: str, groups: list[str], k: in
     k = int(k or cfg["search"]["k"])
     w = [float(x) for x in cfg["search"]["weights"]]
     marks = ",".join("?" * len(groups))
+    from .index import out_of_scope
+    skip = sorted(out_of_scope(con, groups, question))
     rows = con.execute(
         f"""SELECT n.rowid, n.node_id, n.doc_id, d.title AS doc_title, n.title, n.heading_path, n.text,
                    n.page_start, n.page_end, bm25(nodes_fts, ?, ?, ?) AS rank
             FROM nodes_fts JOIN nodes n ON n.rowid = nodes_fts.rowid JOIN docs d ON d.doc_id = n.doc_id
             WHERE nodes_fts MATCH ? AND (d.status = 'current' OR ?)
               AND n.doc_id IN (SELECT doc_id FROM doc_acl WHERE grp IN ({marks}))
+              AND n.doc_id NOT IN ({",".join("?" * len(skip))})
             ORDER BY rank LIMIT ?""",
-        (*w, match_query(cs), int(bool(cfg["search"]["include_superseded"])), *groups, k)).fetchall()
+        (*w, match_query(cs), int(bool(cfg["search"]["include_superseded"])), *groups, *skip, k)).fetchall()
     hits = [Hit(r["rowid"], r["node_id"], r["doc_id"], r["doc_title"], r["title"], r["heading_path"], r["text"],
                 r["page_start"], r["page_end"], round(-r["rank"], 4)) for r in rows]
     for h in hits:

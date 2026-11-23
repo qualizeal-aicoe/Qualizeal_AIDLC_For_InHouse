@@ -3,12 +3,67 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
-## Unreleased
+## 1.0.1 · 23 November 2026
+
+Trust, mostly: what the Studio remembers, defines, answers and commits now carries its evidence, and says so when the
+evidence changed.
+
+### Added
+
+- **Notes that carry their evidence.** A project note that names its source (`(from src/rate.py#quote)`) records that
+  code's fingerprint. Each session start checks it; a note whose code changed or was removed is marked `[stale: …]`
+  with the reason, kept rather than deleted, and shown that way until a person confirms it (`project_memory` with
+  `confirm`, which asks first) or corrects it. No model is called for the check.
+- **One list of stale claims (`qz claims`).** Project notes, team decisions and glossary terms whose evidence changed
+  or went, with how many were checked; the report card has the same list. `qz decisions stale` now also names
+  decisions whose files changed after the decision was committed, as worth reading again.
+- **Definitions with history.** A glossary term keeps its owner and the date it applies from. A changed definition
+  keeps the old one for the dates before (`terms history`, `terms at --date`), and a term whose source page was
+  removed, replaced, quarantined or no longer holds the quoted text is flagged (`terms stale`, and in the lint). In
+  the text-to-SQL starter a metric has an owner, a version and an effective date, can keep dated earlier versions, and
+  the schema card says which version applies to which period.
+- **A useful "I don't know" in the hybrid kit.** A refusal says what it looked for, the closest section with its
+  owner (marked as not answering the question), and who to ask (`[answer] contact`). The evaluation reports the
+  refusal rate, and `arag stats` shows it from the audit log.
+- **Documents that apply to some people only.** In the hybrid kit's manifest, `scope` names who a document is for (a
+  label, access groups, words that signal it). For anyone else it answers only when the question names the scope ("in
+  the EU"); an answer from it says whom it applies to, and citing it for someone outside the scope counts as a
+  violation. The sample handbook gained an EU leave
+  policy and three questions on it: 43 golden questions.
+- **Scanned pages named at ingest.** A PDF page with no text layer is reported by page number: nothing on it can be
+  found until it goes through OCR (optical character recognition).
+- **Sentences the sources do not support are caught.** When a model writes the answer, a sentence with a figure the
+  cited sections do not contain, or with under 60% of its words found there, sends the reply back to the extractive
+  answer.
+- **Why a change was made, in its commit.** Every commit an agent makes ends with `Request:` (the story and which of
+  the person's messages asked for it), `Stage:` and `Base:` (the commit the run started from), beside Claude Code's
+  own lines. The commit hook turns back an agent commit without them and lists the exact lines to add
+  (`commit.trailers` in the team's practices turns it off). `qz conventions why <file>` answers why a file changed,
+  and at whose request, from git history alone.
+- **The smallest complete change.** Every change in the engineering loop starts with whether it needs to exist, then
+  what the codebase already has, then the standard library, then the least new code. Never cut: validation where
+  untrusted input enters, error handling that prevents data loss, security, accessibility, anything the person asked
+  for. A shortcut taken on purpose is marked where it lives (`# shortcut: <limit>, <when to upgrade>`); `qz debt`
+  lists them, flags any without an upgrade trigger and writes `DEBT.md` with `--write`.
+- **A review method.** Before a pull request, and for someone else's change: must, should and nice-to-have findings,
+  each with where, what, why and the smallest fix, a verdict, and what was not checked. The spec review reads past the
+  diff to the code it touches.
+- **Tests after the last change.** The band above the prompt and the console say whether the tests passed, failed or
+  have not run since the last edit; the report card has the same chip and its shortcuts.
+
+### Changed
 
 - **Releases publish themselves.** When the checks pass on main for a version that has no release yet, the release
   workflow tags that commit, attaches the plugin zips and publishes that version's notes from this changelog. A
-  release branch's pull request now runs on macOS too, so nothing is published unchecked. The tidy workflow deletes a
+  release branch's pull request runs on macOS too, so nothing is published unchecked. The tidy workflow deletes a
   branch once its work is merged.
+- **The repository is public.** The guides, the install scripts and the doctor no longer ask for a GitHub invitation.
+- The run ledger records the commit a run started from and counts the person's messages, for the trailers.
+
+### Fixed
+
+- The commit hook read only the first line of a quoted message, so a message written over several lines (subject,
+  blank line, body) went through unchecked. It now reads the whole message, however it is quoted.
 
 ## 1.0.0 · 21 November 2026
 

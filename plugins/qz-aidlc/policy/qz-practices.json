@@ -15,7 +15,8 @@
     "types": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"],
     "no_ticket": "{KEY}-0",
     "pipe_after_key": "tolerated",
-    "enforce": true
+    "enforce": true,
+    "trailers": true
   },
   "mr": {
     "per_story": 1,

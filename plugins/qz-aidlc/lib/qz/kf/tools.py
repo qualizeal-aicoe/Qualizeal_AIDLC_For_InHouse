@@ -5,8 +5,9 @@
                                                   passages chosen as a set under a token budget, with why each is there
   compile pageindex|timeline|graph [--source S] [--doc N] [--out DIR]
                                                   outlines with section locators, dated statements, entities that appear together
-  terms candidates [--doc N] | list | add NAME --definition D [--synonym S ...] [--doc N --quote Q --locator L]
-        | certify NAME | deprecate NAME | draft NAME | relate A REL B | lint | glossary [--out FILE] | wiki --out DIR
+  terms candidates [--doc N] | list | add NAME --definition D [--synonym S ...] [--doc N --quote Q --locator L] [--effective DATE]
+        | certify NAME | deprecate NAME | draft NAME | relate A REL B | lint | stale | history NAME | at NAME --date DATE
+        | glossary [--out FILE] | wiki --out DIR
   answerable "<question>"                         which parts of a question the Knowledge Fabric covers"""
 from __future__ import annotations
 
@@ -31,9 +32,11 @@ def main(rest: list[str]) -> None:
     s = sp.add_parser("select"); s.add_argument("question"); s.add_argument("--budget", type=int, default=1500)
     s.add_argument("--depth", default="standard", choices=list(select.DEPTH)); s.add_argument("--purpose", default="inform", choices=list(store.TIERS))
     k = sp.add_parser("compile"); k.add_argument("what", choices=["pageindex", "timeline", "graph"]); k.add_argument("--source"); k.add_argument("--doc", type=int); k.add_argument("--out")
-    t = sp.add_parser("terms"); t.add_argument("op", choices=["candidates", "list", "add", "certify", "deprecate", "draft", "relate", "lint", "glossary", "wiki"])
+    t = sp.add_parser("terms"); t.add_argument("op", choices=["candidates", "list", "add", "certify", "deprecate", "draft", "relate", "lint", "stale",
+                                                             "history", "at", "glossary", "wiki"])
     t.add_argument("names", nargs="*"); t.add_argument("--definition", default=""); t.add_argument("--synonym", action="append", default=[])
     t.add_argument("--doc", type=int); t.add_argument("--quote", default=""); t.add_argument("--locator", default=""); t.add_argument("--out")
+    t.add_argument("--effective", default="", help="the date a new definition starts (default now)"); t.add_argument("--date", default="")
     q = sp.add_parser("answerable"); q.add_argument("question")
     a = ap.parse_args(rest)
     db = store.connect()
@@ -64,7 +67,15 @@ def main(rest: list[str]) -> None:
             print(json.dumps([{"name": r["name"], "status": r["status"], "definition": r["definition"][:160], "synonyms": json.loads(r["synonyms"] or "[]")}
                               for r in db.execute("SELECT * FROM terms ORDER BY name COLLATE NOCASE")], indent=1, ensure_ascii=False))
         elif a.op == "add":
-            print(json.dumps(ontology.add(db, " ".join(n), a.definition, a.synonym, a.doc, a.quote, a.locator), ensure_ascii=False))
+            print(json.dumps(ontology.add(db, " ".join(n), a.definition, a.synonym, a.doc, a.quote, a.locator, effective=a.effective or None), ensure_ascii=False))
+        elif a.op == "stale":
+            rows = ontology.stale(db)
+            print("\n".join(f"{r['term']} ({r['status']}): {r['why']}" + (f" ({r['source']})" if r["source"] else "") for r in rows)
+                  or "Every term's quote is still in its source.")
+        elif a.op == "history":
+            print(json.dumps(ontology.history(db, " ".join(n)), indent=1, ensure_ascii=False))
+        elif a.op == "at":
+            print(json.dumps(ontology.at(db, " ".join(n), a.date), indent=1, ensure_ascii=False))
         elif a.op in ("certify", "deprecate", "draft"):
             print(json.dumps(ontology.set_status(db, " ".join(n), {"certify": "certified", "deprecate": "deprecated", "draft": "draft"}[a.op])))
         elif a.op == "relate":

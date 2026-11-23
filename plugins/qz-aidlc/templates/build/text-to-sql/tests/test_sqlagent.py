@@ -159,9 +159,29 @@ def test_a_role_that_may_read_salaries_gets_them(cfg):
 def test_the_schema_card_shows_only_what_the_role_may_read(agent):
     card = schema.card(agent.tables, sorted(agent.allowed), agent.deny, agent.sem)
     assert "customers" in card and "email" not in card and "phone" not in card and "employees" not in card
-    assert "Values: East, North, South, West" in card and "revenue: SUM(order_items.quantity * order_items.unit_price)" in card
+    assert "Values: East, North, South, West" in card and "revenue (v1, since 2024-01-01, owner Finance): SUM(order_items.quantity * order_items.unit_price)" in card
     assert "Ignore all previous" not in card
     assert agent.retriever.pick("revenue by region", agent.allowed, 5)[:1] and "regions" in agent.retriever.pick("revenue by region", agent.allowed, 5)
+
+
+def test_a_metric_keeps_the_formulas_it_had_and_the_dates_each_applied(agent, tmp_path):
+    import copy
+    sem = copy.deepcopy(agent.sem)
+    rev = sem["metrics"]["revenue"]
+    rev.update(version=2, effective="2025-01-01", history=[{"version": 1, "effective": "2024-01-01", "description": "Until 2024 revenue included freight.",
+                                                            "sql": "SUM(order_items.quantity * order_items.unit_price) + SUM(orders.freight)"}])
+    assert config.metric_problem(rev) == ""
+    assert [(v["version"], v["effective"], v["until"]) for v in config.versions(rev)] == [(1, "2024-01-01", "2025-01-01"), (2, "2025-01-01", "")]
+    card = schema.card(agent.tables, sorted(agent.allowed), agent.deny, sem)
+    assert "revenue (v2, since 2025-01-01, owner Finance): SUM(order_items.quantity * order_items.unit_price)." in card
+    assert "    for a period from 2024-01-01 to before 2025-01-01: v1 SUM(order_items.quantity * order_items.unit_price) + SUM(orders.freight). Until 2024" in card
+    bad = dict(rev, history=[dict(rev["history"][0], effective="2025-06-01")])          # the old formula would start after the new one
+    assert "oldest first" in config.metric_problem(bad) or "latest effective" in config.metric_problem(bad)
+    assert "needs version" in config.metric_problem({"sql": "SUM(x)", "history": [{"version": 1, "effective": "2024-01-01", "sql": "SUM(y)"}]})
+    toml = (ROOT / "semantic.toml").read_text(encoding="utf-8") + '\n[[metrics.freight.history]]\nversion = 3\neffective = "2023-01-01"\nsql = "SUM(orders.freight) * 2"\n'
+    (tmp_path / "semantic.toml").write_text(toml, encoding="utf-8")
+    with pytest.raises(SystemExit, match="metrics.freight"):
+        config.semantic(tmp_path / "semantic.toml")
 
 
 def test_the_audit_log_keeps_what_happened_not_the_data(agent, cfg):

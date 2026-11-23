@@ -398,3 +398,47 @@ def test_guard_rules_for_connectors_and_eval_run():
     for read in ("getJiraIssue", "searchJiraIssuesUsingJql", "getConfluencePage", "getConfluencePageFooterComments", "getTransitionsForJiraIssue", "search", "fetch"):
         assert decide(f"mcp__Atlassian_Rovo__{read}", {}).action is None, read
     assert decide("mcp__github__create_pull_request", {}).action == "ask"
+
+
+def test_shortcuts_are_kept_as_a_ledger_and_one_without_a_trigger_is_flagged(tmp_path, monkeypatch):
+    from qz import debt
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "cache.py").write_text("CACHE = {}  # shortcut: in-memory cache, move to Redis before a second instance\n", encoding="utf-8")
+    (tmp_path / "app" / "auth.ts").write_text("const users = []  // shortcut: users kept in a list\n/* shortcut: one tenant until the second customer signs */\n", encoding="utf-8")
+    (tmp_path / "README.md").write_text("Mark one like this: `# shortcut: <the limit>, <when to upgrade>`.\n", encoding="utf-8")
+    (tmp_path / "keys.py").write_text("SAVE = 'ctrl+s'  # keyboard shortcut: save the form\nTIP = 'a `# shortcut: x` in a string'\n"
+                                      "OUT = \"x = 1  # shortcut: text a test writes, before nothing\"\n"
+                                      "NAME = \"it's\"  # shortcut: one name, until a second user\n", encoding="utf-8")
+    r = debt.scan(tmp_path)
+    rows = {(x["file"], x["line"]): x for x in r["shortcuts"]}
+    assert r["count"] == 4 and r["no_trigger"] == 1 and set(rows) == {("app/cache.py", 1), ("app/auth.ts", 1), ("app/auth.ts", 2), ("keys.py", 4)}
+    assert rows[("app/cache.py", 1)] == {"file": "app/cache.py", "line": 1, "limit": "in-memory cache", "upgrade": "move to Redis before a second instance", "trigger": True}
+    assert rows[("app/auth.ts", 2)]["trigger"] and not rows[("app/auth.ts", 1)]["trigger"]
+    text = debt.ledger(r)
+    assert "line 1: users kept in a list. no-trigger" in text and text.endswith("4 shortcut(s), 1 with no trigger.")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+    assert debt.main(["--write"]) == 0 and "move to Redis before a second instance" in (tmp_path / "DEBT.md").read_text(encoding="utf-8")
+    (tmp_path / "empty").mkdir()
+    assert debt.ledger(debt.scan(tmp_path / "empty")) == "No shortcut debt. Clean ledger."
+
+
+def test_the_last_test_run_is_read_from_the_runners_own_words_and_goes_stale_after_an_edit():
+    from qz import testrun
+    led: dict = {}
+    assert testrun.state(led)["state"] == "none" and testrun.band(led) == ""
+    assert testrun.record(led, "git status", {"stdout": "clean"}) is None and "tests" not in led
+    for cmd, out, band in (("uv run -m pytest -q", "....\n42 passed in 1.2s", "passed 42"),
+                           ("npm test", "Tests:       1 failed, 12 passed, 13 total", "failing 1"),
+                           ("go test ./...", "ok  \texample.com/a\t0.1s\nok  \texample.com/b\t0.2s", "passed 2"),
+                           ("dotnet test", "Passed!  - Failed:     0, Passed:    12, Skipped: 0", "passed 12"),
+                           ("npx vitest run", " Tests  7 passed (7)", "passed 7"),
+                           ("python -m pytest", "2 failed, 40 passed", "failing 2")):
+        testrun.record(led, cmd, {"stdout": out, "stderr": ""})
+        assert testrun.band(led) == band, cmd
+    testrun.record(led, "pytest", {"stdout": "", "stderr": "", "interrupted": True})
+    assert testrun.state(led)["state"] == "failed"
+    testrun.record(led, "pytest -q", {"stdout": "nothing to say", "stderr": ""})
+    assert testrun.state(led)["state"] == "unknown"
+    testrun.record(led, "pytest -q", {"stdout": "3 passed", "stderr": ""})
+    led["last_write_at"] = led["tests"]["at"] + 1
+    assert testrun.state(led)["state"] == "stale" and testrun.band(led) == "not run since the last change"

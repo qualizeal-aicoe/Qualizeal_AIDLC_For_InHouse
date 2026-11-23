@@ -169,6 +169,35 @@ def test_glossary_governance_answerability_lint_and_wiki(tmp_path):
     assert isinstance(cands, list)
 
 
+def test_definitions_keep_their_history_and_a_moved_source_is_flagged_not_changed(tmp_path):
+    db, *_ = kb(tmp_path)
+    doc = db.execute("SELECT id FROM docs WHERE uri='local:nwl-140.md'").fetchone()[0]
+    ontology.add(db, "Active customer", "A customer with an order in the last 90 days.", doc_id=doc, quote="rotates keys every 30 days", effective="2025-01-01")
+    assert ontology.set_status(db, "Active customer", "certified")["status"] == "certified" and ontology.stale(db) == []
+    assert "error" in ontology.add(db, "Active customer", "A customer with an open order.", effective="2024-06-01")   # cannot start before the current one
+    upd = ontology.add(db, "Active customer", "A customer with an order in the last 60 days or an open order.", effective="2026-01-01")
+    assert "back in draft" in upd["note"] and "kept for dates before 2026-01-01" in upd["note"]
+    h = ontology.history(db, "active customer")["versions"]
+    assert [(v["version"], v["from"], v["until"]) for v in h] == [(1, "2025-01-01", "2026-01-01"), (2, "2026-01-01", "")]
+    assert "90 days" in ontology.at(db, "Active customer", "2025-09-30")["definition"]
+    assert "60 days" in ontology.at(db, "Active customer", "2026-03-31")["definition"]
+    assert "error" in ontology.at(db, "Active customer", "2024-12-31")
+    assert "Before 2026-01-01: A customer with an order in the last 90 days." in ontology.glossary(db)
+    # the source moves under the term: flagged (status untouched), and re-quoting from the same document clears it
+    db.execute("DELETE FROM chunks WHERE doc_id=?", (doc,))
+    db.execute("INSERT INTO chunks(doc_id, heading, body) VALUES(?,?,?)", (doc, "Keys", "The platform now rotates signing keys every 14 days."))
+    db.commit()
+    s = ontology.stale(db)
+    assert [(x["term"], x["why"]) for x in s] == [("Active customer", "the quoted words are no longer in its source document")]
+    assert any("Active customer: the quoted words are no longer" in i for i in ontology.lint(db))
+    assert ontology.history(db, "Active customer")["versions"][-1]["status"] == "draft"          # unchanged by the flag
+    ontology.add(db, "Active customer", "A customer with an order in the last 60 days or an open order.", doc_id=doc, quote="rotates signing keys every 14 days")
+    assert ontology.stale(db) == []
+    db.execute("UPDATE docs SET status='superseded' WHERE id=?", (doc,))
+    db.commit()
+    assert ontology.stale(db)[0]["why"] == "its source document was replaced by a newer version"
+
+
 def shop_db(path):
     random.seed(3)
     c = sqlite3.connect(path)

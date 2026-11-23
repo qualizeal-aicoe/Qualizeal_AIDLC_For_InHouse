@@ -71,3 +71,14 @@ def test_the_teams_blocked_terms_withhold_an_answer(indexed):
     a = A.answer(con, cfg, q, "employee")
     assert a.refused and a.text == A.WITHHELD and "withheld: the answer held a blocked term" in a.flags and a.ai_generated is False
 
+
+
+def test_the_refusal_rate_comes_from_the_audit_log(indexed):
+    from arag import audit
+    cfg, con = indexed
+    for q in ("How many days of annual leave do full-time employees get?", "What is the dress code?", "What is the company share price today?"):
+        A.answer(con, cfg, q, "employee")
+    r = audit.stats(cfg)
+    assert r["questions"] == 3 and r["refused"] == 2 and r["refusal_rate"] == 0.667
+    assert r["recent"] == ["What is the dress code?", "What is the company share price today?"] and r["reasons"]
+    assert not any(ch.isdigit() for why, _ in r["reasons"] for ch in why)         # grouped by kind, not by score

@@ -1,14 +1,16 @@
 {
-  "about": "Every document the assistant may answer from is listed here with its owner, version, status and the groups that may read it. A file that is not listed is not ingested. All documents describe Northwind Freight, a fictional company.",
+  "about": "Every document the assistant may answer from is listed here with its owner, version, status and the groups that may read it; a document written for some people only also says whom it applies to (scope). A file that is not listed is not ingested. All documents describe Northwind Freight, a fictional company.",
   "groups": {
     "all": "every employee",
     "managers": "people managers",
     "hr": "the People team",
-    "finance": "the finance team"
+    "finance": "the finance team",
+    "eu": "employees on a contract with an EU office"
   },
   "documents": {
     "hr/leave-policy.md": {"title": "Leave policy", "owner": "People team", "version": "3.1", "effective": "2026-04-01", "status": "current", "acl": ["all"]},
     "hr/leave-policy-2025.md": {"title": "Leave policy (2025 edition)", "owner": "People team", "version": "2.4", "effective": "2025-01-01", "status": "superseded", "superseded_by": "hr/leave-policy.md", "acl": ["all"]},
+    "hr/leave-policy-eu.md": {"title": "Leave policy: EU addendum", "owner": "People team (EU)", "version": "1.0", "effective": "2026-04-01", "status": "current", "acl": ["all"], "scope": {"label": "employees in the EU", "groups": ["eu"], "words": ["EU", "Europe", "European"]}},
     "hr/remote-work.md": {"title": "Remote and hybrid work", "owner": "People team", "version": "1.3", "effective": "2026-01-15", "status": "current", "acl": ["all"]},
     "hr/benefits-faq.html": {"title": "Benefits FAQ", "owner": "People team", "version": "2026.1", "effective": "2026-01-01", "status": "current", "acl": ["all"]},
     "hr/salary-bands.md": {"title": "Salary bands 2026", "owner": "People team", "version": "2026.1", "effective": "2026-01-01", "status": "current", "acl": ["hr", "managers"]},
