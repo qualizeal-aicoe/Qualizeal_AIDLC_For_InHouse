@@ -37,6 +37,8 @@ __SETUP_STEPS__
 
   container:
     runs-on: ubuntu-latest
+    env:
+      UBUNTU_MIRROR: http://azure.archive.ubuntu.com/ubuntu/     # GitHub's runners sit in Azure; an image that installs from Ubuntu uses it
     steps:
       - uses: actions/checkout@v4
       - name: Build the image

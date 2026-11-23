@@ -65,7 +65,8 @@ evidence changed.
 - The commit hook read only the first line of a quoted message, so a message written over several lines (subject,
   blank line, body) went through unchecked. It now reads the whole message, however it is quoted.
 - The .NET, TypeScript and Go images install Python for their gold set with no prompt, retries and a 30-second
-  network timeout, so a slow Ubuntu or Debian package mirror no longer stalls the build until the CI limit.
+  network timeout, so a slow package mirror no longer stalls the build until the CI limit. The .NET image reads only
+  Ubuntu's main component and takes `UBUNTU_MIRROR` (a company's own mirror; the CI workflows set GitHub's).
 
 ## 1.0.0 · 21 November 2026
 

@@ -261,6 +261,8 @@ jobs:
                 cli-harness-py, strands-agentcore, vectorless-rag, advanced-rag, go-anthropic, maf-dotnet]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      UBUNTU_MIRROR: http://azure.archive.ubuntu.com/ubuntu/     # the runners sit in Azure; the .NET image's gold stage uses it
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

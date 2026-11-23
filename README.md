@@ -199,8 +199,9 @@ Run on 23 November 2026 for 1.0.1, the same way 1.0.0 was checked on 20 and 21 N
   Code from its native installer. Every pull request and every push to main runs the same checks, and the Actions tab
   shows the latest.
 - **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
-  their gate) and health check inside the image with no network: 13 of 13 passed. The first attempt stalled on a slow
-  Ubuntu package mirror in the .NET image; apt now retries with a 30-second timeout, and the build log shows each step.
+  their gate) and health check inside the image with no network: 13 of 13 passed. On the way, the .NET image stalled
+  twice on a slow public Ubuntu mirror: its gold stage now reads only Ubuntu's main component, with retries and a
+  30-second timeout, from the mirror named in `UBUNTU_MIRROR` (GitHub's own on its runners), and the log shows each step.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
   ones. The hybrid kit with its real models on a CPU with no GPU scored 41 of 43 on both systems, against 38 for
   keyword search alone, with no safety violations; its 72 tests also passed on Python 3.11, 3.12 and 3.13. The
