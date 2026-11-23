@@ -1,6 +1,6 @@
 # QualiZeal AI-DLC Studio · quick guide
 
-Version 1.1.0. Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE).
+Version 1.2.0. Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE).
 
 AI-DLC is the AI-Driven Development Life Cycle. The Studio is two Claude Code plugins: `qz-aidlc` (the lanes, tools and harness) and `qz-console` (a live map of the run, desktop only). Inside Claude, `/qz-aidlc:qz-help` shows any section of this page.
 
@@ -24,6 +24,9 @@ Type a command, then one line saying what you need. Every command starts a run, 
 | The QualiZeal standards | `qz standards` on a project · `qz standards --studio` | One scorecard: the six guardrails, the EU AI Act, open source first, the cost levers, the solution shape, go-live readiness and agent evals, MET or NOT MET with the evidence for each. The CI gate in every starter; it also lands on the pull request's checks page |
 | Ready for an enterprise go-live | `qz golive` · `qz golive init` · `qz golive sign <gate> --by --role --ref --yes` · `qz golive pack` | The nine gates (single sign-on, roles, residency, personal data, audit log, network, vendor review, data processing, penetration test): built in, answered, signed by a named person; `--gate` before production; `pack` writes the security evidence |
 | Unattended runs | `qz autonomy` · `qz autonomy init` · `qz autonomy sign --by --role --ref --yes` | The questions an unattended run may answer yes to, signed by a person: rules, patterns, expiry and cap; void when the file changes; every yes in the audit chain |
+| Tokens the agent never holds | `qz credproxy init` · `qz credproxy store <name>` · `qz credproxy check` · `qz credproxy run -- <command>` | A proxy on this machine adds the credential (from the OS keychain) to each call on the routes a person wrote in `.qz/credproxy.json`; the command gets base URLs and an environment with no token; every call in the audit chain |
+| How risky a call is | `qz risk "<command>"` (or `--tool mcp__… --input '{…}'`) | The score and each factor: money, people's data, production, irreversible, breadth, and who asks. At 6 the guard asks even where no rule would, and an envelope never answers |
+| The harness, checked against the last release | `qz bench run` · `qz bench accept --reason "…"` · `qz bench show` | The same scripted sessions played through the hooks; a change in decisions, the ledger, the audit order or tokens is a finding until the baseline is updated with its reason (CI runs it) |
 | Evals at three levels, and live | `qz eval run` · `qz eval lint` · `qz eval monitor` · `qz eval studio` | Tool, response and outcome, each with a floor and at least three cases; the monitor scores the audit log at the same levels and alerts on a drop; `studio` runs the Studio's own |
 | The same shape in every solution | `qz structure` · `qz structure init` · `qz structure pack` | The fourteen parts every solution has (entry, agent, tools, model, prompts, guardrails, limits, interface, knowledge, tracing, tests, evals, delivery, docs), each where it lives or why it does not apply, and the secrets hygiene; `init` drafts the map for a project the Studio did not start; `pack` writes `docs/solution.md` with the same eight sections every time |
 | The EU AI Act record | `qz aiact init` · `qz aiact` · `qz aiact confirm --yes` | The system's risk class (prohibited, high-risk, limited or minimal), its role, the obligations with their dates (Article 50 since 2 August 2026; Annex III high-risk from 2 December 2027) and evidence for each; a draft until a person confirms it |
@@ -38,6 +41,7 @@ Type a command, then one line saying what you need. Every command starts a run, 
 | Web pages in a RAG kit | list them in `web.toml`, then `uv run -m arag crawl` (or `vrag`) and `ingest` | Pages from listed hosts only, robots.txt obeyed, each with an owner and readers in the manifest; unchanged pages skipped |
 | To know if the agent is good enough | `/qz-aidlc:qz-eval` | Gold set, regression gate, judged scores |
 | Test cases from a story | `/qz-aidlc:qz-test NW-214` | Cases by technique, every acceptance criterion covered, export to Xray, Gherkin or Playwright; UI (user interface) scenarios with screenshots and video |
+| The testing lane two-way with the tracker | `qz test sync pull --tracker ado --project Payments --story 12` · `qz test sync cases --plan 7 --suite 8 --yes` · `qz test sync results --junit reports/junit.xml --yes` | The story and its criteria from Azure DevOps or Jira; approved cases written back once each (a linked test enriched in place); results posted on the plan and on the story, once per file. Unattended, only what a signed envelope covers |
 | A test suite to hand over | `/qz-aidlc:qz-test pack Knowledge Desk` | One folder and zip: each case with its script, result and a screenshot or the request and reply for every step, plus coverage |
 | A page designed or reviewed | `/qz-aidlc:qz-design review demo/index.html` | Measured review at four screen widths, an independent critique, fixes, evidence |
 | A prospect demo | `/qz-aidlc:qz-demo ops dashboard for a logistics prospect` | Demo from a starter, visual check, one-file bundle, recorded walkthrough |
@@ -132,7 +136,12 @@ The plugins, commands, agents, tool server, policy files, scripts, settings (`QZ
 | `qz-aiact` | the EU AI Act record every project keeps: risk class, role, the obligations they bring and evidence for each; a person confirms the class | `qz aiact, docs/ai-act/, lib/qz/auditkit/aiact.py` |
 | `qz-stack` | open source first: which layers of an AI stack are open, which are tied to a vendor by recorded choice, and the open option for each | `qz stack, lib/qz/auditkit/oss.py` |
 | `qz-cost` | the six cost levers (prompt caching, model routing, batch, semantic cache, trimmed context, smaller models), checked with evidence | `qz cost, lib/qz/auditkit/cost.py` |
-| `qz-standards` | one scorecard for the house standards: the six guardrails, the EU AI Act, open source first, the cost levers and the solution shape; the CI gate in every starter | `qz standards, lib/qz/auditkit/standards.py` |
+| `qz-standards` | one scorecard for the seven house standards: the six guardrails, the EU AI Act, open source first, the cost levers, the solution shape, go-live readiness and agent evals; the CI gate in every starter | `qz standards, lib/qz/auditkit/standards.py` |
+| `qz-writes` | no write twice within a run: every tracker, wiki and source-control write is kept with what it created, and the same write is refused with its key | `lib/qz/writes.py, the run ledger` |
+| `qz-risk` | a risk score before each action from what it touches (money, people's data, production, irreversible) and who asks; a high score asks even inside an envelope | `qz risk, lib/qz/risk.py` |
+| `qz-credproxy` | a proxy on this machine that adds the credential to a call, so the agent, its context and its logs never hold the token | `qz credproxy, .qz/credproxy.json, lib/qz/credproxy.py` |
+| `qz-bench` | the same scripted sessions against every release: a change in the guard's decisions, the ledger, the audit order or the tokens is a finding | `qz bench, policy/qz-bench/, lib/qz/bench.py` |
+| `qz-tracker` | the testing lane two-way with Azure DevOps or Jira: the story read, enriched cases and results written back once each | `qz test sync, tests/qz/tracker.json, lib/qz/stlc/tracker.py` |
 | `qz-route` | reads each request without a model call and names the lane, tool, agent, model and effort that fit, with what is in hand | `policy/qz-routes.json, lib/qz/router.py` |
 | `qz-office` | decks, planning and status workbooks, estimates and e-mails written for each reader | `lib/qz/office/` |
 | `qz-publish` | saves locally first, then pushes to a new, existing or team repository after a person's yes | `lib/qz/ws/publish.py` |

@@ -1,4 +1,4 @@
-# QualiZeal AI-DLC Studio · 1.1.0
+# QualiZeal AI-DLC Studio · 1.2.0
 
 How the QualiZeal AI Center of Excellence (AI CoE) builds with Claude Code, in one install. An AI full-stack developer
 or a generative AI (GenAI) engineer gets tested starters for the stacks our projects use, lanes that carry a piece of
@@ -111,7 +111,7 @@ All 13 starters meet all seven the moment they are created; `tests/test_standard
 | Build | `/qz-aidlc:qz-build` | A project from one of the starters above, with its approval gate, limits, tracing, offline stub, gold set, CI and runbook |
 | RAG | `/qz-aidlc:qz-rag` | A knowledge assistant over documents from a tested kit, vectorless or hybrid: cited answers, or a refusal that says what it looked for and who to ask; access control inside the search query, planted instructions quarantined, golden questions (40 in the vectorless kit, 43 in the hybrid) and a gate. The vectorless kit is built live one stage per story; the hybrid kit keeps a trace of every answer and packs its index into portable knowledge cores |
 | Eval | `/qz-aidlc:qz-eval` | Gold set runner with record and replay, pass rate with a 95% interval, regression gate, model judge calibrated against people |
-| Test | `/qz-aidlc:qz-test` | Test cases designed from a story with named techniques, coverage check, traceability, export to Xray, Gherkin or Playwright after approval. UI scenarios that leave a screenshot per step, a captioned video and an evidence page; a packaged suite to hand over |
+| Test | `/qz-aidlc:qz-test` | Test cases designed from a story with named techniques, coverage check, traceability, export to Xray, Gherkin or Playwright after approval; two-way with Azure DevOps and Jira (`qz test sync`): the story read, approved cases and results written back once each, unattended only under a signed envelope. UI scenarios that leave a screenshot per step, a captioned video and an evidence page; a packaged suite to hand over |
 | Design | `/qz-aidlc:qz-design` | A direction agreed before any styling; the rendered page measured at four widths for contrast, type, focus, touch targets, overflow and motion; an independent critique; named fix passes |
 | Deck | `/qz-aidlc:qz-deck` | Audience, decision and minutes first; titles that make the argument when read in order; story and slide-build checks; a rehearsal against the most sceptical person in the room |
 | Audit | `/qz-aidlc:qz-audit` | Readiness score for an agentic repository across six pillars, mapped to the OWASP (Open Worldwide Application Security Project) Top 10 lists for large language model (LLM) and agentic applications |
@@ -160,6 +160,12 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
 
 - Every tool call passes a policy guard (deny, ask, allow), and the guard reads every command on a shell line, not
   only the first. Writes to Jira, Confluence, GitHub and Azure DevOps wait for a person. Agents never merge.
+- Each write is made once per run: a stage redone after a crash is refused the same write, with the key of the first.
+  A risk score (money, people's data, production, irreversible, breadth, and who asks) makes the guard ask where no
+  rule would, and an envelope never answers it ([docs/HARNESS.md](docs/HARNESS.md)).
+- Agents can work without holding a token: `qz credproxy` adds the credential from the OS keychain to calls on the
+  routes a person wrote, redacts any echo of it and records every call. `qz bench` replays the harness against every
+  release, and CI fails on a change nobody explained.
 - An unattended run answers yes only to the questions a person signed for in `.qz/autonomy.json`: named rules, tool
   and argument patterns, an expiry within 90 days and a cap. Any change voids it until someone signs again; it never
   turns a denial into an allow or answers the questions that guard the harness itself, and each yes is a line in the
@@ -199,29 +205,33 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
 
 ## What was run, and what was not
 
-Run on 23 November 2026 for 1.0.2, the same way 1.0.1 was checked earlier that day and 1.0.0 on 20 and 21 November:
-- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 414 tests (412
-  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 411 passed and 3 skipped on macOS,
-  whose runner also lacks Chrome for one visual check; 410 passed and 4 skipped on Windows, where in addition Claude
-  Code's sandbox does not run natively); the guard's red-team, 147 of 147; the doctor, and the bootstrap in
+Run on 23 November 2026 for 1.2.0, the same way 1.1.0 and 1.0.2 were checked earlier that day:
+- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 465 tests (463
+  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 462 passed and 3 skipped on macOS,
+  whose runner also lacks Chrome for one visual check; 461 passed and 4 skipped on Windows, where in addition Claude
+  Code's sandbox does not run natively); the guard's red-team, 176 of 176, the 16 risk-score cases among them; the
+  Studio's own evals, tool 231 of 231, response 9 of 9, outcome 13 of 13; the harness bench, 17 sessions with no
+  change from the baseline and the same 2,635 harness tokens on all four systems; the doctor, and the bootstrap in
   check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the vectorless
   demo rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude
   Code from its native installer. Every pull request and every push to main runs the same checks, and the Actions tab
   shows the latest.
 - **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
-  their gate) and health check inside the image with no network: 13 of 13 passed. Each starter also meets the five
-  standards the moment it is created, the solution shape included (14 of 14 parts).
+  their gate) and health check inside the image with no network: 13 of 13 passed. Each starter also meets the seven
+  standards the moment it is created, the nine go-live gates built in and its evals at three levels.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
-  ones. The hybrid kit with its real models on a CPU with no GPU scored 41 of 43 on both systems, against 38 for
-  keyword search alone, with no safety violations; its 72 tests also passed on Python 3.11, 3.12 and 3.13. The
-  command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail rather than skip if
-  the server were missing.
+  ones. The RAG kits are unchanged since 1.0.2: the hybrid kit with its real models on a CPU scored 41 of 43, against 38
+  for keyword search alone, with no safety violations. The command-line harness ran against the real WireMock 3.13.2
+  on both systems, with CI set to fail rather than skip if the server were missing.
+- **The testing lane against a tracker**: `qz test sync` read, wrote back and posted results against recorded Azure
+  DevOps and Jira (Xray) trackers that answer only the calls they hold, and once end to end through the credential
+  proxy, where the test proves the token reached neither the command, its output nor the audit chain.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
-  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.0.2 and qz-console at 1.0.1
-  (unchanged in 1.0.2).
-- **The handbook demo end to end** on Linux with the real models, scaffolded the way an attendee does: the questions,
-  the trace, the refusal, the HR answer, both gates and the chat page over HTTP. Its offline fallback answers 38 of 43,
-  as the session plan says.
+  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.2.0 and qz-console at 1.0.1
+  (unchanged since 1.0.1).
+- **The handbook demo end to end** on Linux with the real models, for 1.0.2, scaffolded the way an attendee does: the
+  questions, the trace, the refusal, the HR answer, both gates and the chat page over HTTP. Its offline fallback answers
+  38 of 43, as the session plan says.
 
 Not run:
 - **An attendee's own laptop.** The first bootstrap on a QualiZeal machine is the real test; the doctor's report says
@@ -239,7 +249,9 @@ Not run:
 - **A person working in a live Claude Code session with the hooks.** The hooks were started exactly as Claude Code
   starts them, with the input it sends, but no interactive session was recorded.
 - The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
-- Cursor and Codex. 1.1.0 is for Claude Code; they are on the roadmap.
+- Cursor and Codex. 1.2.0 is for Claude Code; they are on the roadmap.
+- A live Azure DevOps or Jira project for `qz test sync`. CI plays it against recorded trackers built from the REST
+  references and once through the credential proxy; the first run against a client's own project is the real test.
 
 ## How a release ships
 

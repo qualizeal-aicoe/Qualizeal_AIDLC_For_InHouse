@@ -1,7 +1,7 @@
 {
   "name": "qz-aidlc",
-  "version": "1.1.0",
-  "description": "QualiZeal AI-DLC Studio: tested starters for LangGraph, the OpenAI Agents SDK, the Claude Agent SDK, an MCP server, agent memory, text-to-SQL, a command line agents drive tools through, AWS Strands, Microsoft Agent Framework and Go; vectorless and hybrid RAG kits with cited answers, gates and web pages; a board for several agents on one job; lanes to architect, spec with fresh-eyes review, build, evaluate, test, audit, deliver, demo, bid and write office decks and mail; routing that fits the model and effort to the task; a guard that reads every command on a line, per-turn undo, goal mode, a GitHub agent, publishing that saves locally first, an audit chain, run ledger and report cards.",
+  "version": "1.2.0",
+  "description": "QualiZeal AI-DLC Studio: tested starters for LangGraph, the OpenAI Agents SDK, the Claude Agent SDK, an MCP server, agent memory, text-to-SQL, a command line agents drive tools through, AWS Strands, Microsoft Agent Framework and Go; vectorless and hybrid RAG kits with cited answers, gates and web pages; a board for several agents on one job; lanes to architect, spec with fresh-eyes review, build, evaluate, test, audit, deliver, demo, bid and write office decks and mail; routing that fits the model and effort to the task; a guard that reads every command on a line and scores the risk of each action, writes made once per run, a credential proxy so agents never hold tokens, two-way test sync with Azure DevOps and Jira, per-turn undo, goal mode, a GitHub agent, publishing that saves locally first, an audit chain, run ledger, report cards and a bench that replays the harness against every release.",
   "author": {
     "name": "QualiZeal AI Center of Excellence"
   },

@@ -61,10 +61,15 @@ def tool_level() -> dict:
     inj = len((read_json(PLUGIN_ROOT / "policy" / "qz-redteam-cases.json") or {}).get("injection_cases", []))
     tool_fails = [f for f in t["failures"] if "tool" in f]
     n = r["prompts"] + (t["total"] - inj)
+    rk = t.get("risk") or {"total": 0, "passed": 0}
+    guard_n = t["total"] - inj - rk["total"]
+    guard_fails = [f for f in tool_fails if not f.get("risk")]
     return {"n": n, "passed": r["right"] + (t["total"] - inj - len(tool_fails)),
             "fails": [f"route: {w['prompt'][:70]} -> {w['got']} (expected {w['expected']})" for w in r["wrong"]]
-                     + [f"guard: {f['tool']} {f['input'][:60]} -> {f['got']} (expected {f['expected']})" for f in tool_fails],
-            "parts": {"routes": f"{r['right']}/{r['prompts']}", "guard decisions": f"{t['total'] - inj - len(tool_fails)}/{t['total'] - inj}"}}
+                     + [f"{'risk' if f.get('risk') else 'guard'}: {f['tool']} {f['input'][:60]} -> {f['got']} (expected {f['expected']})"
+                        for f in tool_fails],
+            "parts": {"routes": f"{r['right']}/{r['prompts']}", "guard decisions": f"{guard_n - len(guard_fails)}/{guard_n}",
+                      "risk scores": f"{rk['passed']}/{rk['total']}"}}
 
 
 def response_level() -> dict:
@@ -85,35 +90,57 @@ def response_level() -> dict:
             "parts": {"redaction": len(data.get("output_cases", [])), "injection": len(data.get("injection_cases", []))}}
 
 
-def _play(case: dict) -> list[str]:
-    """One session through the hooks, in this process, on a scratch project. Returns what did not hold."""
-    from .. import audit, hooks, ledger, testrun
+def play(steps: list, proj: Path | None = None) -> dict:
+    """One session through the hooks, in this process, on a scratch project (or the one given). Returns every hook's
+    output keyed "<event>:<tool_use_id or step number>", the outputs in order, the run ledger, the audit events and
+    whether the chain verifies."""
+    from .. import audit, hooks, ledger
     with tempfile.TemporaryDirectory(prefix="qz-outcome-") as tmp:
-        proj = Path(tmp)
+        proj = Path(proj or tmp)
         old = os.environ.get("CLAUDE_PROJECT_DIR")
         os.environ["CLAUDE_PROJECT_DIR"] = str(proj)
-        outs = {}
+        outs, seq = {}, []
         try:
-            for event, payload in _fill(case["steps"]):
+            for i, (event, payload) in enumerate(_fill(steps)):
                 payload = {"cwd": str(proj), "hook_event_name": event, **payload}
                 fn = hooks.HANDLERS.get(event)
                 out = fn(payload) if fn else None
                 outs[f"{event}:{payload.get('tool_use_id') or len(outs)}"] = out
+                seq.append((event, payload, out))
             led = ledger.load(proj, create=False) or {}
             chain = audit.chain_file(proj)
-            events = [json.loads(x).get("event") for x in chain.read_text(encoding="utf-8").splitlines() if x.strip()] if chain.is_file() else []
+            events = [json.loads(x) for x in chain.read_text(encoding="utf-8").splitlines() if x.strip()] if chain.is_file() else []
             ok_chain = audit.verify(proj)[0]
         finally:
             if old is None:
                 os.environ.pop("CLAUDE_PROJECT_DIR", None)
             else:
                 os.environ["CLAUDE_PROJECT_DIR"] = old
+        return {"outs": outs, "seq": seq, "ledger": led, "events": events, "chain_ok": ok_chain, "proj": str(proj)}
+
+
+def _reason(o) -> str:
+    return (((o or {}).get("hookSpecificOutput") or {}).get("permissionDecisionReason") or "")
+
+
+def _play(case: dict) -> list[str]:
+    """One session through the hooks. Returns what did not hold."""
+    from .. import testrun
+    r = play(case["steps"])
+    outs, led, ok_chain = r["outs"], r["ledger"], r["chain_ok"]
+    events = [e.get("event") for e in r["events"]]
     exp, bad = case["expect"], []
     for tid, want in (exp.get("decisions") or {}).items():
         o = outs.get(f"PreToolUse:{tid}")
         got = ((o or {}).get("hookSpecificOutput") or {}).get("permissionDecision") or "allow"
-        if got != want:
-            bad.append(f"{tid}: the guard said {got}, expected {want}")
+        want_d, _, want_rule = str(want).partition(" ")
+        if got != want_d:
+            bad.append(f"{tid}: the guard said {got}, expected {want_d}")
+        elif want_rule and f"(rule {want_rule})" not in _reason(o):
+            bad.append(f"{tid}: {got} by another rule than {want_rule}")
+    for tid, text in (exp.get("reasons") or {}).items():
+        if text not in _reason(outs.get(f"PreToolUse:{tid}")):
+            bad.append(f"{tid}: the reason does not say {text!r}")
     if "blocked" in exp:
         got = any((o or {}).get("decision") == "block" for o in outs.values())
         if got != exp["blocked"]:
@@ -125,13 +152,20 @@ def _play(case: dict) -> list[str]:
     for ev in exp.get("audit") or []:
         if ev not in events:
             bad.append(f"no {ev} line in the audit chain")
+    for ev in exp.get("no_audit") or []:
+        if ev in events:
+            bad.append(f"a {ev} line in the audit chain")
     if not ok_chain:
         bad.append("the audit chain does not verify")
     if exp.get("tests") and testrun.state(led).get("state") != exp["tests"]:
         bad.append(f"tests are {testrun.state(led).get('state')}, expected {exp['tests']}")
     for secret in _fill(exp.get("output_lacks") or []):
-        if any(secret in json.dumps(o or {}) for o in outs.values()):
-            bad.append("a secret reached the model's view of the tool output")
+        if any(secret in json.dumps(o or {}) for o in outs.values()) or secret in json.dumps(led) or \
+                secret in json.dumps(r["events"]):
+            bad.append("a secret reached the model's view of the tool output, the ledger or the audit chain")
+    for text in _fill(exp.get("record_lacks") or []):
+        if text in json.dumps(led) or text in json.dumps(r["events"]):
+            bad.append(f"the ledger or the audit chain keeps {text[:40]!r}")
     return bad
 
 

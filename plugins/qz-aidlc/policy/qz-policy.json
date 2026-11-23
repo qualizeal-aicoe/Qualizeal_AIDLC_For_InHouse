@@ -365,6 +365,13 @@
       "match": "(?:^|[;&|(]\\s*)(?:Get-ChildItem|gci|dir|ls|Get-Item|gi)\\s+(?:-Path\\s+)?['\\\"]?env:[\\\\/]?['\\\"]?\\s*(?:$|[;&|)])|\\[(?:System\\.)?Environment\\]::GetEnvironmentVariables\\s*\\(|\\$env:\\w*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL)\\w*",
       "flags": "i",
       "message": "Reading the whole environment, or a token variable, is blocked: it holds secrets. Tools read their own tokens."
+    },
+    {
+      "id": "QZ-SH-ADO-RAW-WRITE",
+      "tool": "shell",
+      "flags": "im",
+      "match": "^(?=[^\\n]*(\\b(curl|wget|Invoke-RestMethod|irm|Invoke-WebRequest|iwr|xh|http)\\s|\\bfetch\\s*\\(|\\b(requests|axios)\\.\\w+\\s*\\())(?=[^\\n]*(/_apis/|/rest/raven/|dev\\.azure\\.com|visualstudio\\.com))(?=[^\\n]*(\\s-X\\s*['\\\"]?(POST|PUT|DELETE|PATCH)\\b|--request[ =]['\\\"]?(POST|PUT|DELETE|PATCH)\\b|-Method\\s+['\\\"]?(POST|PUT|DELETE|PATCH)\\b|method\\s*[:=]\\s*['\\\"](POST|PUT|DELETE|PATCH)['\\\"]|\\s(-d|--data(-raw|-binary|-urlencode)?|--json|-F|--form)[\\s=]|\\b(https?|xh)\\s+(POST|PUT|DELETE|PATCH)\\s|\\b(requests|axios)\\.(post|put|delete|patch)\\s*\\())",
+      "message": "Raw writes to the Azure DevOps or Xray REST API are blocked, through the credential proxy too. Work items, test cases and results go through the Azure DevOps connector or qz test sync, where a person (or an envelope they signed) says yes to each write."
     }
   ],
   "ask": [
@@ -693,6 +700,34 @@
       "flags": "i",
       "match": "(^|/)\\.qz/golive/findings\\.json$",
       "message": "Penetration-test findings decide whether the last go-live gate clears. A person confirms each change."
+    },
+    {
+      "id": "QZ-ASK-CREDPROXY",
+      "tool": "write",
+      "flags": "i",
+      "match": "(^|/)\\.qz/credproxy\\.json$",
+      "message": "The credential proxy's routes decide where a stored credential is sent. A person writes .qz/credproxy.json; an agent does not, and an autonomy envelope never answers this."
+    },
+    {
+      "id": "QZ-ASK-CREDPROXY",
+      "tool": "shell",
+      "flags": "i",
+      "match": "(?:>{1,2}\\|?\\s*['\\\"]?[^\\s'\\\"|;&]*\\.qz[\\\\/]credproxy\\.json)|\\b(?:tee|mv|cp|rm|truncate|install|ln|sed|perl|dd)\\b[^\\n;&|]*\\.qz[\\\\/]credproxy\\.json|\\.qz[\\\\/]credproxy\\.json[^\\n]*(?:write_text|writefile|json\\.dump|\\bopen\\s*\\()|(?:write_text|writefile|json\\.dump|\\bopen\\s*\\()[^\\n]*\\.qz[\\\\/]credproxy\\.json",
+      "message": "The credential proxy's routes decide where a stored credential is sent. A person writes .qz/credproxy.json; an agent does not, and an autonomy envelope never answers this."
+    },
+    {
+      "id": "QZ-ASK-CREDPROXY-RUN",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\bcredproxy\\s+(?:start|run)\\b",
+      "message": "Starting the credential proxy lets calls on this machine use the stored credentials for the routes in .qz/credproxy.json, within each route's methods and paths. A person starts it, or an envelope signed for this run."
+    },
+    {
+      "id": "QZ-ASK-TRACKER-WRITE",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\btest\\s+sync\\s+(?:cases|results)\\b[^\\n]*--yes\\b",
+      "message": "This writes test cases or results to the tracker (Azure DevOps or Jira) under the account the credential proxy holds. Confirm the project, the items and that they go out under that account. Each item is written once."
     }
   ],
   "write": {
@@ -706,7 +741,8 @@
       "(^|/)\\.qz/(secrets/|secrets\\.json$|repos\\.json$)",
       "(^|/)\\.qz/(audit|runs|outputs)/",
       "(?i)Pricing[_ ]?Work[_ ]?Sheet.*\\.xls[xm]?$",
-      "(^|/)\\.qz/golive/signoffs\\.jsonl$"
+      "(^|/)\\.qz/golive/signoffs\\.jsonl$",
+      "(^|/)tests/qz/tracker\\.json$"
     ],
     "secretPatterns": [
       {

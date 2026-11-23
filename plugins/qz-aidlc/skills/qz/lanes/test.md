@@ -4,10 +4,10 @@ Read `qz-agentic-engineering/references/test-design.md`. For anything with a scr
 
 **Only testing a page or a flow** (no story): go straight to steps 6 and 7.
 
-1. **Read the story** (`stage requirements-analysis`). From Jira through the connector when one is present (reading
-   needs no approval), or from what the person pastes. `test_design [init]`, then put the story key, title and each
-   acceptance criterion into `tests/qz/cases.json`. If a criterion cannot be tested as written, say so and ask; do
-   not invent the missing rule.
+1. **Read the story** (`stage requirements-analysis`). From the tracker: `qz test sync pull --tracker ado|jira
+   --story <id>` (run under `qz credproxy run`, so no token is held) fills `tests/qz/cases.json` with the criteria
+   and the tests already linked. Else the Jira connector or what the person pastes, into `test_design [init]`. If a
+   criterion cannot be tested as written, say so and ask; do not invent the missing rule.
 2. **Design, do not guess** (`stage build-and-test`). Use the techniques for the inputs:
    `test_design [technique, boundary, {"min":1,"max":100}]`, `equivalence`, `pairwise` (many options, few rows),
    `decision-table` (it reports missing and contradictory rules: those are findings for the story owner) and `state`.
@@ -17,10 +17,10 @@ Read `qz-agentic-engineering/references/test-design.md`. For anything with a scr
 3. **Check.** `test_design [check]`: every criterion has a positive and a negative or boundary case, no expectation
    that cannot fail, no duplicates. Fix until READY. `qz-reviewer` reads the set against the story.
 4. **Trace.** `test_design [matrix]` writes `tests/qz/traceability.md`.
-5. **Approve and export.** A person approves (`test_design [approve, <ids>, --by NAME]`); only approved cases leave:
-   `export xray --project KEY` (Xray Cloud bulk JSON), `csv`, `gherkin` (`.feature`), `playwright` (a skeleton marked
-   fixme, selectors are the engineer's). Creating tests or links in Jira through the connector waits for the
-   person's yes on the exact target.
+5. **Approve, then write back.** A person approves (`test_design [approve, <ids>, --by NAME]`); only approved cases
+   leave. `qz test sync cases --yes` writes each to the tracker once (a linked test with the same title is enriched
+   in place); or `export xray|csv|gherkin|playwright` (a skeleton marked fixme). After the run, `qz test sync results
+   --junit <file> --yes` posts results on the items they test, once per file. Unattended, only a signed envelope writes.
 6. **Run it in a browser, where there is a screen** (`stage verify`). Read the `qz-ui-testing` skill. `ui_probe`
    the page first and take locators from what it returns, never from source code. Write one scenario per approved
    UI case in `tests/ui/<name>.json` with `case` set to the case id; the last step asserts the end state the user

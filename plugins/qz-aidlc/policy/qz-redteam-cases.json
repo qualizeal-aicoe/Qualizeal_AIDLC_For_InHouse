@@ -1338,5 +1338,147 @@
       "_why": "numbers are not secrets"
     }
   ],
-  "_doc_output_cases": "Response level: what reaches the model or the person. Each text is joined from its parts at run time, so no whole key sits in this file."
+  "_doc_output_cases": "Response level: what reaches the model or the person. Each text is joined from its parts at run time, so no whole key sits in this file.",
+  "_doc_risk_cases": "The risk score: each case is decided by the guard's rules first; where they allow or ask, the score adds its own question (QZ-ASK-RISK) when it is high. 'expect' is the final decision; the cases that expect an ask with no rule asking are where the score raises a question the rule alone would not.",
+  "risk_cases": [
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "kubectl delete ns payments --context aks-prod"
+      },
+      "expect": "ask",
+      "_why": "money, production, irreversible"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "psql \"$PROD_DB_URL\" -c \"DELETE FROM customers\""
+      },
+      "expect": "ask",
+      "_why": "people, production, irreversible, breadth"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "python3 scripts/refund_customers.py --region eu-west-1"
+      },
+      "expect": "ask",
+      "_why": "money and people: a script that refunds customers"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "gsutil -m rm -r gs://acme-customer-exports"
+      },
+      "expect": "ask",
+      "_why": "people, irreversible, breadth"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "stripe refunds create --charge ch_123"
+      },
+      "expect": "ask",
+      "_why": "money that moves cannot be taken back"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "helm uninstall billing-api --kube-context aks-prod"
+      },
+      "expect": "ask",
+      "_why": "money, production, irreversible"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "redis-cli -h prod-cache.internal FLUSHALL"
+      },
+      "expect": "ask",
+      "_why": "production, irreversible"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "rm -rf dist"
+      },
+      "context": {
+        "untrusted": true
+      },
+      "expect": "ask",
+      "_why": "irreversible and breadth after untrusted content"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "kubectl rollout restart deploy/api --context aks-prod"
+      },
+      "context": {
+        "agent": true,
+        "unattended": true,
+        "untrusted": true
+      },
+      "expect": "ask",
+      "_why": "production, asked by a sub-agent in an unattended run after untrusted content"
+    },
+    {
+      "tool": "Write",
+      "input": {
+        "file_path": "/w/deploy/prod/customers.csv"
+      },
+      "expect": "ask",
+      "_why": "a production data file about people"
+    },
+    {
+      "tool": "mcp__github__delete_file",
+      "input": {
+        "owner": "acme",
+        "repo": "billing",
+        "branch": "release",
+        "path": "deploy/prod/values.yaml"
+      },
+      "expect": "ask",
+      "_why": "money, production, irreversible: the SCM write rule asks anyway; the score keeps an envelope from answering"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "rm -rf build"
+      },
+      "expect": null,
+      "_why": "a build folder: noted, not asked"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "grep -r \"DELETE FROM users\" src/"
+      },
+      "expect": null,
+      "_why": "a read"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "git commit -m \"Refund flow for customers\""
+      },
+      "expect": null,
+      "_why": "the words are a message, not a target"
+    },
+    {
+      "tool": "Bash",
+      "input": {
+        "command": "pytest tests/test_refund_customers.py"
+      },
+      "expect": null,
+      "_why": "a test run"
+    },
+    {
+      "tool": "Write",
+      "input": {
+        "file_path": "/w/docs/refund-flow-for-customers.md"
+      },
+      "expect": null,
+      "_why": "a local document"
+    }
+  ]
 }
