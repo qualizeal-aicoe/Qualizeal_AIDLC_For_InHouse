@@ -212,29 +212,37 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
 
 ## What was run, and what was not
 
-Run on 23 November 2026 for 1.2.0, the same way 1.1.0 and 1.0.2 were checked earlier that day:
-- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 465 tests (463
-  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 462 passed and 3 skipped on macOS,
-  whose runner also lacks Chrome for one visual check; 461 passed and 4 skipped on Windows, where in addition Claude
+Run on 23 November 2026 for 1.3.0, the same way 1.2.0, 1.1.0 and 1.0.2 were checked earlier that day:
+- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 468 tests (466
+  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 465 passed and 3 skipped on macOS,
+  whose runner also lacks Chrome for one visual check; 464 passed and 4 skipped on Windows, where in addition Claude
   Code's sandbox does not run natively); the guard's red-team, 176 of 176, the 16 risk-score cases among them; the
   Studio's own evals, tool 231 of 231, response 9 of 9, outcome 13 of 13; the harness bench, 17 sessions with no
-  change from the baseline and the same 2,635 harness tokens on all four systems; the doctor, and the bootstrap in
+  change from the 1.2.0 baseline and the same 2,635 harness tokens on all four systems; the doctor, and the bootstrap in
   check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the vectorless
   demo rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude
   Code from its native installer. Every pull request and every push to main runs the same checks, and the Actions tab
   shows the latest.
 - **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
-  their gate) and health check inside the image with no network: 13 of 13 passed. Each starter also meets the seven
-  standards the moment it is created, the nine go-live gates built in and its evals at three levels.
+  their gate) and health check inside the image with no network: 13 of 13 passed. Each of the seven agent starters'
+  images also started its HTTP interface with no network, and Docker reported all seven healthy. Each starter also
+  meets the seven standards the moment it is created, the nine go-live gates built in and its evals at three levels.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
-  ones. The RAG kits are unchanged since 1.0.2: the hybrid kit with its real models on a CPU scored 41 of 43, against 38
-  for keyword search alone, with no safety violations. The command-line harness ran against the real WireMock 3.13.2
-  on both systems, with CI set to fail rather than skip if the server were missing.
+  ones. In every agent starter the tests stop a process while a refund waits for a person and answer it from a second
+  process; stop it right after the refund is made, then replay the run and find no second refund; and call the HTTP
+  interface as a demo user, with an OIDC token signed by a test key, and through a trusted proxy's headers, including
+  the refusals (no token, a wrong issuer or audience, an expired token, a token that names no one, an approver
+  answering their own request, an untrusted proxy). The gold set has 16 cases, these two runs among them. The hybrid
+  kit with its real models on a CPU scored 41 of 43 on Linux and on Windows, against 38 for keyword search alone, with
+  no safety violations. The command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to
+  fail rather than skip if the server were missing.
+- **One audit chain, three writers**: here, outside CI, three processes of the TypeScript, Go and .NET starters each
+  wrote to one audit log at the same time; all 900 records were there and the chain was intact.
 - **The testing lane against a tracker**: `qz test sync` read, wrote back and posted results against recorded Azure
   DevOps and Jira (Xray) trackers that answer only the calls they hold, and once end to end through the credential
   proxy, where the test proves the token reached neither the command, its output nor the audit chain.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
-  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.2.0 and qz-console at 1.0.1
+  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.3.0 and qz-console at 1.0.1
   (unchanged since 1.0.1).
 - **The handbook demo end to end** on Linux with the real models, for 1.0.2, scaffolded the way an attendee does: the
   questions, the trace, the refusal, the HR answer, both gates and the chat page over HTTP. Its offline fallback answers
