@@ -1,0 +1,214 @@
+{
+ "_doc": "A recorded Azure DevOps project 'Payments': story 12, one test case already linked (301), plan 7 suite 8.",
+ "interactions": [
+  {
+   "method": "GET",
+   "path": "Payments/_apis/wit/workitems/12?$expand=relations&api-version=7.1",
+   "response": {
+    "id": 12,
+    "url": "https://dev.azure.com/acme-test/9f1c2d/_apis/wit/workItems/12",
+    "_links": {
+     "html": {
+      "href": "https://dev.azure.com/acme-test/Payments/_workitems/edit/12"
+     }
+    },
+    "fields": {
+     "System.Title": "Refund within 30 days",
+     "System.WorkItemType": "User Story",
+     "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>A paid order can be refunded in full up to 30 days after payment</li><li>After 30 days the refund button is disabled and the page says why</li></ul>"
+    },
+    "relations": [
+     {
+      "rel": "Microsoft.VSTS.Common.TestedBy-Forward",
+      "url": "https://dev.azure.com/acme-test/9f1c2d/_apis/wit/workItems/301",
+      "attributes": {}
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "Payments/_apis/wit/workitems?ids=301&fields=System.Title&api-version=7.1",
+   "response": {
+    "count": 1,
+    "value": [
+     {
+      "id": 301,
+      "fields": {
+       "System.Title": "Refund on day 29 succeeds"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "method": "PATCH",
+   "path": "Payments/_apis/wit/workitems/301?api-version=7.1",
+   "body_has": [
+    "Microsoft.VSTS.TCM.Steps",
+    "replace"
+   ],
+   "response": {
+    "id": 301,
+    "rev": 4
+   }
+  },
+  {
+   "method": "POST",
+   "path": "Payments/_apis/wit/workitems/$Test%20Case?api-version=7.1",
+   "body_has": [
+    "Refund on day 30",
+    "TestedBy-Reverse"
+   ],
+   "response": {
+    "id": 302,
+    "_links": {
+     "html": {
+      "href": "https://dev.azure.com/acme-test/Payments/_workitems/edit/302"
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "Payments/_apis/wit/workitems/$Test%20Case?api-version=7.1",
+   "body_has": [
+    "Refund on day 31",
+    "TestedBy-Reverse"
+   ],
+   "response": {
+    "id": 303,
+    "_links": {
+     "html": {
+      "href": "https://dev.azure.com/acme-test/Payments/_workitems/edit/303"
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "Payments/_apis/testplan/Plans/7/Suites/8/TestCase?api-version=7.1",
+   "body_has": [
+    "302",
+    "303"
+   ],
+   "response": {
+    "count": 2,
+    "value": []
+   }
+  },
+  {
+   "method": "GET",
+   "path": "Payments/_apis/testplan/Plans/7/Suites/8/TestPoint?api-version=7.1",
+   "response": {
+    "count": 3,
+    "value": [
+     {
+      "id": 1001,
+      "testCaseReference": {
+       "id": 301,
+       "name": "Refund on day 29 succeeds"
+      }
+     },
+     {
+      "id": 1002,
+      "testCaseReference": {
+       "id": 302,
+       "name": "Refund on day 30 succeeds (the boundary)"
+      }
+     },
+     {
+      "id": 1003,
+      "testCaseReference": {
+       "id": 303,
+       "name": "Refund on day 31 is refused with the reason shown"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "Payments/_apis/test/runs?api-version=7.1",
+   "body_has": [
+    "1001",
+    "1002",
+    "1003"
+   ],
+   "response": {
+    "id": 77,
+    "webAccessUrl": "https://dev.azure.com/acme-test/Payments/_testManagement/runs?runId=77"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "Payments/_apis/test/Runs/77/results?api-version=7.1",
+   "response": {
+    "count": 3,
+    "value": [
+     {
+      "id": 100000,
+      "testCase": {
+       "id": "301"
+      },
+      "testPoint": {
+       "id": "1001"
+      }
+     },
+     {
+      "id": 100001,
+      "testCase": {
+       "id": "302"
+      },
+      "testPoint": {
+       "id": "1002"
+      }
+     },
+     {
+      "id": 100002,
+      "testCase": {
+       "id": "303"
+      },
+      "testPoint": {
+       "id": "1003"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "method": "PATCH",
+   "path": "Payments/_apis/test/Runs/77/results?api-version=7.1",
+   "body_has": [
+    "Passed",
+    "Failed",
+    "100002"
+   ],
+   "response": {
+    "count": 3
+   }
+  },
+  {
+   "method": "PATCH",
+   "path": "Payments/_apis/test/runs/77?api-version=7.1",
+   "body_has": [
+    "Completed"
+   ],
+   "response": {
+    "id": 77,
+    "state": "Completed"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "Payments/_apis/wit/workItems/12/comments?api-version=7.1-preview.4",
+   "body_has": [
+    "2 passed, 1 failed"
+   ],
+   "response": {
+    "id": 9001,
+    "workItemId": 12
+   }
+  }
+ ]
+}

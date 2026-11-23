@@ -1,0 +1,173 @@
+{
+ "_doc": "A recorded Jira Cloud project PAY with Xray Server/DC endpoints: story PAY-12, one test already linked (PAY-40).",
+ "interactions": [
+  {
+   "method": "GET",
+   "path": "rest/api/3/issue/PAY-12?fields=summary,description,issuelinks,project",
+   "response": {
+    "id": "10012",
+    "key": "PAY-12",
+    "self": "https://acme-test.atlassian.net/rest/api/3/issue/10012",
+    "fields": {
+     "summary": "Refund within 30 days",
+     "project": {
+      "key": "PAY"
+     },
+     "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+       {
+        "type": "paragraph",
+        "content": [
+         {
+          "type": "text",
+          "text": "As a customer I want a refund within 30 days."
+         }
+        ]
+       },
+       {
+        "type": "heading",
+        "attrs": {
+         "level": 3
+        },
+        "content": [
+         {
+          "type": "text",
+          "text": "Acceptance criteria"
+         }
+        ]
+       },
+       {
+        "type": "bulletList",
+        "content": [
+         {
+          "type": "listItem",
+          "content": [
+           {
+            "type": "paragraph",
+            "content": [
+             {
+              "type": "text",
+              "text": "A paid order can be refunded in full up to 30 days after payment"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "type": "listItem",
+          "content": [
+           {
+            "type": "paragraph",
+            "content": [
+             {
+              "type": "text",
+              "text": "After 30 days the refund button is disabled and the page says why"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "issuelinks": [
+      {
+       "id": "20001",
+       "type": {
+        "name": "Test",
+        "inward": "is tested by",
+        "outward": "tests"
+       },
+       "outwardIssue": {
+        "key": "PAY-40",
+        "fields": {
+         "summary": "Refund on day 29 succeeds"
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "rest/api/3/issue/PAY-40",
+   "body_has": [
+    "Refund on day 29 succeeds",
+    "tableHeader"
+   ],
+   "response": null
+  },
+  {
+   "method": "POST",
+   "path": "rest/api/3/issue",
+   "body_has": [
+    "Refund on day 30",
+    "\"Test\""
+   ],
+   "response": {
+    "id": "10050",
+    "key": "PAY-50"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "rest/api/3/issueLink",
+   "body_has": [
+    "PAY-50",
+    "PAY-12"
+   ],
+   "response": null
+  },
+  {
+   "method": "POST",
+   "path": "rest/api/3/issue",
+   "body_has": [
+    "Refund on day 31",
+    "\"Test\""
+   ],
+   "response": {
+    "id": "10051",
+    "key": "PAY-51"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "rest/api/3/issueLink",
+   "body_has": [
+    "PAY-51",
+    "PAY-12"
+   ],
+   "response": null
+  },
+  {
+   "method": "POST",
+   "path": "rest/raven/1.0/import/execution",
+   "body_has": [
+    "PAY-40",
+    "PASS",
+    "FAIL"
+   ],
+   "response": {
+    "testExecIssue": {
+     "id": "10060",
+     "key": "PAY-60",
+     "self": "https://acme-test.atlassian.net/rest/api/2/issue/10060"
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "rest/api/3/issue/PAY-12/comment",
+   "body_has": [
+    "2 passed, 1 failed"
+   ],
+   "response": {
+    "id": "30001"
+   }
+  }
+ ]
+}

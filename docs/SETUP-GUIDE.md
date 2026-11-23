@@ -114,14 +114,21 @@ Restart Claude Code, sign in with the Claude account you use for work, and type 
   reads every command.
 
 Every project the Studio starts meets the QualiZeal standards (`qz standards`): the six guardrails, an EU AI Act
-record in `docs/ai-act/`, open source first, the cost levers and the solution shape. A person confirms the AI Act class once, with
+record in `docs/ai-act/`, open source first, the cost levers, the solution shape, go-live readiness and agent evals. A person confirms the AI Act class once, with
 `qz aiact confirm --yes`; a vendor the team chooses is recorded with `qz practices set standards.vendors <name> --yes`.
 
 Two switches you may want in `/plugin` > qz-aidlc > Configure: **Format on edit** (formats each file Claude writes with
 the formatter your project declares, if it is installed; off by default) and **Voice**. Tokens you enter there, such as
 an Atlassian API token, are kept by Claude Code with its own credentials, not in a settings file. Per project,
-`.qz/config.json` can set `"steps": {"per_stage": 200}` (the step cap), `"snapshots": {"enabled": false}`, and
-`"references": {"name": "path"}` for folders Claude may read but never change.
+`.qz/config.json` can set `"steps": {"per_stage": 200}` (the step cap), `"snapshots": {"enabled": false}`,
+`"risk": {"ask_at": 6}` (where the risk score asks) and `"references": {"name": "path"}` for folders Claude may read
+but never change.
+
+For a script or an agent that calls Azure DevOps, Jira or GitHub without holding the token (the testing lane's
+`qz test sync`, or an agent you build), store the token once in the OS keychain with `qz credproxy store ado`, write
+the route with `qz credproxy init` (then set the upstream and `"enabled": true` in `.qz/credproxy.json`), check it
+with `qz credproxy check`, and run the command as `qz credproxy run -- <command>`. [HARNESS.md](HARNESS.md) has the
+whole of it, with an unattended testing run from Azure DevOps.
 
 ### How routing works
 
@@ -190,7 +197,9 @@ inside Claude, `/qz-aidlc:qz-help`.
 The guard asks before a push, a pull request, creating a repository, any write to Jira or Confluence, installing a
 package, changing your status line or your Git identity, a write outside the project folder, an undo, a goal check,
 and approving a spec. It also asks when a command runs a program named by a variable, writes to a path it cannot
-tell, repeats the same call a third time, or a stage runs past its step cap. Read what it says, then **Yes** or **No**.
+tell, repeats the same call a third time, a stage runs past its step cap, or a call scores 6 or more for risk (it
+names what the call touches: money, people's data, production, something that cannot be undone). A write already made
+in this run is not asked about again: the guard says it was done and names it; say "do it again" if you want it twice. Read what it says, then **Yes** or **No**.
 When it blocks something, the message names the rule (for example `QZ-SH-GIT-PUSH`) and why.
 
 ## If something goes wrong

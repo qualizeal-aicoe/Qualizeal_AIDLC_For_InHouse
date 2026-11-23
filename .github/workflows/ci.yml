@@ -81,6 +81,10 @@ jobs:
         if: always()
         shell: bash
         run: '"$PY" -I -X utf8 plugins/qz-aidlc/scripts/qz.py eval studio --gate'
+      - name: The harness bench, against the committed baseline (an unexplained change fails)
+        if: always()
+        shell: bash
+        run: '"$PY" -I -X utf8 plugins/qz-aidlc/scripts/qz.py bench run --gate'
       - name: Doctor, started the way an attendee starts it (PowerShell)
         if: always() && runner.os == 'Windows'
         shell: pwsh

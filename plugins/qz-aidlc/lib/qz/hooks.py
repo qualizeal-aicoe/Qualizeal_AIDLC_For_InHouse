@@ -11,7 +11,7 @@ import time
 import json
 from pathlib import Path
 
-from . import audit, autonomy, conventions, decisions, footprint, guard, ledger, testrun
+from . import audit, autonomy, conventions, decisions, footprint, guard, ledger, risk, testrun, writes
 from .ctx import hook as ctxhook
 from .names import shown, tag
 from .util import now, project_config, project_dir, qz_dir
@@ -145,6 +145,7 @@ def user_prompt(p: dict) -> dict | None:
         return {"decision": "block", "reason": f"{tag('qz-guard')} your message contains what looks like {what} ({pii[0].rule}), so it was not sent: "
                                                "the Studio never sends it to a model. Ask again without it, or with the number masked."}
     ledger.on_prompt(led)
+    _quiet(writes.on_prompt, led, text)
     from . import snapshot
     _quiet(snapshot.begin, proj, led)
     # One status line when lane, stage or budget (in 10% steps) changes: the model knows where it is,
@@ -202,12 +203,42 @@ def pre_tool(p: dict) -> dict | None:
         return None
     led = ledger.load(proj)
     out = None
+    agent = str(p.get("agent_id") or "")
+    # No write twice within a run: a tracker, wiki or source-control write already done is refused before any question.
+    again = False
+    wrule = _quiet(writes.rule_for, tool, guard.load_policy()) if d.action != "deny" else None
+    if wrule:
+        dup = _quiet(writes.duplicate, led, tool, tin)
+        if dup and not led.get("write_again"):
+            ledger.count(led, "deny", writes.RULE)
+            audit.append(proj, "WRITE_REPEAT_REFUSED", rule=writes.RULE, tool=tool, fp=dup["fp"], created=dup.get("created") or [],
+                         run=led["run_id"], stage=led["stage"])
+            ledger.save(proj, led)
+            return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                          "permissionDecisionReason": f"{tag('qz-writes')} {writes.message(dup)} (rule {writes.RULE})"}}
+        if dup:                                          # the person said "do it again": one repeat, asked about, never by an envelope
+            led["write_again"], again = False, True
+            if d.action != "ask":
+                d = guard.Decision("ask", wrule, "This repeats a write already done in this run; the person asked for it again.")
+        led["pending_writes"] = dict(list({**(led.get("pending_writes") or {}), tid: writes.fingerprint(tool, tin)}.items())[-50:])
+    # Risk score: what the call touches and who is asking. High asks even where no rule would, and is never answered by an envelope.
+    rk = _quiet(risk.assess, proj, led, tool, tin, agent) if d.action != "deny" else None
+    high = bool(rk and rk["level"] == "high")
+    if rk and rk["level"] != "low":
+        audit.append(proj, "RISK_SCORED", tool=tool, score=rk["score"], level=rk["level"], factors=sorted(rk["factors"]),
+                     run=led["run_id"], stage=led["stage"])
+    if d.action is None and high:
+        d = guard.Decision("ask", risk.RULE, risk.message(rk))
     if d.action in ("deny", "ask"):
         ledger.count(led, d.action, d.rule)
         if d.action == "ask":
             ledger.record_gate(led, "ask", d.rule, tool, tid, d.message)
         audit.append(proj, "GUARD_" + d.action.upper(), rule=d.rule, tool=tool, run=led["run_id"], stage=led["stage"])
         out = _pre(d.action, f"{d.message} (rule {d.rule})")
+        if high and d.rule != risk.RULE:
+            out["hookSpecificOutput"]["permissionDecisionReason"] += f" {tag('qz-risk')} {risk.describe(rk)} An autonomy envelope does not answer it."
+        if again:
+            out["hookSpecificOutput"]["permissionDecisionReason"] += f" {tag('qz-writes')} This is the repeat the person asked for."
         shell = d.action == "ask" and tool in guard.SHELL_TOOLS
         cmd = guard.normalise(str(tin.get("command") or "")) if shell else ""
         cv = (_quiet(conventions.hook_check, proj, cmd, led) if shell else
@@ -224,7 +255,7 @@ def pre_tool(p: dict) -> dict | None:
             if dc:                                       # a push that already waits for the person shows the conflict too
                 audit.append(proj, "DECISION_CONFLICT", tool=tool, run=led["run_id"], stage=led["stage"])
                 out["hookSpecificOutput"]["permissionDecisionReason"] += f" {tag('qz-decisions')} {dc['message']}"
-            elif d.action == "ask" and (ok := _quiet(autonomy.permits, proj, tool, tin, d.rule)):
+            elif d.action == "ask" and not high and not again and (ok := _quiet(autonomy.permits, proj, tool, tin, d.rule)):
                 # A signed envelope answers this question for an unattended run: never a deny, never the harness's own
                 # questions (autonomy.NEVER), and each yes is chained in the audit log and counted against its cap.
                 ledger.resolve_gate(led, tid, "autonomous")
@@ -234,7 +265,7 @@ def pre_tool(p: dict) -> dict | None:
                                               "permissionDecisionReason": f"{tag('qz-autonomy')} {d.message} Allowed without asking under the "
                                               f"autonomy envelope {ok['signed']['by']} signed ({ok['used'] + 1} of {ok['cap']}, until "
                                               f"{ok['env']['expires']}): {ok['entry']['why']}"}}
-    elif (x := _quiet(_extra_checks, proj, led, tool, tin, tid, p.get("cwd"), str(p.get("agent_id") or ""))):
+    elif (x := _quiet(_extra_checks, proj, led, tool, tin, tid, p.get("cwd"), agent)):
         rule, msg = x
         ledger.count(led, "ask", rule)
         ledger.record_gate(led, "ask", rule, tool, tid, msg)
@@ -338,6 +369,11 @@ def post_tool(p: dict) -> dict | None:
     tool, tin, resp, tid = p.get("tool_name", ""), p.get("tool_input") or {}, p.get("tool_response"), p.get("tool_use_id", "")
     led = ledger.load(proj)
     ledger.resolve_gate(led, tid, "approved")
+    if tid and tid in (led.get("pending_writes") or {}):
+        led["pending_writes"].pop(tid, None)
+        if not writes.failed(resp):
+            w = writes.note_done(led, tool, tin, resp, now())
+            audit.append(proj, "WRITE_DONE", tool=tool, fp=w["fp"], created=w["created"], run=led["run_id"], stage=led["stage"])
     la = (led.get("loop_asks") or {}).pop(tid, None)
     if la and isinstance(led.get("recent_calls"), dict):
         who, h = la

@@ -1,4 +1,4 @@
-"""qz test init | technique | check | matrix | approve | export | pack"""
+"""qz test init | technique | check | matrix | approve | export | pack | sync (two-way with Azure DevOps or Jira: qz test sync --help)"""
 from __future__ import annotations
 
 import argparse
@@ -13,6 +13,9 @@ STORE = "tests/qz/cases.json"
 
 
 def main(name: str, rest: list[str]) -> None:
+    if rest[:1] == ["sync"]:
+        from . import tracker
+        return tracker.main(rest[1:])
     ap = argparse.ArgumentParser(prog="qz test")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for n in ("init", "check", "matrix"):

@@ -3,6 +3,52 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
+## 1.2.0 · 23 November 2026
+
+The harness: each write made once, a second look at risky calls, tokens the agent never holds, and a bench that
+replays the harness against every release. The testing lane runs two-way with Azure DevOps and Jira.
+
+### Added
+
+- **No write twice within a run.** Every write to Jira, Confluence, GitHub, GitLab, Azure DevOps or Figma is kept in
+  the run's ledger with its fingerprint (the operation and its arguments) and what it created (keys, ids, links;
+  never the body or a token). When a stage is redone after a crash, the same write is refused before anyone is asked
+  and names the first ("already done: QZ-12 at 10:03 UTC"); a write that differs is asked about as usual. "Do it
+  again" lets one repeat be asked about, and an autonomy envelope never answers a repeat.
+- **A risk score before an action (`qz risk`).** Each call that can change something is scored from what it targets
+  (money, people's data, production, irreversible, breadth) and who asks (a sub-agent, an unattended run, untrusted
+  content earlier in the run). At 6 the guard asks even where no rule would, and an envelope never answers
+  (`QZ-ASK-RISK`); from 3 the score is in the audit log. Free text such as a commit message, reads, test runs and
+  local documents are not scored. Sixteen red-team cases check it: ten where the rules alone let the call through,
+  one where a rule asks and the score keeps an envelope from answering, and five that must stay quiet.
+- **Credentials the agent never holds (`qz credproxy`).** A server on 127.0.0.1 adds the credential (from the OS
+  keychain, or the environment of whoever starts it) to calls on the routes a person wrote in `.qz/credproxy.json`:
+  HTTPS upstreams only, each route's methods and paths, the caller's own Authorization and Cookie headers dropped,
+  any echo of the token redacted, every call in the audit chain. `qz credproxy run -- <command>` runs a command with
+  base URLs and an environment with no token in it. A test agent calls through it and the token appears nowhere in
+  its environment, its output or the audit chain.
+- **A bench for the harness (`qz bench`).** The 13 outcome sessions and four working sessions, played through the
+  hooks with an empty home folder; what the guard decided, what the ledger holds, the order of audit events and the
+  tokens the harness spends are compared with `policy/qz-bench/baseline.json`. The Studio's CI fails on any change
+  the baseline does not explain; `qz bench accept --reason` records why, beside each session that changed.
+- **The testing lane, two-way with Azure DevOps and Jira (`qz test sync`).** `pull` reads the story, its acceptance
+  criteria and the tests already linked to it; `cases` writes each approved case once (Azure DevOps Test Case work
+  items with their steps, linked by Tests and added to the plan's suite; Jira Test issues linked to the story), and
+  enriches a linked test with the same title in place; `results` posts a JUnit file's outcomes once (an Azure DevOps
+  test run with an outcome per test point and a comment on the story; an Xray Server or Data Center execution, or a
+  comment). Calls go through the credential proxy. Unattended, only what a signed envelope covers is written, item by
+  item. CI plays it against recorded Azure DevOps and Jira trackers and once through the proxy.
+- `docs/HARNESS.md`: what the harness does on every call, the four new pieces, and an unattended testing lifecycle
+  from Azure DevOps put together from them.
+
+### Changed
+
+- The outcome evals gained five sessions (a redo that writes once, "do it again", a write record with no token or
+  body, a risk the rules alone would allow, untrusted content raising the score): 13 in all.
+- The guard asks before `.qz/credproxy.json` changes and before the proxy starts, and refuses raw writes to the Azure
+  DevOps and Xray REST APIs; `tests/qz/tracker.json` is written only by the sync. 118 rule ids.
+- The Test lane reads from and writes back to the tracker.
+
 ## 1.1.0 · 23 November 2026
 
 Ready for an enterprise go-live, evaluated at three levels, and safe to leave running unattended.
