@@ -79,7 +79,9 @@ client's own Kubernetes, with Claude through the cloud's own model service (on K
   starters) to an OpenAI-compatible model went to the Responses API, which self-hosted servers such as SIE and Ollama do
   not have; both gateway configs now send it through chat/completions. The Strands starter shared one model client
   between turns, so the answer to an approval reused a connection from a closed event loop; it now makes a client per
-  request. An evaluation run with its own results folder (the gateway's gold set) wrote its report to the default one.
+  request. An evaluation run with its own results folder (the gateway's gold set) wrote its report to the default one,
+  and the CI's stand-in Langfuse read only bodies sent with a length, so the TypeScript starter's traces, which Node
+  sends in chunks, were lost there.
 - On Windows, two of the Studio's tests read paths with backslashes and fed git carriage returns, so a shipped
   `.env.example` looked ignored.
 

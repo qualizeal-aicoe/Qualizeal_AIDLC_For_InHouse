@@ -106,9 +106,17 @@ def test_the_stand_in_langfuse_checks_its_credential_and_records_spans(tmp_path)
     with pytest.raises(urllib.error.HTTPError, match="401"):
         _post(url, doc, {"Authorization": "Basic " + base64.b64encode(b"pk-lf:wrong").decode()})
     _post(url, doc, {"Authorization": "Basic " + base64.b64encode(b"pk-lf:sk-lf").decode()})
+    import http.client                                    # Node's exporter sends the body in chunks, with no Content-Length
+    host, port = url.split("//")[1].split("/")[0].split(":")
+    c = http.client.HTTPConnection(host, int(port), timeout=10)
+    body = json.dumps(doc).encode()
+    c.request("POST", "/api/public/otel/v1/traces", body=iter([body[:50], body[50:]]), encode_chunked=True,
+              headers={"Content-Type": "application/json", "Authorization": "Basic " + base64.b64encode(b"pk-lf:sk-lf").decode()})
+    assert c.getresponse().status == 200
     srv.shutdown()
-    span = json.loads(out.read_text(encoding="utf-8").splitlines()[0])
-    assert span == {"service": "order-help", "trace": "ab" * 16, "span": "cd" * 8, "parent": "", "name": "agent.run", "attrs": {"gen_ai.usage.input_tokens": 40}}
+    spans = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
+    want = {"service": "order-help", "trace": "ab" * 16, "span": "cd" * 8, "parent": "", "name": "agent.run", "attrs": {"gen_ai.usage.input_tokens": 40}}
+    assert spans == [want, want]
 
 
 def _run_files(tmp_path, cost=0.0012, extra_attr=None, leak=b""):

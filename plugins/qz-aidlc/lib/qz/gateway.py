@@ -28,6 +28,21 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+def read_body(handler: BaseHTTPRequestHandler) -> bytes:
+    """A request's body, sent with a Content-Length or in chunks (Node's OpenTelemetry exporter sends chunks)."""
+    if "chunked" not in handler.headers.get("Transfer-Encoding", "").lower():
+        return handler.rfile.read(int(handler.headers.get("Content-Length") or 0))
+    out = b""
+    while True:
+        size = int(handler.rfile.readline().split(b";")[0].strip() or b"0", 16)
+        if size == 0:
+            while handler.rfile.readline() not in (b"\r\n", b"\n", b""):   # any trailers, then the end
+                pass
+            return out
+        out += handler.rfile.read(size)
+        handler.rfile.readline()                                            # the line end after each chunk
+
+
 # --- the starters' rules, as their offline stubs apply them (agent/stub.py and its ports) -------------------------------
 ORDER = re.compile(r"\bORD-\d+\b", re.I)
 NOT_ALLOWED = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help."
@@ -153,9 +168,8 @@ class Standin(BaseHTTPRequestHandler):
         self._send(404, b'{"error":"not found"}')
 
     def do_POST(self):
-        n = int(self.headers.get("Content-Length") or 0)
         try:
-            req = json.loads(self.rfile.read(n) or b"{}")
+            req = json.loads(read_body(self) or b"{}")
         except json.JSONDecodeError:
             return self._send(400, b'{"error":"not JSON"}')
         path = self.path.split("?")[0].rstrip("/")
@@ -277,8 +291,7 @@ class LangfuseStandin(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
-        n = int(self.headers.get("Content-Length") or 0)
-        body = self.rfile.read(n)
+        body = read_body(self)
         if not self.path.split("?")[0].rstrip("/").endswith("/v1/traces"):
             return self._reply(404)
         if self.auth and self.headers.get("Authorization", "") != "Basic " + base64.b64encode(self.auth.encode()).decode():
