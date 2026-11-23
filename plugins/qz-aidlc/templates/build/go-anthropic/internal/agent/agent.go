@@ -2,6 +2,9 @@ package agent
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,12 +14,14 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// Call is one tool request from the model. Status is ok, pending or denied.
+// Call is one tool request from the model. Status is ok, pending, denied (a person said no) or not_allowed (not on
+// the role's tool list). Result is what the tool returned, when it ran: the grounded check and the effects read it.
 type Call struct {
 	ID     string         `json:"-"`
 	Name   string         `json:"name"`
 	Args   map[string]any `json:"args"`
 	Status string         `json:"status"`
+	Result map[string]any `json:"result,omitempty"`
 }
 
 // Turn is one entry of the transcript, independent of any provider's message format.
@@ -51,6 +56,24 @@ type Result struct {
 	Guard            *Guard `json:"guard,omitempty"`
 	AINotice         string `json:"ai_notice"`    // EU AI Act Article 50(1): show it before the first reply
 	AIGenerated      bool   `json:"ai_generated"` // Article 50(2): a machine-readable mark; false for fixed texts
+	Role             string `json:"role"`
+	// The three levels the evals and the live monitor score: what the run changed, how it ended, and whether the
+	// reply held only facts the tools or the person gave (see guardrails.go).
+	Effects []map[string]any `json:"effects"`
+	Outcome string           `json:"outcome"`
+	Checks  *Checks          `json:"checks,omitempty"`
+}
+
+// Checks is the response-level check run on every reply.
+type Checks struct {
+	Grounded   bool `json:"grounded"`
+	Ungrounded int  `json:"ungrounded"`
+}
+
+// Who is asking: set by whoever starts the agent (an interface: the identity provider's groups), never by the message.
+type Who struct {
+	Role  string
+	Actor string
 }
 
 // Guard says what the input and output filters found.
@@ -73,27 +96,96 @@ func NewModel() Model {
 	return StubModel{}
 }
 
-// Run drives the loop behind the two filters: the input is checked before the model reads it (gate 1), the reply
-// before it is returned (gate 2).
+// Run drives the loop behind the two filters in the configured role (Role, Actor). See RunAs.
 func Run(ctx context.Context, model Model, message string, approve Approver) (Result, error) {
-	in := ScreenInput(message)
-	if in.Blocked {
-		return Result{Output: in.Text, ToolCalls: []Call{}, Guard: &Guard{Input: in.Findings, Output: []string{}}, AINotice: AINotice}, nil
+	return RunAs(ctx, model, message, approve, Who{})
+}
+
+// RunAs drives the loop behind the two filters: the input is checked before the model reads it (gate 1), the reply
+// before it is returned (gate 2). The model sees only the role's tools, and the run goes to the audit log.
+func RunAs(ctx context.Context, model Model, message string, approve Approver, who Who) (Result, error) {
+	if who.Role == "" {
+		who.Role = Role()
 	}
-	res, err := run(ctx, model, in.Text, approve)
-	out := ScreenOutput(res.Output)
-	res.Output = out.Text
-	res.Guard = &Guard{Input: in.Findings, Output: out.Findings}
-	res.AINotice = AINotice
-	res.AIGenerated = !out.Blocked && !res.AwaitingApproval
+	if who.Actor == "" {
+		who.Actor = Actor()
+	}
+	in := ScreenInput(message)
+	var res Result
+	var err error
+	if in.Blocked {
+		res = Result{Output: in.Text, ToolCalls: []Call{}, Guard: &Guard{Input: in.Findings, Output: []string{}}, AINotice: AINotice}
+	} else {
+		res, err = run(ctx, model, in.Text, approve, who.Role)
+		out := ScreenOutput(res.Output)
+		res.Output = out.Text
+		res.Guard = &Guard{Input: in.Findings, Output: out.Findings}
+		res.AINotice = AINotice
+		res.AIGenerated = !out.Blocked && !res.AwaitingApproval
+	}
+	res.Role = who.Role
+	res.Effects = Effects(res.ToolCalls)
+	res.Outcome = Outcome(res, in.Blocked)
+	if err != nil {
+		res.Outcome = "failed"
+	}
+	if res.Outcome == "acted" || res.Outcome == "answered" || res.Outcome == "declined" {
+		sources := []string{in.Text, System}
+		for _, c := range res.ToolCalls {
+			if c.Result != nil {
+				sources = append(sources, toJSON(c.Result))
+			}
+		}
+		bad := Ungrounded(res.Output, sources)
+		res.Checks = &Checks{Grounded: len(bad) == 0, Ungrounded: len(bad)}
+	}
+	masked, _ := Mask(message)
+	if aerr := record(who, masked, res, err); aerr != nil && err == nil {
+		err = fmt.Errorf("audit log: %w", aerr)
+	}
 	return res, err
 }
 
+func runID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// record writes one audit line per tool call and one for the run: masked arguments, never the reply or the message.
+// The run line carries what the live monitor scores: how it ended, what it changed, whether the reply was grounded.
+func record(who Who, message string, res Result, runErr error) error {
+	id := runID()
+	for _, c := range res.ToolCalls {
+		args, _ := Mask(toJSON(c.Args))
+		if len(args) > 500 {
+			args = args[:500]
+		}
+		if err := Audit("tool", who.Actor, who.Role, map[string]any{"run_id": id, "tool": c.Name, "status": c.Status, "args": args}); err != nil {
+			return err
+		}
+	}
+	effects := make([]any, 0, len(res.Effects))
+	for _, e := range res.Effects {
+		m, _ := Mask(toJSON(e))
+		var v any
+		_ = json.Unmarshal([]byte(m), &v)
+		effects = append(effects, v)
+	}
+	sum := sha256.Sum256([]byte(message))
+	fields := map[string]any{"run_id": id, "outcome": res.Outcome, "checks": res.Checks, "effects": effects, "tool_calls": len(res.ToolCalls),
+		"message_sha": hex.EncodeToString(sum[:])[:16], "message_chars": len(message), "guard": res.Guard}
+	if runErr != nil {
+		fields["error"] = fmt.Sprintf("%T", runErr)
+	}
+	return Audit("run", who.Actor, who.Role, fields)
+}
+
 // run drives the loop: model decides, the gate checks, tools run, until the model answers or a limit is reached.
-func run(ctx context.Context, model Model, message string, approve Approver) (Result, error) {
+func run(ctx context.Context, model Model, message string, approve Approver, role string) (Result, error) {
 	ctx, span := otel.Tracer("__SLUG__").Start(ctx, "agent.run")
 	defer span.End()
-	tools := Tools()
+	tools := ToolsFor(role, Tools())
 	byName := map[string]Tool{}
 	for _, t := range tools {
 		byName[t.Name] = t
@@ -116,7 +208,7 @@ func run(ctx context.Context, model Model, message string, approve Approver) (Re
 		var out map[string]any
 		switch {
 		case !known:
-			call.Status, out = "denied", map[string]any{"ok": false, "error": call.Name + " is not on this agent's tool list."}
+			call.Status, out = "not_allowed", map[string]any{"ok": false, "error": call.Name + " is not on this agent's tool list."}
 		case NeedsApproval[call.Name]:
 			approved, answered := approve(ctx, call)
 			switch {
@@ -134,6 +226,9 @@ func run(ctx context.Context, model Model, message string, approve Approver) (Re
 			}
 		default:
 			call.Status, out = "ok", tool.Run(call.Args)
+		}
+		if call.Status == "ok" {
+			call.Result = out // what the tool returned: the grounded check and the effects read it
 		}
 		res.ToolCalls = append(res.ToolCalls, call)
 		transcript = append(transcript, Turn{Role: "assistant", Text: step.Say, Call: &call}, Turn{Role: "tool", Call: &call, Result: out})

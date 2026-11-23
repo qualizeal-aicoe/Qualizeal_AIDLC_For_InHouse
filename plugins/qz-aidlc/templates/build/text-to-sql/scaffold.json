@@ -28,7 +28,19 @@
     "Add twenty real questions with SQL the data owner signs off to evals/gold.jsonl, then run them with your model before anyone relies on the answers.",
     "Before a team uses it, read docs/adr/0001-text-to-sql-shape.md: a SELECT-only database role, row-level rules, an authenticated service."
   ],
-  "ai_act": {"purpose": "Answers analysts' questions about the sample sales data by writing and running read-only SQL.", "people": true, "generates": true, "notice": ["Answers are written by AI from the data. Check the SQL shown with each answer before you rely on it.", "sqlagent/web.py"], "marking": ["every answer carries ai_generated", "sqlagent/graph.py"]},
+  "ai_act": {
+    "purpose": "Answers analysts' questions about the sample sales data by writing and running read-only SQL.",
+    "people": true,
+    "generates": true,
+    "notice": [
+      "Answers are written by AI from the data. Check the SQL shown with each answer before you rely on it.",
+      "sqlagent/web.py"
+    ],
+    "marking": [
+      "every answer carries ai_generated",
+      "sqlagent/graph.py"
+    ]
+  },
   "vendors": [],
   "open_line": "Any OpenAI-compatible server works, including an open-weight model on Ollama (provider = openai, base_url = http://localhost:11434/v1).",
   "cost_line": "the system prompt and tools cached on every model call; generated SQL cached per role, question and schema card, and kept only once it passes the check; at most five tables in the schema card, results and turns capped; every call is one narrow task on a small model.",
@@ -42,11 +54,92 @@
     "guardrails": "sqlagent/guard.py",
     "limits": "sql.toml",
     "api": "sqlagent/web.py",
-    "knowledge": ["semantic.toml", "sqlagent/schema.py"],
+    "knowledge": [
+      "semantic.toml",
+      "sqlagent/schema.py"
+    ],
     "tracing": "sqlagent/audit.py",
     "tests": "tests",
-    "evals": ["evals/gold.jsonl", "evals/eval.json"],
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/ai-act"]
+    "evals": [
+      "evals/gold.jsonl",
+      "evals/eval.json"
+    ],
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/adr",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": [
+        "sqlagent/identity.py#who",
+        "sqlagent/web.py"
+      ],
+      "rbac": [
+        "sqlagent/guard.py#check",
+        "semantic.toml"
+      ],
+      "residency": [
+        "sqlagent/models.py"
+      ],
+      "pii": "sqlagent/guard.py",
+      "audit": "sqlagent/audit.py#AuditLog",
+      "network": [
+        "sqlagent/models.py"
+      ],
+      "vendor": "uv.lock",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/gold.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "localhost",
+        "purpose": "an open-weight model on the same machine (Ollama), when no vendor model is set",
+        "processor": "none: it runs where the agent runs",
+        "region": "local"
+      },
+      {
+        "host": "127.0.0.1",
+        "purpose": "an open-weight model on the same machine (Ollama), when no vendor model is set",
+        "processor": "none: it runs where the agent runs",
+        "region": "local"
+      },
+      {
+        "host": "api.anthropic.com",
+        "purpose": "the model: the question and the schema card (never result rows)",
+        "processor": "Anthropic",
+        "region": "TODO: the processing region agreed for this account"
+      },
+      {
+        "host": "api.openai.com",
+        "purpose": "the model, when provider is openai: the question and the schema card",
+        "processor": "OpenAI",
+        "region": "TODO: the processing region agreed for this project"
+      },
+      {
+        "host": "api.groq.com",
+        "purpose": "an open-weight model, when provider is openai with Groq's base_url",
+        "processor": "Groq",
+        "region": "TODO"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "customer names, emails and phone numbers in the database",
+          "employee salaries (hr role)",
+          "what people ask"
+        ],
+        "special": "TODO: confirm"
+      }
+    }
   }
 }

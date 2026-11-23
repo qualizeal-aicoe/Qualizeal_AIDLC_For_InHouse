@@ -7,9 +7,17 @@ package agent
 // Payment card numbers and national ID numbers are masked, so the model, the trace and the logs never hold them.
 // Output: the same numbers are masked in the reply, and a reply containing a term on the team's blocked list
 // (BlockedTerms, empty by default) is replaced, never sent.
+//
+// The three levels the evals and the live monitor score (qz eval run, qz eval monitor): each tool call carries what
+// the tool returned (tool level); Ungrounded finds facts in a reply that no tool result and not the person's message
+// holds, on every reply (response level); Outcome and Effects say how the run ended and what it changed: a tool that
+// changes something says so in its result, as "effect" (outcome level).
 
 import (
+	"fmt"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -87,4 +95,88 @@ func ScreenOutput(reply string) Screened {
 		}
 	}
 	return Screened{Text: t, Findings: f}
+}
+
+var (
+	factToken  = regexp.MustCompile(`\b[A-Z0-9][A-Z0-9-]{3,}\b`)
+	factAmount = regexp.MustCompile(`\b\d+\.\d{2}\b`)
+	factNumber = regexp.MustCompile(`\d+(?:\.\d+)?`)
+	hasDigit   = regexp.MustCompile(`\d`)
+	hasUpper   = regexp.MustCompile(`[A-Z]`)
+	allDigits  = regexp.MustCompile(`^\d+$`)
+)
+
+// Facts are what a reply can get wrong: codes (ORD-1001, RF-7001: capitals with a digit), amounts (42.50) and long
+// digit runs. Words, dates and small counts are not checked.
+func Facts(text string) []string {
+	var out []string
+	for _, t := range factToken.FindAllString(text, -1) {
+		if hasDigit.MatchString(t) && (hasUpper.MatchString(t) || (allDigits.MatchString(t) && len(t) >= 5)) {
+			out = append(out, t)
+		}
+	}
+	return append(out, factAmount.FindAllString(text, -1)...)
+}
+
+func twoPlaces(s string) string {
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return s
+	}
+	return fmt.Sprintf("%.2f", f)
+}
+
+// Ungrounded returns the facts in text that none of the sources holds (the same rule as qz eval's grounded check).
+func Ungrounded(text string, sources []string) []string {
+	src := strings.Join(sources, " ")
+	up := strings.ToUpper(src)
+	nums := map[string]bool{}
+	for _, n := range factNumber.FindAllString(src, -1) {
+		nums[twoPlaces(n)] = true
+	}
+	seen := map[string]bool{}
+	var bad []string
+	for _, f := range Facts(text) {
+		miss := !strings.Contains(up, strings.ToUpper(f))
+		if factAmount.MatchString(f) && len(factAmount.FindString(f)) == len(f) {
+			miss = !nums[twoPlaces(f)]
+		}
+		if miss && !seen[f] {
+			seen[f] = true
+			bad = append(bad, f)
+		}
+	}
+	sort.Strings(bad)
+	return bad
+}
+
+// Effects is what the run changed: every tool that changed something says so in its result, as "effect".
+func Effects(calls []Call) []map[string]any {
+	out := []map[string]any{}
+	for _, c := range calls {
+		if e, ok := c.Result["effect"].(map[string]any); ok && c.Status == "ok" {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// Outcome says how a run ended: acted, answered, refused, withheld, awaiting_approval or declined.
+func Outcome(res Result, refused bool) string {
+	switch {
+	case refused:
+		return "refused"
+	case res.Output == Withheld:
+		return "withheld"
+	case res.AwaitingApproval:
+		return "awaiting_approval"
+	case len(res.Effects) > 0:
+		return "acted"
+	}
+	for _, c := range res.ToolCalls {
+		if c.Status == "denied" {
+			return "declined"
+		}
+	}
+	return "answered"
 }

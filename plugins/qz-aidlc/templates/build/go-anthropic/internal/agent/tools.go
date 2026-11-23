@@ -30,7 +30,10 @@ var (
 	refunds int
 )
 
-func str(args map[string]any, k string) string { s, _ := args[k].(string); return strings.ToUpper(strings.TrimSpace(s)) }
+func str(args map[string]any, k string) string {
+	s, _ := args[k].(string)
+	return strings.ToUpper(strings.TrimSpace(s))
+}
 
 // Tools returns the agent's tool list. Replace the two Run bodies with calls to your systems.
 func Tools() []Tool {
@@ -61,7 +64,10 @@ func Tools() []Tool {
 				refunds++
 				n := refunds
 				mu.Unlock()
-				return map[string]any{"ok": true, "refund_id": fmt.Sprintf("RF-%d", 7000+n), "amount": fmt.Sprintf("%.2f", amount)}
+				rid := fmt.Sprintf("RF-%d", 7000+n)
+				// The result says what changed (an "effect"): the evals check it at the outcome level and the audit log keeps it.
+				return map[string]any{"ok": true, "refund_id": rid, "amount": fmt.Sprintf("%.2f", amount),
+					"effect": map[string]any{"kind": "refund", "order_id": str(args, "order_id"), "amount": amount, "refund_id": rid}}
 			},
 		},
 	}

@@ -22,7 +22,10 @@ export async function issueRefund(args: { order_id: string; amount: number; reas
   const o = ORDERS[args.order_id.trim().toUpperCase()];
   if (!o || args.amount <= 0 || args.amount > o.total) return out({ ok: false, error: "unknown order or amount outside the order total" });
   refunds.push({ orderId: args.order_id, amount: args.amount, reason: args.reason });
-  return out({ ok: true, refund_id: `RF-${7000 + refunds.length}`, amount: args.amount.toFixed(2) });
+  const rid = `RF-${7000 + refunds.length}`;
+  // The result says what changed (an "effect"): the evals check it at the outcome level and the audit log keeps it.
+  return out({ ok: true, refund_id: rid, amount: args.amount.toFixed(2),
+    effect: { kind: "refund", order_id: args.order_id.trim().toUpperCase(), amount: args.amount, refund_id: rid } });
 }
 
 export const handlers: Record<string, (args: any) => Promise<{ content: Array<{ type: "text"; text: string }> }>> = { get_order: getOrder, issue_refund: issueRefund };

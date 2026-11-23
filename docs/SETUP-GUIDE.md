@@ -1,6 +1,6 @@
 # QualiZeal AI-DLC Studio · setup guide
 
-Version 1.0.2. The Studio lives in the public repository `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Pick the part
+Version 1.1.0. The Studio lives in the public repository `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Pick the part
 that fits you; all of them end the same way, with `/qz-aidlc:qz-setup` inside Claude.
 
 | Part | Who | Time |
@@ -65,8 +65,8 @@ Then go to part D.
 1. Customize > Plugins > Add marketplace, and enter `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Your GitHub account
    needs read access to the repository; ask the AI CoE if the add fails.
 2. Install **qz-aidlc** and **qz-console**. They load in every new session on your account, phone included.
-3. No marketplace access? Upload `qz-aidlc-1.0.2.zip` instead (Customize > Plugins > Add > Upload plugin), from the AI
-   CoE or the 1.0.2 release on GitHub. Remove an older version first.
+3. No marketplace access? Upload `qz-aidlc-1.1.0.zip` instead (Customize > Plugins > Add > Upload plugin), from the AI
+   CoE or the 1.1.0 release on GitHub. Remove an older version first.
 4. Go to part D.
 
 ## C. For the whole organisation

@@ -1,6 +1,6 @@
 # A live session with the Studio
 
-Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE). For Studio 1.0.2.
+Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE). For Studio 1.1.0.
 
 One small use case, start to finish: a knowledge assistant over a company handbook, built with the hybrid RAG
 (retrieval-augmented generation) kit. It answers from the documents and cites the section it used. It refuses when the

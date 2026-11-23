@@ -7,7 +7,15 @@ import type { ToolCall } from "./agent.ts";
 
 type Step = { say: string } | { call: string; args: Record<string, unknown> };
 
-export function decide(userText: string, results: Map<string, any>): Step {
+export const NOT_ALLOWED = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help.";
+
+/** A model only calls the tools it was given, so a tool outside `available` (the role's tools) is never called. */
+export function decide(userText: string, results: Map<string, any>, available?: string[]): Step {
+  const d = decideAll(userText, results);
+  return "call" in d && available && !available.includes(d.call) ? { say: NOT_ALLOWED } : d;
+}
+
+function decideAll(userText: string, results: Map<string, any>): Step {
   const m = /\bORD-\d+\b/i.exec(userText ?? "");
   if (!m) return { say: "I can help once I have an order number, for example ORD-1001." };
   const oid = m[0].toUpperCase();
@@ -23,13 +31,13 @@ export function decide(userText: string, results: Map<string, any>): Step {
   return { say: `Order ${oid} is ${order.status}${order.carrier ? ` with ${order.carrier}.` : "."}` };
 }
 
-export async function runStub(message: string, canUseTool: CanUseTool, calls: ToolCall[]) {
+export async function runStub(message: string, canUseTool: CanUseTool, calls: ToolCall[], role: string = policy.role) {
   const results = new Map<string, any>();
   const usage = { input_tokens: 0, output_tokens: 0 };
   for (let turn = 0; turn < policy.maxTurns; turn++) {
     usage.input_tokens += Math.floor((message.length + JSON.stringify([...results]).length) / 4) + 60;
     usage.output_tokens += 24;
-    const d = decide(message, results);
+    const d = decide(message, results, policy.roles[role] ?? []);
     if ("say" in d) return { text: d.say, usage };
     let allowed = true;
     let denial = "";
@@ -43,7 +51,10 @@ export async function runStub(message: string, canUseTool: CanUseTool, calls: To
         if (verdict.interrupt) return { text: "", usage };
       }
     }
-    results.set(d.call, allowed ? JSON.parse((await handlers[d.call](d.args)).content[0].text) : { ok: false, error: denial });
+    const body = allowed ? JSON.parse((await handlers[d.call](d.args)).content[0].text) : { ok: false, error: denial };
+    results.set(d.call, body);
+    const last = calls.at(-1);
+    if (allowed && last && last.name === d.call) last.result = body;   // what the tool returned, as a model's run reports it
   }
   return { text: "I stopped because the turn limit was reached.", usage };
 }

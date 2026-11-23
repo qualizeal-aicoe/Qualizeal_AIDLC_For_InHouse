@@ -1,0 +1,30 @@
+{
+  "_doc": "Live monitoring (qz eval monitor): the tool-call audit log (MCP_AUDIT_PATH, default .mcp-audit/audit.jsonl) scored at the tool (calls and lookups that found nothing), response (replies over the size cap, withheld) and outcome (answered, refused by the rate limit) levels, a window against the one before it.",
+  "logs": [
+    ".mcp-audit/audit.jsonl"
+  ],
+  "format": "mcp",
+  "window_hours": 24,
+  "min_runs": 20,
+  "sample": 20,
+  "alerts": {
+    "tool": {
+      "empty_retrieval_rate": {
+        "max_rise": 0.1
+      },
+      "blocked_call_rate": {
+        "max_rise": 0.05
+      }
+    },
+    "response": {
+      "withheld_rate": {
+        "max": 0.01
+      }
+    },
+    "outcome": {
+      "refused_rate": {
+        "max_rise": 0.05
+      }
+    }
+  }
+}

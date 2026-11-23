@@ -29,7 +29,10 @@ async def issue_refund(order_id: str, amount: float, reason: str) -> str:
     if o is None or amount <= 0 or amount > o["total"]:
         return json.dumps({"ok": False, "error": "unknown order or amount outside the order total"})
     _REFUNDS.append({"order_id": order_id, "amount": amount, "reason": reason})
-    return json.dumps({"ok": True, "refund_id": f"RF-{7000 + len(_REFUNDS)}", "amount": f"{amount:.2f}"})
+    rid = f"RF-{7000 + len(_REFUNDS)}"
+    # The result says what changed (an "effect"): the evals check it at the outcome level and the audit log keeps it.
+    return json.dumps({"ok": True, "refund_id": rid, "amount": f"{amount:.2f}",
+                       "effect": {"kind": "refund", "order_id": order_id.strip().upper(), "amount": amount, "refund_id": rid}})
 
 
 TOOLS = [get_order, issue_refund]

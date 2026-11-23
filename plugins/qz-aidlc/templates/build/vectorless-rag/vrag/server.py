@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import answer as A
+from . import identity
 from . import index
 
 STATIC = Path(__file__).parent / "static"
@@ -57,12 +58,13 @@ def _feedback_file(cfg) -> Path:
     return cfg.path("index", "path").parent / "feedback.jsonl"
 
 
-def record_feedback(cfg, data: dict) -> dict:
+def record_feedback(cfg, data: dict, user: str = "") -> dict:
     """A thumbs up or down on one answer, with an optional note, kept on this machine only. Personal data is masked
     before it is written, so the file can become gold cases without carrying any."""
     verdict = str(data.get("verdict", ""))
-    user = str(data.get("as", ""))
-    if verdict not in ("up", "down") or user not in cfg["users"]:
+    signed_in = bool(user)
+    user = user or str(data.get("as", ""))
+    if verdict not in ("up", "down") or not (signed_in or user in cfg["users"]):
         raise ValueError("send {\"verdict\": \"up\" or \"down\", \"as\": a known user, \"question\", \"answer\", \"note\"}")
     g = getattr(A, "guard", None)
     clean = (lambda t: g.mask_at_ingest(g.redact(t, ["phone", "card"])[0], ["card", "id"])[0]) if g is not None else (lambda t: t)
@@ -127,8 +129,9 @@ def make_handler(cfg, con, llm):
                 self._send(200, (STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
             elif self.path == "/app.js":
                 self._send(200, (STATIC / "app.js").read_bytes(), "text/javascript; charset=utf-8")
-            elif self.path == "/api/users":
-                self._json(200, {"users": list(cfg["users"])})
+            elif self.path == "/api/users":                  # the demo picker; signed-in modes list nobody
+                mode = str(cfg["identity"].get("mode", "demo"))
+                self._json(200, {"users": list(cfg["users"]) if mode == "demo" else [], "identity": mode})
             elif self.path == "/api/health":
                 self._json(200, {"ok": True})
             else:
@@ -142,19 +145,24 @@ def make_handler(cfg, con, llm):
                 return self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE if size > MAX_BODY else 400, {"error": "bad request size"})
             try:
                 data = json.loads(self.rfile.read(size))
+                demo = str(data.get("as", "employee"))
+                if cfg["identity"].get("mode", "demo") == "demo" and demo not in cfg["users"]:
+                    return self._json(400, {"error": "unknown user"})
+                who = identity.who(cfg["identity"], self.headers, self.client_address[0], demo,
+                                   cfg["users"].get(demo, []))           # go-live gate 1: never the request body, outside a demo
                 if self.path == "/api/feedback":
-                    record_feedback(cfg, data)
+                    record_feedback(cfg, data, "" if who.via == "demo" else who.user)
                     return self._json(200, {"ok": True})
                 question = str(data.get("question", "")).strip()
-                user = str(data.get("as", "employee"))
+                user, groups = who.user, who.groups
+            except identity.Refused as e:
+                return self._json(e.status, {"error": str(e)})
             except (ValueError, AttributeError):
                 return self._json(400, {"error": "send JSON: {\"question\": \"...\", \"as\": \"employee\"}"})
             if not question or len(question) > MAX_QUESTION:
                 return self._json(400, {"error": f"the question must be 1 to {MAX_QUESTION} characters"})
-            if user not in cfg["users"]:
-                return self._json(400, {"error": "unknown user"})
             row = con.execute("SELECT value FROM meta WHERE key = 'built_at'").fetchone()
-            key = AnswerCache.key(cfg.groups(user), question, row[0] if row else "")
+            key = AnswerCache.key(groups, question, row[0] if row else "")
             hit = cache.get(key)
             if hit is not None:
                 ans = dataclasses.replace(hit, question=question, flags=[*hit.flags, "answered from the cache"], latency_ms=0)
@@ -162,7 +170,7 @@ def make_handler(cfg, con, llm):
                     A.audit.record(cfg, ans)
             else:
                 try:
-                    ans = A.answer(con, cfg, question, user, llm=llm)
+                    ans = A.answer(con, cfg, question, user, llm=llm, groups=groups)
                 except Exception as e:  # never send a stack trace to the browser
                     return self._json(500, {"error": f"could not answer ({e.__class__.__name__})"})
                 if not ans.refused:

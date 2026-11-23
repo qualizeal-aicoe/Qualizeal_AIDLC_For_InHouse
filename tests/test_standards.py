@@ -1,5 +1,6 @@
-"""The QualiZeal standards: the six guardrails, the EU AI Act, open source first, the cost levers and the solution
-shape. The Studio meets all five, every starter meets all five as it is created, and each check fails where it should."""
+"""The QualiZeal standards: the six guardrails, the EU AI Act, open source first, the cost levers, the solution shape,
+go-live readiness and agent evals. The Studio meets all seven, every starter meets all seven as it is created, and
+each check fails where it should."""
 import json
 import os
 import subprocess
@@ -22,9 +23,11 @@ def qz(proj: Path, *args: str, env: dict | None = None):
     return subprocess.run([sys.executable, str(ROOT / "scripts" / "qz.py"), *args], capture_output=True, text=True, env=e, cwd=proj, timeout=300)
 
 
-def test_the_studio_meets_all_five_standards():
+def test_the_studio_meets_all_seven_standards():
     x = standards.run(studio=True)
-    assert x["ok"] and x["verdict"] == "5 OF 5 STANDARDS MET", {k: v["result"]["verdict"] for k, v in x["standards"].items()}
+    assert x["ok"] and x["verdict"] == "7 OF 7 STANDARDS MET", {k: v["result"]["verdict"] for k, v in x["standards"].items()}
+    assert x["standards"]["golive"]["result"]["verdict"].startswith("9 OF 9 BUILT IN")
+    assert [r["status"] for r in x["standards"]["evals"]["result"]["rows"]] == ["pass"] * 6
     a = x["standards"]["aiact"]["result"]
     assert a["role"] == "deployer" and a["class"]["tier"] == "transparency"
     assert {o["id"] for o in a["obligations"]} >= {"prohibited", "notice", "marking", "risk", "logging", "oversight", "accuracy", "monitoring", "incidents"}
@@ -32,7 +35,7 @@ def test_the_studio_meets_all_five_standards():
 
 
 @pytest.mark.parametrize("starter", STARTERS)
-def test_every_starter_meets_all_five_standards_as_it_is_created(tmp_path, starter):
+def test_every_starter_meets_all_seven_standards_as_it_is_created(tmp_path, starter):
     dest = tmp_path / starter
     assert qz(tmp_path, "build", "new", starter, str(dest), "--name", "Order Support").returncode == 0
     x = standards.run(dest)
@@ -137,11 +140,11 @@ def test_the_report_card_and_the_doctor_carry_the_standards(tmp_path):
     assert qz(dest, "run", "start", "deliver", "--key", "QZ-1").returncode == 0
     assert qz(dest, "report").returncode == 0
     card = next((dest / ".qz" / "runs").glob("*/report-card.html")).read_text(encoding="utf-8")
-    assert "QualiZeal standards: 5 of 5 standards met" in card and "Standards 5 of 5" in card and "<code>qz aiact confirm --yes</code>" in card
+    assert "QualiZeal standards: 7 of 7 standards met" in card and "Standards 7 of 7" in card and "<code>qz aiact confirm --yes</code>" in card
     data = json.loads(next((dest / ".qz" / "runs").glob("*/report-card.json")).read_text(encoding="utf-8"))
-    assert data["standards"]["ok"] and [p["title"] for p in data["standards"]["parts"]] == ["Six guardrails", "EU AI Act", "Open source first", "Cost levers", "Solution shape"]
+    assert data["standards"]["ok"] and [p["title"] for p in data["standards"]["parts"]] == ["Six guardrails", "EU AI Act", "Open source first", "Cost levers", "Solution shape", "Go-live readiness", "Agent evals"]
     from qz import doctor
     rep = doctor.Report()
     doctor.check_harness(rep, dest)
     row = next(r for r in rep.rows if r["check"].startswith("QualiZeal standards in the Studio itself"))
-    assert row["level"] == "PASS" and "5 of 5 standards met" in row["check"]
+    assert row["level"] == "PASS" and "7 of 7 standards met" in row["check"]

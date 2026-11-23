@@ -1,9 +1,10 @@
 """A local page and JSON API for the agent, on the standard library: no web framework to keep patched.
 
 It listens on 127.0.0.1 only and answers only requests addressed to this machine by name (a page on another site
-cannot reach it through DNS tricks). The page loads nothing from outside, runs only its own script (a nonce-based
+cannot reach it through DNS tricks), or to the names in [identity] hosts when it sits behind the client's proxy. The page loads nothing from outside, runs only its own script (a nonce-based
 Content-Security-Policy), and writes answers as text, never as HTML, so a value in the data cannot become markup.
-The role is fixed when the server starts; a request cannot change it.
+The role is fixed when the server starts; a request cannot change it. Signed in ([identity] mode oidc or proxy, go-live
+gate 1), the role comes from the person's groups at the identity provider: the first of them that semantic.toml names.
 
     POST /api/ask  {"question": "...", "thread": "<id from the page>"}  ->  the answer, the SQL, the rows
     GET  /api/health
@@ -13,7 +14,10 @@ from __future__ import annotations
 import json
 import re
 import secrets
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from . import identity
 
 MAX_BODY = 16_384
 THREAD = re.compile(r"^[A-Za-z0-9-]{8,64}$")
@@ -69,7 +73,15 @@ document.getElementById("f").addEventListener("submit", async (ev) => {{
 
 
 def handler_for(agent, port: int):
-    hosts = {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"}
+    conf = agent.cfg.get("identity") or {"mode": "demo"}
+    hosts = {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}", *map(str, conf.get("hosts") or [])}
+    agents, lock = {agent.role: agent}, threading.Lock()
+
+    def for_role(role: str):
+        with lock:
+            if role not in agents:
+                agents[role] = type(agent)(cfg=agent.cfg, role=role, model=agent.model, sem=agent.sem)
+            return agents[role]
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "sqlagent"
@@ -130,8 +142,15 @@ def handler_for(agent, port: int):
                 return self._json(400, {"error": "Send {\"question\": \"...\"}."})
             if thread and not THREAD.match(thread):
                 return self._json(400, {"error": "That thread id is not one this page makes."})
-            r = agent.ask(question, thread)
-            self._json(200, {k: r[k] for k in ("outcome", "answer", "sql", "ran", "columns", "rows", "truncated", "attempts", "notes", "thread_id")})
+            try:
+                who = identity.who(conf, self.headers, self.client_address[0], "", [agent.role])
+            except identity.Refused as e:
+                return self._json(e.status, {"error": str(e)})
+            role = agent.role if who.via == "demo" else next((g for g in who.groups if g in agent.sem["roles"]), "")
+            if not role:
+                return self._json(403, {"error": "None of your groups is a role here (semantic.toml [roles]; [identity] group_map)."})
+            r = for_role(role).ask(question, thread, actor=who.user)
+            self._json(200, {k: r[k] for k in ("outcome", "answer", "sql", "ran", "columns", "rows", "truncated", "attempts", "notes", "thread_id", "role")})
 
     return Handler
 

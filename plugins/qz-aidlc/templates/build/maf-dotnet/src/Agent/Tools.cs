@@ -41,7 +41,13 @@ public static class Tools
         }
 
         int n = Interlocked.Increment(ref _refunds);
-        return new { ok = true, error = "", refund_id = $"RF-{7000 + n}", amount = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) };
+        string rid = $"RF-{7000 + n}";
+        // The result says what changed (an "effect"): the evals check it at the outcome level and the audit log keeps it.
+        return new
+        {
+            ok = true, error = "", refund_id = rid, amount = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+            effect = new { kind = "refund", order_id = id, amount, refund_id = rid },
+        };
     }
 
     /// <summary>The tool list. Anything in Policy.NeedsApproval is wrapped so the framework asks before it runs.</summary>

@@ -154,12 +154,14 @@ def run(ctx: click.Context, fn, *, as_json: bool, kind: str, dry_run: bool = Fal
                                                         "hint": "A bug in mockctl. Check the server's state with `mockctl status` before retrying."}}
     out["meta"] = {"dry_run": bool(dry_run), "took_ms": round((time.perf_counter() - t0) * 1000, 1)}
     secrets = secret_values()
+    raw = json.dumps(out, default=str)
     out = _scrub(out, secrets)
+    masked = json.dumps(out, default=str) != raw                  # a secret value reached the output and was taken out
     if kind in ("write", "destructive") or (not out["ok"] and out["error"]["code"] in ("confirm", "refused")):
         try:
             app.store.audit(command=name, effect=kind, args=_scrub(_safe_args(ctx.params), secrets), dry_run=bool(dry_run),
                             outcome="ok" if out["ok"] else out["error"]["code"],
-                            target=(urllib.parse.urlsplit(app.cfg["target"]["base_url"]).hostname or "?"), ms=out["meta"]["took_ms"])
+                            target=(urllib.parse.urlsplit(app.cfg["target"]["base_url"]).hostname or "?"), ms=out["meta"]["took_ms"], masked=masked)
         except Exception as e:                        # a change with no record is reported as a failure, never silently
             out = {"ok": False, "command": name, "meta": out["meta"], "error": {
                 "code": "internal", "message": f"The audit log could not be written ({type(e).__name__}: {e}).",

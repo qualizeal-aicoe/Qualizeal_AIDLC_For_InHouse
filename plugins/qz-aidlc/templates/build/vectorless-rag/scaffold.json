@@ -16,25 +16,109 @@
     "Run /verify-rag before calling a story done.",
     "Replace corpus/ and evals/golden.jsonl with your own documents and questions."
   ],
-  "ai_act": {"purpose": "Answers people's questions from the team's documents and cites the sources it used.", "people": true, "generates": true, "notice": ["Answers are written by AI from your documents. Check the cited source before you act on one.", "vrag/static/index.html"], "marking": ["every answer carries ai_generated", "vrag/answer.py"]},
+  "ai_act": {
+    "purpose": "Answers people's questions from the team's documents and cites the sources it used.",
+    "people": true,
+    "generates": true,
+    "notice": [
+      "Answers are written by AI from your documents. Check the cited source before you act on one.",
+      "vrag/static/index.html"
+    ],
+    "marking": [
+      "every answer carries ai_generated",
+      "vrag/answer.py"
+    ]
+  },
   "vendors": [],
   "open_line": "No vector database and no embedding service; answers can come from an open-weight model through any OpenAI-compatible server.",
   "cost_line": "the system block cached on every model call; outline navigation on its own `navigate_model` (a small model is enough) and answers on `answer_model`; repeat questions answered from a cache kept per reader's access and index version; at most five sections reach the model.",
   "container_check": "docker run --rm --network none app:ci uv run -m vrag eval --gate",
   "roles": {
     "entry": "vrag/__main__.py",
-    "agent": ["vrag/answer.py", "vrag/tree.py"],
-    "tools": {"none": "it answers from documents and takes no actions"},
+    "agent": [
+      "vrag/answer.py",
+      "vrag/tree.py"
+    ],
+    "tools": {
+      "none": "it answers from documents and takes no actions"
+    },
     "model": "vrag/llm.py",
     "prompts": "vrag/tree.py#SYSTEM",
     "guardrails": "vrag/guard.py",
     "limits": "vrag.toml",
     "api": "vrag/server.py",
-    "knowledge": ["corpus/manifest.json", "web.toml"],
+    "knowledge": [
+      "corpus/manifest.json",
+      "web.toml"
+    ],
     "tracing": "vrag/audit.py",
     "tests": "tests",
     "evals": "evals/golden.jsonl",
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/designs", "docs/ai-act"]
-  }
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/designs",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": [
+        "vrag/identity.py#who",
+        "vrag/server.py"
+      ],
+      "rbac": [
+        "vrag/search.py#search",
+        "vrag/config.py#groups",
+        "vrag/index.py#readable"
+      ],
+      "residency": [
+        "vrag/llm.py"
+      ],
+      "pii": "vrag/guard.py#redact",
+      "audit": "vrag/audit.py#verify",
+      "network": [
+        "vrag/llm.py"
+      ],
+      "vendor": "uv.lock",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/golden.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "localhost",
+        "purpose": "an open-weight model on the same machine (Ollama), when no vendor model is set",
+        "processor": "none: it runs where the agent runs",
+        "region": "local"
+      },
+      {
+        "host": "127.0.0.1",
+        "purpose": "an open-weight model on the same machine (Ollama), when no vendor model is set",
+        "processor": "none: it runs where the agent runs",
+        "region": "local"
+      },
+      {
+        "host": "api.anthropic.com",
+        "purpose": "the model, when [llm] provider is anthropic: the question and the cited sections",
+        "processor": "Anthropic",
+        "region": "TODO: the processing region agreed for this account"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "names and contact details in the documents",
+          "what people ask"
+        ],
+        "special": "TODO: confirm"
+      }
+    }
+  },
+  "eval_line": "`uv run -m vrag eval --gate` scores the golden questions at the three levels (recall@5; grounded rate and safety violations; answer and refusal accuracy) and `uv run -m vrag stats --gate` reads the audit log at the same levels"
 }

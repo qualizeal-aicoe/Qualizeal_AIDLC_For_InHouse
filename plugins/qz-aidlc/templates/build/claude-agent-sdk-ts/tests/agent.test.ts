@@ -69,3 +69,27 @@ test("easy turns go to the small model and money never does", async () => {
   }
 });
 
+
+test("go-live gates in the code: a role gets only its own tools, every run is chained, only listed hosts are called", async () => {
+  const { mkdtempSync, readFileSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const audit = await import("../src/audit.ts");
+  const { checkEndpoint } = await import("../src/guardrails.ts");
+  const { modelUrl } = await import("../src/policy.ts");
+  process.env.AGENT_AUDIT_LOG = join(mkdtempSync(join(tmpdir(), "audit-")), "audit.jsonl");
+  const viewer = await run("ORD-1002 arrived damaged. Please refund it.", undefined, { role: "viewer", actor: "asha@example.com" });
+  assert.deepEqual(viewer.tool_calls.map((c) => c.name), ["get_order"]);
+  assert.match(viewer.output, /role does not have/);
+  assert.deepEqual((await run("Where is my order ORD-1001?", undefined, { role: "no-such-role" })).tool_calls, []);
+  await run("Where is my order ORD-1001? Card 4111 1111 1111 1111.");
+  const log = readFileSync(process.env.AGENT_AUDIT_LOG, "utf8");
+  assert.doesNotMatch(log, /4111/);
+  assert.equal(JSON.parse(log.split("\n")[0]).actor, "asha@example.com");
+  assert.equal(audit.verify().ok, true);
+  writeFileSync(process.env.AGENT_AUDIT_LOG, log.replace('"get_order"', '"issue_refund"'));
+  assert.deepEqual(audit.verify(), { ok: false, records: 0, broken_at: 1 });
+  assert.equal(checkEndpoint(modelUrl()), modelUrl());
+  assert.throws(() => checkEndpoint("https://collector.example.net/v1"), /not on policy.allowedHosts/);
+  delete process.env.AGENT_AUDIT_LOG;
+});

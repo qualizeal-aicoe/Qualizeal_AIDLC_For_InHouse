@@ -28,25 +28,102 @@
     "To wrap another tool (Jenkins, an internal admin API, a test-data service), follow docs/runbook.md: same contract, new backend, new commands, then `uv run mockctl skill`.",
     "Before agents use it on a shared server, read docs/adr/0001-cli-harness-shape.md: who may say yes to a destructive command, and where the audit log is kept."
   ],
-  "ai_act": {"purpose": "Lets AI agents drive a command-line tool through a typed, audited harness.", "people": false, "generates": false},
+  "ai_act": {
+    "purpose": "Lets AI agents drive a command-line tool through a typed, audited harness.",
+    "people": false,
+    "generates": false
+  },
   "vendors": [],
   "open_line": "No model and no vendor SDK.",
   "cost_line": "it calls no model, so there is no token spend to cut; `python3 .claude/qz/scripts/qz.py cost` reads not applicable on all six.",
   "container_check": "docker run --rm --network none app:ci",
   "roles": {
     "entry": "mockctl/__main__.py",
-    "agent": {"none": "the agent is whoever drives the command line: Claude Code, or another"},
+    "agent": {
+      "none": "the agent is whoever drives the command line: Claude Code, or another"
+    },
     "tools": "mockctl/cli.py",
-    "model": {"none": "a command line for agents; it calls no model"},
-    "prompts": {"none": "it calls no model; the skill it ships tells an agent how to use it (mockctl/skill.py)"},
-    "guardrails": ["mockctl/untrusted.py", "mockctl/standard.py"],
+    "model": {
+      "none": "a command line for agents; it calls no model"
+    },
+    "prompts": {
+      "none": "it calls no model; the skill it ships tells an agent how to use it (mockctl/skill.py)"
+    },
+    "guardrails": [
+      "mockctl/untrusted.py",
+      "mockctl/standard.py"
+    ],
     "limits": "harness.toml",
     "api": "mockctl/cli.py",
-    "knowledge": {"none": "it drives a tool's API and answers from no documents"},
+    "knowledge": {
+      "none": "it drives a tool's API and answers from no documents"
+    },
     "tracing": "mockctl/store.py",
     "tests": "tests",
-    "evals": ["evals/gold.jsonl", "evals/eval.json"],
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/ai-act"]
+    "evals": [
+      "evals/gold.jsonl",
+      "evals/eval.json"
+    ],
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/adr",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": {
+        "none": "a command-line tool on the developer's machine; its stand-in server is a local test double",
+        "local_only": [
+          "mockctl/standin.py"
+        ]
+      },
+      "rbac": {
+        "none": "a developer's own tool with their own credentials; anything that deletes asks for --yes",
+        "local_only": [
+          "mockctl/standin.py"
+        ]
+      },
+      "residency": [
+        "mockctl/config.py"
+      ],
+      "pii": "mockctl/cli.py#_scrub",
+      "audit": "mockctl/store.py#verify",
+      "network": [
+        "mockctl/config.py"
+      ],
+      "vendor": "uv.lock",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/gold.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "127.0.0.1",
+        "purpose": "the mock server it manages",
+        "processor": "none: the developer's own machine",
+        "region": "local"
+      },
+      {
+        "host": "localhost",
+        "purpose": "the mock server it manages",
+        "processor": "none: the developer's own machine",
+        "region": "local"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "none expected: mock data only; tokens are scrubbed from output and the audit log"
+        ],
+        "special": "none"
+      }
+    }
   }
 }

@@ -1,0 +1,56 @@
+{
+  "_doc": "Live monitoring (qz eval monitor): production traffic scored at the tool, response and outcome levels, a window against the one before it. Point logs at the audit lines your platform ships (AGENT_AUDIT_LOG), or pipe an export with --log -.",
+  "logs": [
+    ".agent/audit.jsonl"
+  ],
+  "format": "agent",
+  "window_hours": 24,
+  "min_runs": 20,
+  "sample": 20,
+  "labels": "evals/monitor/labels.jsonl",
+  "alerts": {
+    "tool": {
+      "tool_error_rate": {
+        "max": 0.05,
+        "max_rise": 0.02
+      },
+      "blocked_call_rate": {
+        "max_rise": 0.05
+      },
+      "tool_shift": {
+        "max": 0.3
+      }
+    },
+    "response": {
+      "ungrounded_rate": {
+        "max": 0.02,
+        "max_rise": 0.01
+      },
+      "withheld_rate": {
+        "max": 0.02
+      },
+      "masked_rate": {
+        "max_rise": 0.05
+      }
+    },
+    "outcome": {
+      "failed_rate": {
+        "max": 0.02,
+        "max_rise": 0.01
+      },
+      "declined_rate": {
+        "max_rise": 0.1
+      },
+      "refused_rate": {
+        "max_rise": 0.05
+      },
+      "awaiting_approval_rate": {
+        "max_rise": 0.1
+      },
+      "goal_rate": {
+        "min": 0.8,
+        "max_fall": 0.05
+      }
+    }
+  }
+}

@@ -12,3 +12,4 @@ dist/
 evals/results*/
 traces/
 *.sqlite
+.agent/

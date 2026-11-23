@@ -16,8 +16,15 @@ var (
 // the wiring (tools, approval gate, limits, tracing), not the quality of a model's answers.
 type StubModel struct{}
 
-// Next implements Model.
-func (StubModel) Next(_ context.Context, transcript []Turn, _ []Tool) (Step, error) {
+// NotAllowed is what the stub says when the call it wants is not among the role's tools.
+const NotAllowed = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help."
+
+// Next implements Model. A model only calls the tools it was given, so a tool outside the list is never called.
+func (StubModel) Next(_ context.Context, transcript []Turn, tools []Tool) (Step, error) {
+	given := map[string]bool{}
+	for _, t := range tools {
+		given[t.Name] = true
+	}
 	user := transcript[0].Text
 	results := map[string]map[string]any{}
 	size := 0
@@ -30,6 +37,10 @@ func (StubModel) Next(_ context.Context, transcript []Turn, _ []Tool) (Step, err
 	step := Step{InputTokens: int64(size/4 + 60), OutputTokens: 24}
 	say := func(format string, a ...any) (Step, error) { step.Say = fmt.Sprintf(format, a...); return step, nil }
 	call := func(name string, args map[string]any) (Step, error) {
+		if !given[name] {
+			step.Say = NotAllowed
+			return step, nil
+		}
 		step.Call = &Call{ID: fmt.Sprintf("tu_%d", len(results)+1), Name: name, Args: args}
 		return step, nil
 	}

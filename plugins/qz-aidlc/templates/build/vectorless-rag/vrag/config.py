@@ -16,6 +16,8 @@ DEFAULTS: dict = {
     "users": {"employee": ["all"], "manager": ["all", "managers"], "hr": ["all", "hr", "managers"],
               "finance": ["all", "finance"]},
     "audit": {"path": ".vrag/audit.jsonl", "store_question": True},
+    "identity": {"mode": "demo", "issuer": "", "audience": "", "jwks_url": "", "groups_claim": "groups",
+                 "trusted_proxies": ["127.0.0.1/32", "::1/128"], "group_map": {}},
     "eval": {"golden": "evals/golden.jsonl", "thresholds": "evals/thresholds.json", "results": "evals/results"},
 }
 

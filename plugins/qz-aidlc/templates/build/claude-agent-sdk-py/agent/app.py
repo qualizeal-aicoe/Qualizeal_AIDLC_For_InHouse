@@ -9,7 +9,7 @@ from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ClaudeSDKCli
                               ResultMessage, TextBlock, ToolUseBlock)
 
 from . import guardrails, policy
-from .tools import SERVER
+from .tools import RESULTS, SERVER
 
 # One line per run (tools and their status, tokens, whether it waits): never the message or the reply. Claude Code's own
 # OpenTelemetry export adds spans and metrics when CLAUDE_CODE_ENABLE_TELEMETRY=1.
@@ -24,8 +24,11 @@ def make_gate(approve: bool | None, calls: list[dict]):
     approve: True or False is the person's answer; None means nobody has answered, so the action waits."""
     async def can_use_tool(tool_name: str, tool_input: dict, context) -> PermissionResultAllow | PermissionResultDeny:
         short = tool_name.split("__")[-1]
+        if short not in policy.ROLES.get(guardrails.role(), ()):                 # go-live gate 2: the caller's role
+            calls.append({"name": short, "args": tool_input, "status": "not_allowed"})
+            return PermissionResultDeny(message=f"The {guardrails.role()} role may not use {short}. Say so; do not retry it.")
         if short not in policy.NEEDS_APPROVAL:
-            calls.append({"name": short, "args": tool_input, "status": "denied"})
+            calls.append({"name": short, "args": tool_input, "status": "not_allowed"})
             return PermissionResultDeny(message=f"{short} is not on this agent's tool list.")
         if approve is None:
             calls.append({"name": short, "args": tool_input, "status": "pending"})
@@ -38,18 +41,21 @@ def make_gate(approve: bool | None, calls: list[dict]):
 def options(gate, model: str | None = None) -> ClaudeAgentOptions:
     return ClaudeAgentOptions(                           # the SDK caches the system prompt and tools itself
         model=model or policy.MODEL, system_prompt=policy.SYSTEM, mcp_servers={policy.SERVER: SERVER}, tools=[],          # no built-in tools: no shell, no file access
-        allowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in policy.READ_ONLY], can_use_tool=gate,
+        allowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in policy.READ_ONLY if t in policy.ROLES.get(guardrails.role(), ())], can_use_tool=gate,
         max_turns=policy.MAX_TURNS, max_budget_usd=policy.MAX_BUDGET_USD, setting_sources=[], permission_mode="default")
 
 
 async def run_async(message: str, approve: bool | None = None) -> dict:
     calls: list[dict] = []
+    seen: list[tuple[str, dict]] = []
+    RESULTS.set(seen)                                    # the tools add what they returned; matched to the calls below
     gate = make_gate(approve, calls)
     usage, cost, text = {"input_tokens": 0, "output_tokens": 0}, None, ""
     if os.environ.get("AGENT_MODE", "stub") == "stub":
         from .stub import run_stub
         text, usage = await run_stub(message, gate, calls)
     else:
+        guardrails.check_endpoint(policy.model_url())                        # go-live gates 3 and 6
         async with ClaudeSDKClient(options=options(gate, policy.pick_model(message))) as client:
             await client.query(message)
             async for msg in client.receive_response():
@@ -65,6 +71,10 @@ async def run_async(message: str, approve: bool | None = None) -> dict:
                     u = msg.usage or {}
                     usage = {"input_tokens": u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0) + u.get("cache_creation_input_tokens", 0), "output_tokens": u.get("output_tokens", 0)}
                     cost, text = msg.total_cost_usd, msg.result or text
+    for c in calls:                                      # each call that ran gets its result, in order, by tool name
+        hit = next((i for i, (n, _) in enumerate(seen) if n == c["name"]), None) if c["status"] == "ok" else None
+        if hit is not None:
+            c["result"] = seen.pop(hit)[1]
     waiting = [c["name"] for c in calls if c["status"] == "pending"]
     if waiting:
         text = f"This needs approval from a person before it can go ahead: {', '.join(waiting)}. It is waiting; nothing has been changed."

@@ -10,8 +10,17 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 ORDER = re.compile(r"\bORD-\d+\b", re.I)
 
 
-def decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
-    """Shared rule set: returns {"say": text} or {"call": name, "args": {...}}."""
+NOT_ALLOWED = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help."
+
+
+def decide(user_text: str, results: list[tuple[str, dict]], available=None) -> dict:
+    """Shared rule set: returns {"say": text} or {"call": name, "args": {...}}. A model only calls the tools it was
+    given, so a tool outside `available` (the role's tools) is never called."""
+    d = _decide(user_text, results)
+    return {"say": NOT_ALLOWED} if "call" in d and available is not None and d["call"] not in available else d
+
+
+def _decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
     m = ORDER.search(user_text or "")
     if not m:
         return {"say": "I can help once I have an order number, for example ORD-1001."}
@@ -33,12 +42,14 @@ def decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
 
 
 class StubChatModel(BaseChatModel):
+    available: list[str] | None = None                  # the tools bound for this run's role
+
     @property
     def _llm_type(self) -> str:
         return "qz-stub"
 
     def bind_tools(self, tools, **kwargs):
-        return self
+        return self.model_copy(update={"available": [getattr(t, "name", "") for t in tools]})
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs) -> ChatResult:
         user = next((m.content for m in reversed(messages) if isinstance(m, HumanMessage)), "")
@@ -50,7 +61,7 @@ class StubChatModel(BaseChatModel):
                 except json.JSONDecodeError:
                     body = {"ok": False, "error": str(m.content)[:200]}
                 results.append((m.name, body if isinstance(body, dict) else {"value": body}))
-        d = decide(user if isinstance(user, str) else str(user), results)
+        d = decide(user if isinstance(user, str) else str(user), results, self.available)
         usage = {"input_tokens": sum(len(str(m.content)) for m in messages) // 4, "output_tokens": 24, "total_tokens": 0}
         usage["total_tokens"] = usage["input_tokens"] + usage["output_tokens"]
         if "say" in d:

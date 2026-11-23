@@ -54,7 +54,7 @@ ROLES = [
 IDS = [r[0] for r in ROLES]
 MAP = ".qz/solution.json"
 MIN_WHY = 12                                       # a reason a part does not apply says something, not "n/a"
-DEFINES = r"(?m)(?:\b(?:def|class|func|function|const|let|var|type|struct|interface|enum|record)\s+{n}\b|^\s*(?:export\s+)?(?:public|private|internal|static|readonly|\s)*[\w<>\[\], ]*\b{n}\s*(?:=|:|\())"
+DEFINES = r"(?m)(?:\b(?:def|class|func|function|const|let|var|type|struct|interface|enum|record)\s+{n}\b|^\s*(?:export\s+)?(?:public|private|internal|static|readonly|\s)*[\w<>\[\](),? ]*\b{n}\s*(?:=|:|\())"
 KEYLIKE = re.compile(r"KEY|TOKEN|SECRET|PASSWORD")
 ENV_READ = re.compile(r"""(?:os\.environ(?:\.get)?\s*[\[(]\s*|os\.getenv\(\s*|process\.env\.|process\.env\[\s*|Environment\.GetEnvironmentVariable\(\s*|os\.Getenv\(\s*)["']?([A-Z][A-Z0-9_]{2,})""")
 

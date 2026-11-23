@@ -36,24 +36,102 @@
     "Route the approval in make_gate() to a real person (queue, chat, ticket) instead of the approve argument.",
     "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
   ],
-  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "agent/guardrails.py"], "marking": ["every result carries ai_generated", "agent/guardrails.py"]},
-  "vendors": ["anthropic"],
+  "ai_act": {
+    "purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.",
+    "people": true,
+    "generates": true,
+    "notice": [
+      "You're chatting with an AI assistant, not a person.",
+      "agent/guardrails.py"
+    ],
+    "marking": [
+      "every result carries ai_generated",
+      "agent/guardrails.py"
+    ]
+  },
+  "vendors": [
+    "anthropic"
+  ],
   "open_line": "Anthropic is this stack's model by choice, recorded in `.qz/practices.json`; for an open-weight model, start from the LangGraph or OpenAI Agents SDK starter.",
   "container_check": "docker run --rm --network none app:ci",
   "roles": {
     "entry": "agent/app.py#run",
     "agent": "agent/app.py#run",
     "tools": "agent/tools.py",
-    "model": ["agent/app.py", "agent/stub.py"],
+    "model": [
+      "agent/app.py",
+      "agent/stub.py"
+    ],
     "prompts": "agent/policy.py#SYSTEM",
     "guardrails": "agent/guardrails.py",
     "limits": "agent/policy.py",
-    "api": {"none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"},
-    "knowledge": {"none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"},
+    "api": {
+      "none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"
+    },
+    "knowledge": {
+      "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
+    },
     "tracing": "agent/app.py",
     "tests": "tests",
-    "evals": ["evals/gold.jsonl", "evals/eval.json"],
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/decisions", "docs/ai-act"]
+    "evals": [
+      "evals/gold.jsonl",
+      "evals/eval.json"
+    ],
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/adr",
+      "docs/decisions",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": {
+        "none": "a command-line agent: nothing listens on the network, so nobody signs in to it; served, it sits behind the client's identity provider"
+      },
+      "rbac": [
+        "agent/policy.py#ROLES",
+        "agent/guardrails.py#tools_for"
+      ],
+      "residency": [
+        "agent/guardrails.py#check_endpoint",
+        "agent/policy.py#ALLOWED_HOSTS"
+      ],
+      "pii": "agent/guardrails.py#mask",
+      "audit": "agent/audit.py#verify",
+      "network": [
+        "agent/guardrails.py#check_endpoint",
+        "agent/policy.py#ALLOWED_HOSTS"
+      ],
+      "vendor": "uv.lock",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/gold.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "api.anthropic.com",
+        "purpose": "the model: prompts, tool results and replies",
+        "processor": "Anthropic",
+        "region": "TODO: the processing region agreed for this account"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "order numbers",
+          "order notes",
+          "refund reasons",
+          "what customers write"
+        ],
+        "special": "TODO: none expected; confirm"
+      }
+    }
   }
 }

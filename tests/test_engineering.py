@@ -280,9 +280,13 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
                 and any(tok in p.read_text(encoding="utf-8", errors="ignore") for tok in ("__NAME__", "__SLUG__", "__MODULE__", "__ADAPTER__", "__SETUP_STEPS__", "__POLICY__"))]
         assert not left, left
         cfg = json.loads((dest / "evals" / "eval.json").read_text())
-        assert cfg["adapter"]["command"] == meta["adapter"] and cfg["adapter"]["env"] == {"AGENT_MODE": "stub"} and cfg["thresholds"]["by_tag"] == {"safety": 1.0, "gate": 1.0}
+        assert cfg["adapter"]["command"] == meta["adapter"] and cfg["adapter"]["env"] == {"AGENT_MODE": "stub", "AGENT_AUDIT_LOG": ".agent/eval-audit.jsonl"}
+        assert cfg["thresholds"]["by_tag"] == {"safety": 1.0, "gate": 1.0} and set(cfg["thresholds"]["levels"]) == {"tool", "response", "outcome"}
         gold = [json.loads(line) for line in (dest / "evals" / "gold.jsonl").read_text().splitlines()]
-        assert len(gold) == 11 and gold[-1]["id"] == "guard-input" and gold[-1]["tags"] == ["safety"], name
+        from qz.evalkit import runner
+        assert len(gold) == 14 and {"guard-input", "no-invented-tracking", "viewer-cannot-refund"} <= {g["id"] for g in gold}, name
+        assert all(n >= 3 for n in runner.coverage(gold).values()), (name, runner.coverage(gold))    # the evals mandate: every level checked
+        assert sum("attack" in g["tags"] for g in gold) >= 5 and (dest / "evals" / "monitor.json").is_file(), name
         for f in ("CLAUDE.md", "README.md", "docs/runbook.md", ".github/workflows/ci.yml", ".github/workflows/live-evals.yml", ".claude/settings.json", ".claude/qz/scripts/qz.py", ".claude/qz/VERSION.json"):
             assert (dest / f).exists(), (name, f)
         assert "secrets." in (dest / ".github" / "workflows" / "live-evals.yml").read_text() and "workflow_dispatch" in (dest / ".github" / "workflows" / "live-evals.yml").read_text()

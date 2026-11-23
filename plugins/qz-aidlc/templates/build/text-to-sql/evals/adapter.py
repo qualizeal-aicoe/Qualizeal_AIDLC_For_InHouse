@@ -16,4 +16,9 @@ case = json.load(sys.stdin)
 with open(os.path.join(HERE, "gold.jsonl"), encoding="utf-8") as f:
     gold = next((g for g in map(json.loads, filter(str.strip, f)) if g["id"] == case.get("id")), {})
 res = run_case({"input": case["input"], "gold_sql": gold.get("gold_sql"), "ordered": gold.get("ordered", False)})
-print(json.dumps({"output": res["output"], "tool_calls": res["tool_calls"], "usage": res["usage"]}, default=str))
+r = res.get("result") or {}
+# Outcome level: how the session ended (answered, refused, clarify, failed) and whether its rows equal the gold SQL's
+# (execution_check, tagged outcome in the gold set). The agent reads the database and never writes it: no effects.
+# Response level: the rows are the context the answer must be grounded in.
+print(json.dumps({"output": res["output"], "tool_calls": res["tool_calls"], "usage": res["usage"], "effects": [], "outcome": r.get("outcome"),
+                  "checks": r.get("checks"), "context": [json.dumps(r.get("rows") or [], default=str)]}, default=str))

@@ -282,8 +282,8 @@
     {
       "id": "QZ-RECORDS-WRITE",
       "tool": "shell",
-      "match": "(>{1,2}|\\btee\\b|\\b(rm|mv|cp|truncate|sed\\s+-i)\\b)[^\\n;&|]*\\.qz[\\\\/](audit|runs|outputs|board)[\\\\/]",
-      "message": "The audit chain, run ledgers, approved outputs and the board under .qz/ are written only by the QualiZeal tools."
+      "match": "(>{1,2}|\\btee\\b|\\b(rm|mv|cp|truncate|sed\\s+-i)\\b)[^\\n;&|]*\\.qz[\\\\/](audit|runs|outputs|board|golive)[\\\\/]",
+      "message": "The audit chain, run ledgers, approved outputs, the board and the go-live sign-offs under .qz/ are written only by the QualiZeal tools."
     },
     {
       "id": "QZ-BOARD-WRITE",
@@ -651,6 +651,48 @@
       "match": "\\$PROFILE\\b",
       "flags": "i",
       "message": "This touches the PowerShell profile, which runs in every new window. Confirm, then re-run."
+    },
+    {
+      "id": "QZ-ASK-GOLIVE",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\bgolive\\s+(?:sign|revoke)\\b[^\\n]*--yes\\b",
+      "message": "A go-live sign-off, or taking one back, is a named person's decision recorded under their name. A person runs it; an agent does not."
+    },
+    {
+      "id": "QZ-ASK-AUTONOMY",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\bautonomy\\s+(?:sign|revoke)\\b[^\\n]*--yes\\b",
+      "message": "The autonomy envelope decides which questions an unattended run may answer yes without a person. A person writes it, and a person signs it; an agent does neither."
+    },
+    {
+      "id": "QZ-ASK-AIACT",
+      "tool": "shell",
+      "flags": "i",
+      "match": "\\baiact\\s+confirm\\b[^\\n]*--yes\\b",
+      "message": "Confirming the EU AI Act class is a named person's decision. A person runs it; an agent does not."
+    },
+    {
+      "id": "QZ-ASK-AUTONOMY",
+      "tool": "write",
+      "flags": "i",
+      "match": "(^|/)\\.qz/autonomy\\.json$",
+      "message": "The autonomy envelope decides which questions an unattended run may answer yes without a person. A person writes it, and a person signs it; an agent does neither."
+    },
+    {
+      "id": "QZ-ASK-AUTONOMY",
+      "tool": "shell",
+      "flags": "i",
+      "match": "(?:>{1,2}\\|?\\s*['\"]?[^\\s'\"|;&]*\\.qz[\\\\/]autonomy\\.json)|\\b(?:tee|mv|cp|rm|truncate|install|ln|sed|perl|dd)\\b[^\\n;&|]*\\.qz[\\\\/]autonomy\\.json|\\.qz[\\\\/]autonomy\\.json[^\\n]*(?:write_text|writefile|json\\.dump|\\bopen\\s*\\()|(?:write_text|writefile|json\\.dump|\\bopen\\s*\\()[^\\n]*\\.qz[\\\\/]autonomy\\.json",
+      "message": "The autonomy envelope decides which questions an unattended run may answer yes without a person. A person writes it, and a person signs it; an agent does neither."
+    },
+    {
+      "id": "QZ-ASK-GOLIVE",
+      "tool": "write",
+      "flags": "i",
+      "match": "(^|/)\\.qz/golive/findings\\.json$",
+      "message": "Penetration-test findings decide whether the last go-live gate clears. A person confirms each change."
     }
   ],
   "write": {
@@ -663,7 +705,8 @@
       "(^|/)\\.claude/settings/mcp\\.json$",
       "(^|/)\\.qz/(secrets/|secrets\\.json$|repos\\.json$)",
       "(^|/)\\.qz/(audit|runs|outputs)/",
-      "(?i)Pricing[_ ]?Work[_ ]?Sheet.*\\.xls[xm]?$"
+      "(?i)Pricing[_ ]?Work[_ ]?Sheet.*\\.xls[xm]?$",
+      "(^|/)\\.qz/golive/signoffs\\.jsonl$"
     ],
     "secretPatterns": [
       {
@@ -772,6 +815,11 @@
         "id": "QZ-MCP-ATLASSIAN-DESTRUCTIVE",
         "match": "(jira|confluence|atlassian|rovo).*executeDestructive",
         "message": "Deleting or irreversibly changing Jira or Confluence content is a person's step, done in Atlassian."
+      },
+      {
+        "id": "QZ-MCP-ADO-DESTRUCTIVE",
+        "match": "(azure[-_]?devops|(^|__|_)ado(_|__)|azdo)[^\\n]*(delete|destroy|purge)",
+        "message": "Deleting in Azure DevOps (work items, test plans, repositories) is done by a person in Azure DevOps, not by an agent."
       }
     ],
     "askTools": [
@@ -797,6 +845,12 @@
         "match": "figma",
         "writeVerbs": true,
         "message": "Writing to Figma is a person's step."
+      },
+      {
+        "id": "QZ-MCP-ADO-WRITE",
+        "match": "(azure[-_]?devops|(^|__|_)ado(_|__)|azdo)",
+        "writeVerbs": true,
+        "message": "Writing to Azure DevOps (work items, test plans, test results, pull requests, comments) is a person's step: confirm the project, the item and the text."
       }
     ],
     "readOnlyServers": [

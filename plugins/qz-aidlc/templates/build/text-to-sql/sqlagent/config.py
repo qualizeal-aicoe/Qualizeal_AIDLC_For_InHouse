@@ -16,6 +16,8 @@ DEFAULTS = {
                "recursion_limit": 25, "max_turns": 100},
     "retrieval": {"max_tables": 5},
     "store": {"threads": ".sqlagent/threads.db", "audit": ".sqlagent/audit.jsonl"},
+    "identity": {"mode": "demo", "issuer": "", "audience": "", "jwks_url": "", "groups_claim": "groups",
+                 "trusted_proxies": ["127.0.0.1/32", "::1/128"], "group_map": {}, "hosts": []},
 }
 
 

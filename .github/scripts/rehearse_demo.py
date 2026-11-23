@@ -103,7 +103,7 @@ def main() -> None:
     run(QZ + ["hillclimb", "judge", "--note", "tree strategy, stub model"], proj, "40")
     print("S7 · chat page and API")
     run(QZ + ["build", "stage", ".", "7", "--yes"], proj)
-    tests(proj, 57 + WEB)
+    tests(proj, 68 + WEB)          # stage 7 adds the identity checks (single sign-on, go-live gate 1)
     py = proj / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")   # the server itself, not uv around it
     server = subprocess.Popen([str(py), "-m", "vrag", "serve", "--port", "8799"], cwd=proj, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:

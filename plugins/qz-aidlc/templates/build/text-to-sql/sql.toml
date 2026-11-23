@@ -27,3 +27,15 @@ max_tables = 5                 # tables in the schema card the model sees
 [store]
 threads = ".sqlagent/threads.db"   # conversation state, so follow-up questions work (LangGraph checkpointer)
 audit = ".sqlagent/audit.jsonl"    # what was asked, the SQL with its values masked, the outcome; never result rows
+
+# Who is asking on the web page (go-live gate 1; sqlagent/identity.py). demo: one person on this machine, in [agent] role.
+# oidc: callers send the identity provider's token; proxy: an identity-aware proxy signs people in. The role is the
+# first of the person's groups (after group_map) that semantic.toml names.
+[identity]
+mode = "demo"
+issuer = ""                         # oidc: the provider's issuer URL
+audience = ""                       # oidc: this app's client id or audience
+jwks_url = ""                       # oidc: the provider's signing keys
+groups_claim = "groups"
+trusted_proxies = ["127.0.0.1/32", "::1/128"]   # proxy: the only addresses identity headers are accepted from
+hosts = []                          # the names it answers to behind the proxy, for example "sql.example.org"

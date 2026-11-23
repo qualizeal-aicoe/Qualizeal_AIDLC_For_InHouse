@@ -102,4 +102,42 @@ public class AgentTests
             Environment.SetEnvironmentVariable("AGENT_MODEL_SMALL", null);
         }
     }
+
+    [Fact]
+    public async Task A_role_gets_only_its_own_tools_and_an_unknown_role_gets_none()
+    {
+        RunResult viewer = await OrderSupport.RunAsync("ORD-1002 arrived damaged. Please refund it.", role: "viewer");
+        Assert.Equal(["get_order"], viewer.tool_calls.Select(c => c.name));
+        Assert.Contains("role does not have", viewer.output);
+        RunResult nobody = await OrderSupport.RunAsync("Where is my order ORD-1001?", role: "no-such-role");
+        Assert.Empty(nobody.tool_calls);
+    }
+
+    [Fact]
+    public async Task Every_run_is_chained_and_an_edit_shows()
+    {
+        string log = Path.Combine(Path.GetTempPath(), $"audit-{Guid.NewGuid():N}.jsonl");
+        Environment.SetEnvironmentVariable("AGENT_AUDIT_LOG", log);
+        try
+        {
+            await OrderSupport.RunAsync("Where is my order ORD-1001? Card 4111 1111 1111 1111.", actor: "asha@example.com");
+            string text = File.ReadAllText(log);
+            Assert.DoesNotContain("4111", text);
+            Assert.Contains("asha@example.com", text);
+            Assert.Equal(new Audit.Check(true, 2, null), Audit.Verify(log));
+            File.WriteAllText(log, text.Replace("\"get_order\"", "\"issue_refund\""));
+            Assert.Equal(new Audit.Check(false, 0, 1), Audit.Verify(log));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AGENT_AUDIT_LOG", null);
+        }
+    }
+
+    [Fact]
+    public void The_agent_calls_only_the_hosts_it_lists()
+    {
+        Assert.Equal(Policy.ModelUrl, Access.CheckEndpoint(Policy.ModelUrl));
+        Assert.Throws<InvalidOperationException>(() => Access.CheckEndpoint("https://collector.example.net/v1"));
+    }
 }

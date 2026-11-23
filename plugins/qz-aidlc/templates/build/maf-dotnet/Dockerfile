@@ -33,7 +33,8 @@ RUN python3 -c "import json,pathlib; p=pathlib.Path('evals/eval.json'); c=json.l
 FROM mcr.microsoft.com/dotnet/runtime:10.0
 WORKDIR /app
 COPY --from=build /out .
-ENV AGENT_MODE=stub
+# Audit lines go to standard error, for the platform's log shipping (the working folder belongs to root).
+ENV AGENT_MODE=stub AGENT_AUDIT_LOG=-
 USER $APP_UID
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD ["dotnet", "Agent.dll", "Where is my order ORD-1001?"]
 ENTRYPOINT ["dotnet", "Agent.dll"]

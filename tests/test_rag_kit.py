@@ -30,7 +30,7 @@ def test_stage_zero_has_stories_tests_and_data_but_nothing_built(tmp_path):
     assert not (p / "vrag" / "ingest.py").exists() and not (p / "_overlays").exists() and not (p / "stages.json").exists()
     assert (p / "README.md").read_text().startswith("# Handbook Assistant")
     out = run(p, "-m", "pytest", "-q", "tests")
-    assert out.returncode == 0 and "4 passed, 8 skipped" in out.stdout, out.stdout + out.stderr
+    assert out.returncode == 0 and "4 passed, 9 skipped" in out.stdout, out.stdout + out.stderr
 
 
 def test_a_checkpoint_plans_first_and_only_replaces_stage_files(tmp_path):
@@ -51,7 +51,7 @@ def test_a_checkpoint_plans_first_and_only_replaces_stage_files(tmp_path):
 def test_the_full_kit_passes_its_tests_and_its_gate(tmp_path):
     p = Path(build.new("vectorless-rag", tmp_path / "kb", "KB")["dest"])
     out = run(p, "-m", "pytest", "-q", "tests")
-    assert out.returncode == 0 and "62 passed" in out.stdout, out.stdout[-800:] + out.stderr[-800:]
+    assert out.returncode == 0 and "73 passed" in out.stdout, out.stdout[-800:] + out.stderr[-800:]
     assert run(p, "-m", "vrag", "ingest").returncode == 0
     gate = run(p, "-m", "vrag", "eval", "--gate")
     assert gate.returncode == 0 and "40 of 40 golden questions pass" in gate.stdout, gate.stdout

@@ -3,33 +3,136 @@
   "summary": "ChatClientAgent with ApprovalRequiredAIFunction for the approval gate, AgentSession for resume, output-token limit, UseOpenTelemetry, Anthropic provider for live runs.",
   "verified": "RUN: built with the .NET SDK 10.0.404 against Microsoft.Agents.AI 1.28.0, and the xUnit tests plus gold set ran here against the offline stub chat client through the real framework, including approval request, approve and reject. The live Anthropic provider path compiled; no live model call was made here.",
   "stack_line": "A Microsoft Agent Framework agent in C# on .NET 10 (Microsoft.Agents.AI 1.28).",
-  "policy": "src/Agent/Policy.cs", "agent_dir": "src/Agent/",
-  "adapter": ["dotnet", "run", "--project", "src/Agent", "--", "--eval"],
-  "pass_env": ["ANTHROPIC_API_KEY", "AGENT_MODEL", "AZURE_OPENAI_ENDPOINT", "AZURE_CLIENT_ID", "AZURE_TENANT_ID", "AZURE_CLIENT_SECRET"],
-  "secret_env": ["ANTHROPIC_API_KEY"],
+  "policy": "src/Agent/Policy.cs",
+  "agent_dir": "src/Agent/",
+  "adapter": [
+    "dotnet",
+    "run",
+    "--project",
+    "src/Agent",
+    "--",
+    "--eval"
+  ],
+  "pass_env": [
+    "ANTHROPIC_API_KEY",
+    "AGENT_MODEL",
+    "AZURE_OPENAI_ENDPOINT",
+    "AZURE_CLIENT_ID",
+    "AZURE_TENANT_ID",
+    "AZURE_CLIENT_SECRET"
+  ],
+  "secret_env": [
+    "ANTHROPIC_API_KEY"
+  ],
   "test_cmd": "dotnet test tests/Agent.Tests",
   "run_cmd": "dotnet run --project src/Agent -- \"Where is my order ORD-1001?\"",
-  "setup_steps": ["- uses: actions/setup-dotnet@v4\n        with:\n          dotnet-version: '10.0.x'", "- run: dotnet build src/Agent"],
+  "setup_steps": [
+    "- uses: actions/setup-dotnet@v4\n        with:\n          dotnet-version: '10.0.x'",
+    "- run: dotnet build src/Agent"
+  ],
   "live": "Set ANTHROPIC_API_KEY and AGENT_MODE=live. For Azure OpenAI or Microsoft Foundry, swap the client in OrderSupport.Build(); the tools, approval loop and tracing stay the same.",
-  "next": ["Replace the two method bodies in src/Agent/Tools.cs with calls to your systems.", "Persist the AgentSession so a waiting approval survives a restart, and route the approval to a real person.", "For multi-agent or long-running work, move to Agent Framework workflows; keep the same tools and approval wrappers.", "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."],
-  "ai_act": {"purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.", "people": true, "generates": true, "notice": ["You're chatting with an AI assistant, not a person.", "src/Agent/Guardrails.cs"], "marking": ["every result carries ai_generated", "src/Agent/OrderSupport.cs"]},
-  "vendors": ["anthropic"],
+  "next": [
+    "Replace the two method bodies in src/Agent/Tools.cs with calls to your systems.",
+    "Persist the AgentSession so a waiting approval survives a restart, and route the approval to a real person.",
+    "For multi-agent or long-running work, move to Agent Framework workflows; keep the same tools and approval wrappers.",
+    "Rewrite evals/gold.jsonl for your use case; keep the safety and gate tags."
+  ],
+  "ai_act": {
+    "purpose": "Answers customers' questions about their orders and requests refunds; a person approves every refund before it is issued.",
+    "people": true,
+    "generates": true,
+    "notice": [
+      "You're chatting with an AI assistant, not a person.",
+      "src/Agent/Guardrails.cs"
+    ],
+    "marking": [
+      "every result carries ai_generated",
+      "src/Agent/OrderSupport.cs"
+    ]
+  },
+  "vendors": [
+    "anthropic"
+  ],
   "open_line": "Anthropic is the model by choice, recorded in `.qz/practices.json`; Microsoft Agent Framework takes any IChatClient, so OllamaSharp swaps in an open-weight model.",
   "container_check": "docker build --build-arg UBUNTU_MIRROR --target gold -t app:gold . && docker run --rm --network none app:ci",
   "roles": {
     "entry": "src/Agent/Program.cs",
     "agent": "src/Agent/OrderSupport.cs",
     "tools": "src/Agent/Tools.cs",
-    "model": ["src/Agent/OrderSupport.cs", "src/Agent/StubChatClient.cs"],
+    "model": [
+      "src/Agent/OrderSupport.cs",
+      "src/Agent/StubChatClient.cs"
+    ],
     "prompts": "src/Agent/Policy.cs#System",
     "guardrails": "src/Agent/Guardrails.cs",
     "limits": "src/Agent/Policy.cs",
-    "api": {"none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"},
-    "knowledge": {"none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"},
+    "api": {
+      "none": "a command-line agent today; the 1.1 solution composer serves it over HTTP with approvals in the API"
+    },
+    "knowledge": {
+      "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
+    },
     "tracing": "src/Agent/Program.cs",
     "tests": "tests",
-    "evals": ["evals/gold.jsonl", "evals/eval.json"],
-    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
-    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/decisions", "docs/ai-act"]
+    "evals": [
+      "evals/gold.jsonl",
+      "evals/eval.json"
+    ],
+    "delivery": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      ".dockerignore",
+      "docs/release.md"
+    ],
+    "docs": [
+      "README.md",
+      "docs/runbook.md",
+      "docs/adr",
+      "docs/decisions",
+      "docs/ai-act"
+    ]
+  },
+  "golive": {
+    "controls": {
+      "sso": {
+        "none": "a command-line agent: nothing listens on the network, so nobody signs in to it; served, it sits behind the client's identity provider"
+      },
+      "rbac": [
+        "src/Agent/Policy.cs#Roles",
+        "src/Agent/Access.cs#ToolsFor"
+      ],
+      "residency": [
+        "src/Agent/Access.cs#CheckEndpoint",
+        "src/Agent/Policy.cs#AllowedHosts"
+      ],
+      "pii": "src/Agent/Guardrails.cs#Mask",
+      "audit": "src/Agent/Audit.cs#Verify",
+      "network": [
+        "src/Agent/Access.cs#CheckEndpoint",
+        "src/Agent/Policy.cs#AllowedHosts"
+      ],
+      "vendor": "src/Agent/packages.lock.json",
+      "dpa": ".qz/golive.json",
+      "pentest": "evals/gold.jsonl"
+    },
+    "endpoints": [
+      {
+        "host": "api.anthropic.com",
+        "purpose": "the model: prompts, tool results and replies",
+        "processor": "Anthropic",
+        "region": "TODO: the processing region agreed for this account"
+      }
+    ],
+    "answers": {
+      "pii": {
+        "categories": [
+          "order numbers",
+          "order notes",
+          "refund reasons",
+          "what customers write"
+        ],
+        "special": "TODO: none expected; confirm"
+      }
+    }
   }
 }

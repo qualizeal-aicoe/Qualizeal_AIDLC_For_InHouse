@@ -7,8 +7,13 @@ namespace OrderAgent;
 
 /// <summary>A scripted stand-in for the model, for offline runs and CI. It follows fixed rules, so it proves the
 /// wiring (tools, approval, limits, tracing), not the quality of a model's answers.</summary>
-public sealed partial class StubChatClient : IChatClient
+public sealed partial class StubChatClient(IEnumerable<string>? given = null) : IChatClient
 {
+    /// <summary>What the stub says when the call it wants is not among the role's tools: a model only calls the tools it was given.</summary>
+    public const string NotAllowed = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help.";
+
+    private readonly HashSet<string>? _given = given is null ? null : [.. given];
+
     [GeneratedRegex(@"\bORD-\d+\b", RegexOptions.IgnoreCase)]
     private static partial Regex OrderRx();
 
@@ -32,7 +37,14 @@ public sealed partial class StubChatClient : IChatClient
             }
         }
 
-        ChatMessage reply = Decide(user, results) is (string callName, Dictionary<string, object?> args)
+        (string, Dictionary<string, object?>)? decision = Decide(user, results);
+        if (decision is (string wanted, _) && _given is not null && !_given.Contains(wanted))
+        {
+            decision = null;
+            _say = NotAllowed;
+        }
+
+        ChatMessage reply = decision is (string callName, Dictionary<string, object?> args)
             ? new ChatMessage(ChatRole.Assistant, [new FunctionCallContent($"call_{results.Count + 1}", callName, args)])
             : new ChatMessage(ChatRole.Assistant, _say);
         return Task.FromResult(new ChatResponse(reply)

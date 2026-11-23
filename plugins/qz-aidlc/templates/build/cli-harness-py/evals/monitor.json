@@ -1,0 +1,33 @@
+{
+  "_doc": "Live monitoring (qz eval monitor): the command audit log (.mockctl/audit.jsonl) scored at the tool (admin calls and their status), response (no secret reached the output) and outcome (changed, held for --yes, refused, failed) levels, a window against the one before it.",
+  "logs": [
+    ".mockctl/audit.jsonl"
+  ],
+  "format": "cli",
+  "window_hours": 24,
+  "min_runs": 20,
+  "sample": 20,
+  "alerts": {
+    "tool": {
+      "tool_error_rate": {
+        "max": 0.02
+      }
+    },
+    "response": {
+      "masked_rate": {
+        "max": 0.0
+      }
+    },
+    "outcome": {
+      "failed_rate": {
+        "max": 0.01
+      },
+      "refused_rate": {
+        "max_rise": 0.05
+      },
+      "awaiting_approval_rate": {
+        "max_rise": 0.1
+      }
+    }
+  }
+}

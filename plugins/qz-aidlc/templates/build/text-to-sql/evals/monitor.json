@@ -1,0 +1,46 @@
+{
+  "_doc": "Live monitoring (qz eval monitor): the question audit log (.sqlagent/audit.jsonl) scored at the tool (each step and how it ended, queries that returned nothing), response (numbers in the model's answer that were not in the rows) and outcome (answered, refused, asked back, failed) levels, a window against the one before it.",
+  "logs": [
+    ".sqlagent/audit.jsonl"
+  ],
+  "format": "sql",
+  "window_hours": 24,
+  "min_runs": 20,
+  "sample": 20,
+  "labels": "evals/monitor/labels.jsonl",
+  "alerts": {
+    "tool": {
+      "tool_error_rate": {
+        "max": 0.05,
+        "max_rise": 0.02
+      },
+      "empty_retrieval_rate": {
+        "max_rise": 0.1
+      },
+      "tool_shift": {
+        "max": 0.3
+      }
+    },
+    "response": {
+      "ungrounded_rate": {
+        "max": 0.05,
+        "max_rise": 0.02
+      }
+    },
+    "outcome": {
+      "failed_rate": {
+        "max": 0.02
+      },
+      "refused_rate": {
+        "max_rise": 0.05
+      },
+      "clarify_rate": {
+        "max_rise": 0.1
+      },
+      "goal_rate": {
+        "min": 0.8,
+        "max_fall": 0.05
+      }
+    }
+  }
+}
