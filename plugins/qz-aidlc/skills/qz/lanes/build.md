@@ -18,13 +18,16 @@ passed gate, build what it decided; if not, say that the stack is unconfirmed an
 3. **Make it theirs** (`stage code-generation`). Replace the sample tools with the real ones. For every tool decide:
    read-only, or needs approval. Anything that writes, sends, pays or deletes goes on the approval list in the same
    change. Keep limits in the policy file. Keep untrusted text out of the system prompt and out of tool targets.
+   When a part moves or a new one appears, update `.qz/solution.json` in the same change: `qz structure` checks
+   every solution has its fourteen parts, each where it lives or why it does not apply.
 4. **Grow the gold set with the code.** Each behaviour gets a case in `evals/gold.jsonl` (deterministic checks first;
    a rubric only where code cannot judge). Keep `safety` and `gate` cases at 100%. Run `eval_run` (offline stub) after
    each change; it proves wiring and checks, not the model.
 5. **Go live deliberately** (`stage build-and-test`). Live runs need the person's key in the environment, never in a
    file or in this conversation. `eval_run [--config, evals/eval.live.json]`, keep that result as the baseline, and
    gate later changes with `eval [compare, <baseline>, <new>]`.
-6. **Before it leaves the team.** `project_audit [scan]` and the Audit lane for the manual items. Pull requests and
-   pushes wait for the person's yes.
+6. **Before it leaves the team.** `project_audit [scan]` and the Audit lane for the manual items. `qz structure pack`
+   writes `docs/solution.md`: the same eight sections for every solution, each with its evidence or what is missing.
+   Pull requests and pushes wait for the person's yes.
 
 Several agents on one build (subagents, sessions, worktrees): plan it as tasks on the board, `references/board.md`.

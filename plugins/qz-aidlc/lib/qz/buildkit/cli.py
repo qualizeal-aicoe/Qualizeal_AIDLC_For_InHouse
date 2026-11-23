@@ -144,6 +144,7 @@ def standards(dest: Path, name: str, meta: dict) -> list[str]:
         rel.parent.mkdir(parents=True, exist_ok=True)
         rel.write_text(release_recipe(name, slug(name), meta), encoding="utf-8")
         written.append("docs/release.md")
+    written += shape_files(dest, name, meta)
     if meta.get("vendors"):
         f = dest / ".qz" / "practices.json"
         cur = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
@@ -153,6 +154,33 @@ def standards(dest: Path, name: str, meta: dict) -> list[str]:
         f.write_text(json.dumps(cur, indent=2) + "\n", encoding="utf-8")
         written.append(".qz/practices.json")
     return written
+
+
+def shape_files(dest: Path, name: str, meta: dict) -> list[str]:
+    """The solution's parts in .qz/solution.json (`qz structure` checks them), and .env.example: every variable the
+    code reads, by name only, so nobody has to guess what a .env needs and nobody commits one."""
+    from ..auditkit import shape
+    out = []
+    if meta.get("roles"):
+        f = dest / ".qz" / "solution.json"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps({"name": name, "stack": meta.get("title", ""), "roles": meta["roles"],
+                                 "_about": "The parts of this solution and where each lives (qz structure). Keep it true when the code moves."},
+                                indent=2) + "\n", encoding="utf-8")
+        out.append(".qz/solution.json")
+    names = list(dict.fromkeys([*(meta.get("secret_env") or []), *(meta.get("pass_env") or []), *sorted(shape._env_reads(dest))]))
+    if names and not (dest / ".env.example").exists():
+        keys = [n for n in names if shape.KEYLIKE.search(n)]
+        rest = [n for n in names if n not in keys]
+        text = ["# The variables this project reads, by name only. Never put a value in this file, and never commit a .env.",
+                "# Keys come from your system's keychain, the environment or the CI's secret store."]
+        if keys:
+            text += ["", "# Keys and secrets"] + [f"{n}=" for n in keys]
+        if rest:
+            text += ["", "# Settings (optional)"] + [f"# {n}=" for n in rest]
+        (dest / ".env.example").write_text("\n".join(text) + "\n", encoding="utf-8")
+        out.append(".env.example")
+    return out
 
 
 def release_recipe(name: str, sl: str, m: dict) -> str:
@@ -203,8 +231,8 @@ def house_sections(name: str, m: dict) -> str:
     """The two sections every project's README carries: the QualiZeal standards and how its image is released."""
     kit = m.get("kit", True)
     qz = "python3 .claude/qz/scripts/qz.py" if kit else "qz"
-    lead = (f"CI checks every change against four standards; `{qz} standards` shows the scorecard here." if kit else
-            "Four standards apply to every change: the Studio's `qz standards` shows the scorecard, and the Deliver lane "
+    lead = (f"CI checks every change against five standards; `{qz} standards` shows the scorecard here." if kit else
+            "Five standards apply to every change: the Studio's `qz standards` shows the scorecard, and the Deliver lane "
             "runs it before a change is called done.")
     ai = m.get("ai_act") or {}
     marks = [x for x, on in (("`ai_notice` (show it before the first reply)", ai.get("people")),
@@ -221,6 +249,7 @@ def house_sections(name: str, m: dict) -> str:
 - **EU AI Act:** the record in `docs/ai-act/` gives the risk class, the role and the obligations. {act} The class is a draft until a person confirms it: `{qz} aiact confirm --yes`.
 - **Open source first:** {m.get('open_line', 'open-source options first at every layer.')}
 - **Cost levers:** {m.get('cost_line', AGENT_COST)}
+- **Solution shape:** the fourteen parts every solution has, each named in `.qz/solution.json` where it lives or why it does not apply (`{qz} structure`); `.env.example` names every variable the code reads, with no values.
 
 ## Container and release
 

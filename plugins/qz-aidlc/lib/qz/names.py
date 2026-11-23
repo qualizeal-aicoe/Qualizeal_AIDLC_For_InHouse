@@ -26,7 +26,7 @@ PARTS: dict[str, tuple[str, str]] = {
     "qz-aiact": ("the EU AI Act record every project keeps: risk class, role, the obligations they bring and evidence for each; a person confirms the class", "qz aiact, docs/ai-act/, lib/qz/auditkit/aiact.py"),
     "qz-stack": ("open source first: which layers of an AI stack are open, which are tied to a vendor by recorded choice, and the open option for each", "qz stack, lib/qz/auditkit/oss.py"),
     "qz-cost": ("the six cost levers (prompt caching, model routing, batch, semantic cache, trimmed context, smaller models), checked with evidence", "qz cost, lib/qz/auditkit/cost.py"),
-    "qz-standards": ("one scorecard for the house standards: the six guardrails, the EU AI Act, open source first and the cost levers; the CI gate in every starter", "qz standards, lib/qz/auditkit/standards.py"),
+    "qz-standards": ("one scorecard for the house standards: the six guardrails, the EU AI Act, open source first, the cost levers and the solution shape; the CI gate in every starter", "qz standards, lib/qz/auditkit/standards.py"),
     "qz-route": ("reads each request without a model call and names the lane, tool, agent, model and effort that fit, with what is in hand", "policy/qz-routes.json, lib/qz/router.py"),
     "qz-office": ("decks, planning and status workbooks, estimates and e-mails written for each reader", "lib/qz/office/"),
     "qz-publish": ("saves locally first, then pushes to a new, existing or team repository after a person's yes", "lib/qz/ws/publish.py"),

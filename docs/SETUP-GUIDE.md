@@ -1,6 +1,6 @@
 # QualiZeal AI-DLC Studio · setup guide
 
-Version 1.0.1. The Studio lives in the public repository `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Pick the part
+Version 1.0.2. The Studio lives in the public repository `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Pick the part
 that fits you; all of them end the same way, with `/qz-aidlc:qz-setup` inside Claude.
 
 | Part | Who | Time |
@@ -65,8 +65,8 @@ Then go to part D.
 1. Customize > Plugins > Add marketplace, and enter `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Your GitHub account
    needs read access to the repository; ask the AI CoE if the add fails.
 2. Install **qz-aidlc** and **qz-console**. They load in every new session on your account, phone included.
-3. No marketplace access? Upload `qz-aidlc-1.0.1.zip` instead (Customize > Plugins > Add > Upload plugin), from the AI
-   CoE or the 1.0.1 release on GitHub. Remove an older version first.
+3. No marketplace access? Upload `qz-aidlc-1.0.2.zip` instead (Customize > Plugins > Add > Upload plugin), from the AI
+   CoE or the 1.0.2 release on GitHub. Remove an older version first.
 4. Go to part D.
 
 ## C. For the whole organisation
@@ -114,7 +114,7 @@ Restart Claude Code, sign in with the Claude account you use for work, and type 
   reads every command.
 
 Every project the Studio starts meets the QualiZeal standards (`qz standards`): the six guardrails, an EU AI Act
-record in `docs/ai-act/`, open source first and the cost levers. A person confirms the AI Act class once, with
+record in `docs/ai-act/`, open source first, the cost levers and the solution shape. A person confirms the AI Act class once, with
 `qz aiact confirm --yes`; a vendor the team chooses is recorded with `qz practices set standards.vendors <name> --yes`.
 
 Two switches you may want in `/plugin` > qz-aidlc > Configure: **Format on edit** (formats each file Claude writes with
@@ -216,7 +216,7 @@ When it blocks something, the message names the rule (for example `QZ-SH-GIT-PUS
 
 ## Not proven yet
 
-Run on 23 November 2026 for 1.0.1, as on 20 November for 1.0.0: the test suite, the guard's red-team, the doctor and
+Run on 23 November 2026 for 1.0.2, as for 1.0.1 that morning: the test suite, the guard's red-team, the doctor and
 the bootstrap (check only) in continuous integration (CI) on Windows and Linux; every starter's tests and gold set;
 the marketplace added from GitHub and both plugins installed by Claude Code; the handbook demo end to end. The
 README's "What was run" has the counts.

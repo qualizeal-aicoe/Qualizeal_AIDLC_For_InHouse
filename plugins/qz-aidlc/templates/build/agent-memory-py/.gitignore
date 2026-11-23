@@ -3,3 +3,6 @@ __pycache__/
 .mem/
 evals/results/
 .qz/scratch/
+.env
+.env.*
+!.env.example

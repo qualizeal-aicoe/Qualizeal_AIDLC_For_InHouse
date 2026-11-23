@@ -1,6 +1,6 @@
 # Live demo: a vectorless RAG knowledge assistant, built from Jira stories
 
-Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE). For Studio 1.0.1. A shorter session with the
+Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE). For Studio 1.0.2. A shorter session with the
 hybrid kit is in [LIVE-SESSION.md](LIVE-SESSION.md).
 
 **What the audience sees.** In about 70 minutes the AI-DLC Studio takes an epic from Jira to a working assistant that
@@ -9,7 +9,7 @@ say. Each story is one stage. Its tests exist before the code. Every claim on sc
 
 ## Before the session
 
-- [ ] Studio 1.0.1 installed with the bootstrap, and its doctor reads `ready for a live session`. Atlassian
+- [ ] Studio 1.0.2 installed with the bootstrap, and its doctor reads `ready for a live session`. Atlassian
       connected; the epic and stories exist in Jira (project AID), one story per stage, labelled `vectorless-rag`.
 - [ ] A rehearsal the day before, end to end, with the network off for stages 1 to 5 and 7.
 - [ ] Only the Atlassian and GitHub servers enabled for the session: every other server's tools cost context.

@@ -32,5 +32,21 @@
   "vendors": [],
   "open_line": "Any OpenAI-compatible server works, including an open-weight model on Ollama (provider = openai, base_url = http://localhost:11434/v1).",
   "cost_line": "the system prompt and tools cached on every model call; generated SQL cached per role, question and schema card, and kept only once it passes the check; at most five tables in the schema card, results and turns capped; every call is one narrow task on a small model.",
-  "container_check": "docker run --rm --network none app:ci"
+  "container_check": "docker run --rm --network none app:ci",
+  "roles": {
+    "entry": "sqlagent/__main__.py",
+    "agent": "sqlagent/graph.py",
+    "tools": "sqlagent/db.py",
+    "model": "sqlagent/models.py",
+    "prompts": "sqlagent/models.py#SYSTEM_SQL",
+    "guardrails": "sqlagent/guard.py",
+    "limits": "sql.toml",
+    "api": "sqlagent/web.py",
+    "knowledge": ["semantic.toml", "sqlagent/schema.py"],
+    "tracing": "sqlagent/audit.py",
+    "tests": "tests",
+    "evals": ["evals/gold.jsonl", "evals/eval.json"],
+    "delivery": [".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "docs/release.md"],
+    "docs": ["README.md", "docs/runbook.md", "docs/adr", "docs/ai-act"]
+  }
 }

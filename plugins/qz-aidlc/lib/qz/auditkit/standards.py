@@ -4,6 +4,7 @@
     2 EU AI Act             the classification record, the obligations it brings, evidence for each
     3 Open source first     the open option at every layer, unless a vendor is a recorded choice
     4 Cost levers           prompt caching, model routing, batch, semantic cache, trimmed context, smaller models
+    5 Solution shape        the same fourteen parts in every solution, each named where it lives or why it does not apply
 
     qz standards [PATH] [--json] [--gate]     with --gate, exit 1 when any standard fails
     qz standards --studio                     the Studio's own scorecard
@@ -17,9 +18,10 @@ import os
 import sys
 from pathlib import Path
 
-from . import aiact, cost, gates, oss
+from . import aiact, cost, gates, oss, shape
 
-PARTS = [("guardrails", "Six guardrails", gates), ("aiact", "EU AI Act", aiact), ("stack", "Open source first", oss), ("cost", "Cost levers", cost)]
+PARTS = [("guardrails", "Six guardrails", gates), ("aiact", "EU AI Act", aiact), ("stack", "Open source first", oss), ("cost", "Cost levers", cost),
+         ("shape", "Solution shape", shape)]
 
 
 def run(root: Path | None = None, studio: bool = False) -> dict:

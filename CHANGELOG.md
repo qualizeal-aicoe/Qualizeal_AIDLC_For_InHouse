@@ -3,6 +3,37 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
+## 1.0.2 · 23 November 2026
+
+One shape for every solution: the same parts, the same evidence and the same page, whoever builds it.
+
+### Added
+
+- **The solution shape, a fifth QualiZeal standard (`qz structure`).** Every solution names its fourteen parts in
+  `.qz/solution.json`: entry, agent, tools, model, prompts, guardrails, limits, interface, knowledge, tracing, tests,
+  evals, delivery and docs. Each is where it lives (a file, a folder, or a function or constant in a file) or a reason
+  it does not apply. The check calls no model. A missing part, a reason left as a TODO, a gold set with fewer than
+  three cases, or an image that runs as root or has no health check fails it, and with it the CI of every project that
+  carries the Studio's kit (the two RAG kits carry none: the Deliver lane runs the scorecard for them). All 13
+  starters name their parts and meet it the moment they are created.
+- **Secrets hygiene in the same check.** `.env` is ignored and never tracked, and `.env.example`, written into every
+  new project, names every variable the code reads, with no values.
+- **A draft for a project the Studio did not start (`qz structure init`).** It reads the layout, a `src/agent`,
+  `src/tools`, `src/prompts` and `src/api` tree included, and proposes the map. What it cannot find stays a TODO, and
+  nothing is written until a person runs it again with `--yes`.
+- **One page per solution (`qz structure pack`).** `docs/solution.md` has the same eight sections every time: what it
+  is, requirements and acceptance, architecture and decisions, shape, quality evidence, safety and compliance,
+  operations, known limits. Each links its evidence or says "Not yet" and what is missing.
+
+### Changed
+
+- `qz standards` checks five standards. The README, the setup guide, the session plan and every new project's README
+  and agent rules say so, and the build lane keeps `.qz/solution.json` true as the code moves and ends with the page.
+
+### Fixed
+
+- The MCP server and agent memory kits did not list `.env` in their `.gitignore`; the new hygiene check found it.
+
 ## 1.0.1 · 23 November 2026
 
 Trust, mostly: what the Studio remembers, defines, answers and commits now carries its evidence, and says so when the
