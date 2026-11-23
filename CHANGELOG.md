@@ -3,6 +3,13 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
+## Unreleased
+
+- **Releases publish themselves.** When the checks pass on main for a version that has no release yet, the release
+  workflow tags that commit, attaches the plugin zips and publishes that version's notes from this changelog. A
+  release branch's pull request now runs on macOS too, so nothing is published unchecked. The tidy workflow deletes a
+  branch once its work is merged.
+
 ## 1.0.0 · 21 November 2026
 
 The first release for the whole AI Center of Excellence (AI CoE). It follows 0.10.0 and is made to install the same

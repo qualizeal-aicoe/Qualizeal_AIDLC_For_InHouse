@@ -1,0 +1,36 @@
+# Deletes a branch once its work is in main, so merged branches never pile up and nobody tidies by hand. A branch is
+# deleted only when its head commit is the head of a pull request already merged into main. A branch with any commit
+# after that, one that never went through a merged pull request, main itself and any protected branch are kept.
+name: tidy
+on:
+  pull_request:
+    types: [closed]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: tidy
+jobs:
+  merged-branches:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Delete the branches whose work is merged
+        run: |
+          gh api "repos/$REPO/branches?per_page=100" --paginate \
+            --jq '.[] | select(.name != "main" and (.protected | not)) | "\(.name) \(.commit.sha)"' |
+          while read -r name sha; do
+            merged=$(gh api "repos/$REPO/commits/$sha/pulls" \
+              --jq "[.[] | select(.merged_at != null and .base.ref == \"main\" and .head.sha == \"$sha\")] | length")
+            if [ "$merged" -gt 0 ]; then
+              echo "deleting $name: its head $sha is the head of a merged pull request"
+              gh api -X DELETE "repos/$REPO/git/refs/heads/$name"
+            else
+              echo "keeping $name"
+            fi
+          done
