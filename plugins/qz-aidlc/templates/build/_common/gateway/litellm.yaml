@@ -20,6 +20,9 @@ litellm_settings:
   # No prompt or answer text in any log or trace. Turn it off only by a team decision recorded in docs/decisions/.
   turn_off_message_logging: true
   redact_user_api_key_info: true
+  # A call in Anthropic's format (the Claude Agent SDK and Go starters) to an OpenAI-compatible model goes through
+  # chat/completions, which every such server has, not the Responses API, which self-hosted ones mostly do not.
+  use_chat_completions_url_for_anthropic_messages: true
 
 general_settings:
   # The gateway's own key. On a laptop the agent may use it; anywhere shared, create a virtual key per agent (that

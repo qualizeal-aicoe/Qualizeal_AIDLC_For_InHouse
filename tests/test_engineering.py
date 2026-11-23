@@ -158,6 +158,19 @@ def test_eval_run_record_replay_and_redaction(tmp_path):
     assert "input changed since it was recorded" in qz(proj, "eval", "replay", ok=False).stdout
 
 
+def test_eval_run_writes_to_its_configs_own_results_folder(tmp_path):
+    """A second gold-set config (the model gateway's) keeps its results and report in its own folder, even in a project
+    where the default one was never run."""
+    proj = eval_project(tmp_path, gold=[g for g in GOLD if g["id"] != "d"])
+    cfg = json.loads((proj / "evals" / "eval.json").read_text())
+    cfg["results"] = "evals/results-gateway"
+    (proj / "evals" / "eval.gateway.json").write_text(json.dumps(cfg))
+    qz(proj, "eval", "run", "--config", "evals/eval.gateway.json", "--label", "gateway")
+    out = proj / "evals" / "results-gateway"
+    assert (out / "latest.json").is_file() and (out / "report.html").read_text().count("<tr>") >= 4
+    assert not (proj / "evals" / "results").exists()
+
+
 def test_eval_refuses_unsafe_adapters_and_lints_gold(tmp_path):
     proj = eval_project(tmp_path, gold=[{"id": "x", "input": "hi"}, {"id": "x", "input": "again", "checks": [{"type": "nope"}]}])
     out = qz(proj, "eval", "lint", ok=False).stdout

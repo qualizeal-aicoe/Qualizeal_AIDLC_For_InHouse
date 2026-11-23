@@ -87,8 +87,9 @@ def test_the_ci_config_swaps_only_the_providers(tmp_path):
         "litellm_settings": {"turn_off_message_logging": True, "callbacks": ["langfuse_otel"]}}), encoding="utf-8")
     cfg = gateway.ci_config(src, "http://127.0.0.1:4010", "http://127.0.0.1:4011")
     main, fb = cfg["model_list"]
-    assert main["litellm_params"] == {"model": "openai/standin", "api_base": "http://127.0.0.1:4010/v1", "api_key": "os.environ/STANDIN_PROVIDER_KEY", "max_budget": 25, "budget_duration": "30d"}
-    assert fb["litellm_params"]["api_base"] == "http://127.0.0.1:4011/v1" and main["model_info"]["input_cost_per_token"] > 0
+    assert main["litellm_params"] == {"model": "anthropic/standin", "api_base": "http://127.0.0.1:4010", "api_key": "os.environ/STANDIN_PROVIDER_KEY", "max_budget": 25, "budget_duration": "30d"}
+    assert fb["litellm_params"]["model"] == "openai/standin" and fb["litellm_params"]["api_base"] == "http://127.0.0.1:4011/v1"
+    assert main["model_info"]["input_cost_per_token"] > 0
     assert cfg["router_settings"] == {"fallbacks": [{"agent-model": ["agent-model-fallback"]}]}
     assert cfg["litellm_settings"]["turn_off_message_logging"] is True and cfg["litellm_settings"]["callbacks"] == ["langfuse_otel"]
     tiny = gateway.ci_config(src, "http://127.0.0.1:4010", "http://127.0.0.1:4011", tiny_budget=True)

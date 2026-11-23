@@ -315,7 +315,8 @@ def serve_langfuse(port: int, out: str, auth: str = "") -> ThreadingHTTPServer:
 def ci_config(src: Path, primary: str, fallback: str, tiny_budget: bool = False) -> dict:
     """The project's gateway config with every provider swapped for a stand-in: the first deployment of each model name
     goes to the primary stand-in, any later one and every fallback name to the second, each with a list price so the
-    gateway computes a cost. Fallbacks, budgets and logging settings stay as the project wrote them."""
+    gateway computes a cost. A Claude model keeps LiteLLM's Anthropic route; any other speaks the OpenAI protocol.
+    Fallbacks, budgets and logging settings stay as the project wrote them."""
     import yaml
     cfg = yaml.safe_load(src.read_text(encoding="utf-8")) or {}
     names = [f for fb in (cfg.get("router_settings") or {}).get("fallbacks") or [] for v in fb.values() for f in v]
@@ -327,7 +328,11 @@ def ci_config(src: Path, primary: str, fallback: str, tiny_budget: bool = False)
         budget = {k: p[k] for k in ("max_budget", "budget_duration") if k in p}
         if tiny_budget and target == primary:
             budget = {"max_budget": 1e-09, "budget_duration": "1d"}
-        m["litellm_params"] = {"model": "openai/standin", "api_base": target + "/v1", "api_key": "os.environ/STANDIN_PROVIDER_KEY", **budget}
+        if str(p.get("model", "")).startswith("anthropic/"):      # Claude through LiteLLM's Anthropic route, as in production
+            route = {"model": "anthropic/standin", "api_base": target}
+        else:                                                      # everything else as an OpenAI-compatible server
+            route = {"model": "openai/standin", "api_base": target + "/v1"}
+        m["litellm_params"] = {**route, "api_key": "os.environ/STANDIN_PROVIDER_KEY", **budget}
         m["model_info"] = {"input_cost_per_token": 3e-06, "output_cost_per_token": 1.5e-05}
     ls = cfg.setdefault("litellm_settings", {})
     ls["drop_params"] = True                                   # the stand-in ignores provider-only options

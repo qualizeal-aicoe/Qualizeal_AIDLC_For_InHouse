@@ -29,16 +29,33 @@ class ApprovalGate(HookProvider):
                 event.cancel_tool = "A person declined this action. Do not retry it."
 
 
+def _gateway_model():
+    """Strands' OpenAI model with a new client, and so a new connection, for every request. Strands runs each turn in
+    an event loop of its own (an approval's answer is a second turn), and the gateway keeps connections open, so a
+    client shared between turns would reuse a connection that belongs to a closed loop. Strands makes its own clients
+    the same way (strands/models/openai.py, _get_client); this one adds the run's trace context to each request."""
+    from contextlib import asynccontextmanager
+
+    from openai import AsyncOpenAI
+    from strands.models.openai import OpenAIModel
+
+    class GatewayModel(OpenAIModel):
+        @asynccontextmanager
+        async def _get_client(self):
+            async with AsyncOpenAI(base_url=gateway.url() + "/v1", api_key=gateway.key(), http_client=gateway.httpx_client(True)) as client:
+                yield client
+
+    return GatewayModel
+
+
 def _model(model_id: str | None = None):
     if os.environ.get("AGENT_MODE", "stub") == "stub":
         from .stub import StubModel
         return StubModel()
     if gateway.on():                                      # every call through the model gateway (gateway/litellm.yaml)
-        from openai import AsyncOpenAI
-        from strands.models.openai import OpenAIModel
         guardrails.check_endpoint(gateway.url())
-        client = AsyncOpenAI(base_url=gateway.url() + "/v1", api_key=gateway.key(), http_client=gateway.httpx_client(True))
-        return OpenAIModel(client=client, model_id=model_id or gateway.model(), params={"max_tokens": policy.MAX_OUTPUT_TOKENS})
+        gateway.key()                                     # no start beside a provider key, or without the gateway's key
+        return _gateway_model()(model_id=model_id or gateway.model(), params={"max_tokens": policy.MAX_OUTPUT_TOKENS})
     if not policy.MODEL_ID:
         raise SystemExit("Set AGENT_MODEL to a Bedrock model id or inference profile for live runs.")
     from strands.models import BedrockModel, CacheConfig

@@ -37,6 +37,23 @@ def test_a_refund_through_the_gateway_still_waits_for_a_person(gw):
     assert r["awaiting_approval"] and r["tool_calls"][-1]["status"] == "pending" and "RF-" not in r["output"]
 
 
+def test_an_approval_answered_in_the_same_process_gets_a_new_connection(gw):
+    """The approval's answer is a second Strands turn, in an event loop of its own; each request gets its own client, so
+    no connection is carried over from the first turn's loop (the real gateway keeps connections open)."""
+    import asyncio
+
+    from agent.app import _model, run
+    model = _model()
+
+    async def client():
+        async with model._get_client() as c:
+            return c
+    assert asyncio.run(client()) is not asyncio.run(client())
+    r = run("ORD-1002 arrived damaged. Please refund it.", approve=True)
+    assert not r["awaiting_approval"] and r["tool_calls"][-1]["name"] == "issue_refund" and r["tool_calls"][-1]["status"] == "ok"
+    assert "RF-" in r["output"] and {s["auth"] for s in gw} == {"Bearer sk-gateway-test"}
+
+
 def test_an_easy_question_can_go_to_the_gateways_small_model(gw, monkeypatch):
     monkeypatch.setenv("AGENT_GATEWAY_MODEL_SMALL", "agent-model-small")
     from agent.app import run
