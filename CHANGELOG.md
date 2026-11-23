@@ -82,6 +82,10 @@ client's own Kubernetes, with Claude through the cloud's own model service (on K
   request. An evaluation run with its own results folder (the gateway's gold set) wrote its report to the default one,
   and the CI's stand-in Langfuse read only bodies sent with a length, so the TypeScript starter's traces, which Node
   sends in chunks, were lost there.
+- The LangGraph starter's crash case (a crash right after the refund) failed about one run in twelve: LangGraph writes
+  a step's checkpoint while the next step runs, so a process that died inside the refund could leave a checkpoint
+  with the answer taken and nothing left to run. The starter now writes each checkpoint before the next step starts;
+  the case passed 30 runs in a row, against 23 of 25 before.
 - On Windows, two of the Studio's tests read paths with backslashes and fed git carriage returns, so a shipped
   `.env.example` looked ignored.
 

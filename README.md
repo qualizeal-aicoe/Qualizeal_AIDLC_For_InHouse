@@ -60,7 +60,7 @@ gateway (LiteLLM) that alone holds the provider keys, with each call's tokens an
 
 | Starter | What it is | Checked in CI on every push |
 |---|---|---|
-| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 39 tests and 16 gold cases at three levels, with interrupt and resume from its SQLite saver, a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
+| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 40 tests and 16 gold cases at three levels, with interrupt and resume from its SQLite saver, a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
 | `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 41 tests and 16 gold cases at three levels, with an approval, a declined refund, a resume from saved state in another process, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
 | `claude-agent-sdk-py` | Claude Agent SDK (Python) | 39 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
 | `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 26 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
@@ -240,51 +240,56 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
 
 ## What was run, and what was not
 
-Run on 23 November 2026 for 1.3.0, the same way 1.2.0, 1.1.0 and 1.0.2 were checked earlier that day:
-- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 468 tests (466
-  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 465 passed and 3 skipped on macOS,
-  whose runner also lacks Chrome for one visual check; 464 passed and 4 skipped on Windows, where in addition Claude
-  Code's sandbox does not run natively); the guard's red-team, 176 of 176, the 16 risk-score cases among them; the
-  Studio's own evals, tool 231 of 231, response 9 of 9, outcome 13 of 13; the harness bench, 17 sessions with no
-  change from the 1.2.0 baseline and the same 2,635 harness tokens on all four systems; the doctor, and the bootstrap in
-  check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the vectorless
-  demo rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude
-  Code from its native installer. Every pull request and every push to main runs the same checks, and the Actions tab
-  shows the latest.
+Run on 24 November 2026 for 1.4.0, the same way 1.3.0 was checked the day before:
+- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 505 tests (503
+  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 502 passed and 3 skipped on macOS,
+  whose runner also lacks Chrome for one visual check; 501 passed and 4 skipped on Windows, where in addition Claude
+  Code's sandbox does not run natively); the guard's red-team, 176 of 176; the Studio's own evals, tool 231 of 231,
+  response 9 of 9, outcome 13 of 13; the harness bench, 17 sessions with no change from the 1.2.0 baseline and the same
+  2,635 harness tokens on all four systems; the doctor, and the bootstrap in check-only mode, started the way an
+  attendee starts them, both ending `ready for a live session`; the vectorless demo rehearsed stage by stage; and Claude
+  Code's own plugin check on the marketplace and both plugins. Every pull request and every push to main runs the same
+  checks, and the Actions tab shows the latest.
+- **The model gateway**: in CI, each of the seven agent starters ran its 16-case gold set through LiteLLM 1.110.0
+  against two stand-in providers, 16 of 16 each. Every call reached a stand-in with the key only the gateway holds and
+  none with the gateway's own key; no key appeared in an answer, a log or a trace; each run's trace in the stand-in
+  Langfuse held its tool calls, tokens and cost, and no prompt or answer text; with the main provider stopped, and again
+  with its budget spent, the call went to the fallback. Here, outside CI, Claude Code itself ran both Claude Agent SDK
+  starters' gateway gold sets against a stand-in provider, 16 of 16 each.
+- **The client's cloud**: in CI, for each of Azure, AWS, Google Cloud and Kubernetes and all 13 starters, `qz cloud
+  lint` found nothing; Checkov 3.4.7 failed no check (on the OpenTofu files, AWS 455 passed and 65 skipped, Azure 65 and
+  78, Google Cloud 65 and none, Kubernetes 364 and 52, each skip a deviation the template states with its reason, such
+  as the writable root filesystem; on the gateway's Dockerfile, 77 of 77); OpenTofu 1.13.10 validated every folder and
+  ran 200 plan tests against mock providers with no cloud account. With SIE put back to telemetry on, or to no gateway
+  token, the Kubernetes lint and plan tests both failed, as they must. The gateway's image, built on LiteLLM's non-root
+  image, started with no network: healthy, 401 without its key, 200 with it, the starter's three model names, user
+  65534.
 - **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
   their gate) and health check inside the image with no network: 13 of 13 passed. Each of the seven agent starters'
-  images also started its HTTP interface with no network, and Docker reported all seven healthy. Each starter also
-  meets the seven standards the moment it is created, the nine go-live gates built in and its evals at three levels.
+  images also started its HTTP interface with no network, and Docker reported all seven healthy.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
-  ones. In every agent starter the tests stop a process while a refund waits for a person and answer it from a second
-  process; stop it right after the refund is made, then replay the run and find no second refund; and call the HTTP
-  interface as a demo user, with an OIDC token signed by a test key, and through a trusted proxy's headers, including
-  the refusals (no token, a wrong issuer or audience, an expired token, a token that names no one, an approver
-  answering their own request, an untrusted proxy). The gold set has 16 cases, these two runs among them. The hybrid
-  kit with its real models on a CPU scored 41 of 43 on Linux and on Windows, against 38 for keyword search alone, with
-  no safety violations. The command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to
-  fail rather than skip if the server were missing.
-- **One audit chain, three writers**: here, outside CI, three processes of the TypeScript, Go and .NET starters each
-  wrote to one audit log at the same time; all 900 records were there and the chain was intact.
-- **The testing lane against a tracker**: `qz test sync` read, wrote back and posted results against recorded Azure
-  DevOps and Jira (Xray) trackers that answer only the calls they hold, and once end to end through the credential
-  proxy, where the test proves the token reached neither the command, its output nor the audit chain.
+  ones, the durable cases among them. The LangGraph starter's crash case, which failed 2 runs in 25 before its
+  checkpoints were made synchronous, then passed 30 in a row.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
-  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.3.0 and qz-console at 1.0.1
+  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.4.0 and qz-console at 1.0.1
   (unchanged since 1.0.1).
-- **The handbook demo end to end** on Linux with the real models, for 1.0.2, scaffolded the way an attendee does: the
-  questions, the trace, the refusal, the HR answer, both gates and the chat page over HTTP. Its offline fallback answers
-  38 of 43, as the session plan says.
+- Earlier, and unchanged since: three processes of the TypeScript, Go and .NET starters writing one audit log at once
+  (900 records, the chain intact); `qz test sync` against recorded Azure DevOps and Jira trackers and through the
+  credential proxy; the handbook demo end to end with the real models, for 1.0.2.
 
 Not run:
 - **An attendee's own laptop.** The first bootstrap on a QualiZeal machine is the real test; the doctor's report says
   what is missing. The likely surprises are a company proxy or a network that re-signs HTTPS, and the doctor checks
   for both.
 - **macOS on an ordinary pull request.** It runs on a release branch, a tag, or by hand from the Actions tab.
-- **A live model.** No starter, kit or agent here called one: the gold sets run against offline stubs, and the demo's
-  answers are sentences taken from the documents, so the session needs no API key. A starter's first call with a real
-  key, or to an open-weight model on Ollama (the default for LangGraph and the OpenAI Agents SDK), is the first time
-  that path runs.
+- **A live model.** No starter, kit or agent here called one: the gold sets run against offline stubs or stand-in
+  providers, and the demo's answers are sentences taken from the documents, so the session needs no API key. A
+  starter's first call with a real key, or to an open-weight model on Ollama, is the first time that path runs.
+- **A live provider or a live Langfuse behind the gateway.** The providers and the Langfuse endpoint in CI are
+  stand-ins; LiteLLM itself runs only in CI. A budget counts only models whose price the gateway knows.
+- **Any cloud template applied.** Nobody applied one to a cloud account or a cluster: OpenTofu planned them against
+  mock providers only, and Checkov was the one policy scan. The Azure template's azapi parts (the Claude deployments)
+  are validated in CI only.
 - **A rollback.** The release recipe's rollback is a documented switch to the previous tag; no test runs it, because it
   depends on where a team deploys.
 - **A person's confirmation of the EU AI Act class**, for the Studio and for each new project. Until someone confirms
@@ -292,7 +297,7 @@ Not run:
 - **A person working in a live Claude Code session with the hooks.** The hooks were started exactly as Claude Code
   starts them, with the input it sends, but no interactive session was recorded.
 - The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
-- Cursor and Codex. 1.3.0 is for Claude Code; they are on the roadmap.
+- Cursor and Codex. 1.4.0 is for Claude Code; they are on the roadmap.
 - A client's own identity provider. The starters' OIDC checks ran against a test key and the proxy mode against
   headers from a test client; the first sign-in through a client's provider is the real test. One SQLite state
   database serves one machine: several instances need Postgres, which is not built.

@@ -37,6 +37,12 @@ def _model(model_id: str | None = None):
                            api_key=os.environ.get("OPENAI_API_KEY") or "local", **common)
 
 
+# Each step's checkpoint is written before the next step starts. LangGraph's default writes it while the next step
+# runs, so a process that dies inside a tool (a crash, a deploy) could leave a checkpoint that shows the answer taken but
+# nothing left to run; the answer from a new process then has nothing to carry on from.
+DURABILITY = "sync"
+
+
 def saver():
     """The graph's checkpoints in the state database (SQLite: nothing to run). For several machines, PostgresSaver."""
     import sqlite3
@@ -65,7 +71,7 @@ def run(message: str, approve: bool | None = None, thread_id: str | None = None,
         span.set_attribute("langfuse.session.id", thread_id)          # a thread's runs and answers group as one session
         if gateway.content_in_traces():
             span.set_attribute("langfuse.observation.input", message)
-        state = agent.invoke({"messages": [{"role": "user", "content": message}]}, cfg)
+        state = agent.invoke({"messages": [{"role": "user", "content": message}]}, cfg, durability=DURABILITY)
         gate = "none"
         while state.get("__interrupt__"):
             if approve is None:
@@ -74,7 +80,7 @@ def run(message: str, approve: bool | None = None, thread_id: str | None = None,
             n = len(state["__interrupt__"][0].value["action_requests"])
             decision = {"type": "approve"} if approve else {"type": "reject", "message": "A person declined this action. Do not retry it."}
             gate = "ok" if approve else "denied"
-            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg)
+            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg, durability=DURABILITY)
         result = _result(state, gate, thread_id)
         span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in result["tool_calls"]]))
         span.set_attribute("gen_ai.usage.input_tokens", result["usage"]["input_tokens"])
@@ -98,12 +104,12 @@ def answer(thread: str, approve: bool, saved: dict, agent=None) -> dict:
         if waiting:
             n = len(waiting[0].value["action_requests"])
             decision = {"type": "approve"} if approve else {"type": "reject", "message": "A person declined this action. Do not retry it."}
-            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg)
+            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg, durability=DURABILITY)
         elif snap.next:
             # The answer was given and the process stopped part-way through the step (a crash, a deploy): carry on from
             # the checkpoint, which holds the answer. The change itself is made once (agent/durable.py).
             span.set_attribute("agent.continued", True)
-            state = agent.invoke(None, cfg)
+            state = agent.invoke(None, cfg, durability=DURABILITY)
         else:
             raise RuntimeError(f"thread {thread} has no action waiting in its checkpoint")
         gate = "pending" if state.get("__interrupt__") else ("ok" if approve else "denied")
