@@ -1,7 +1,8 @@
 /** OpenTelemetry tracing: one span per run, with the tool calls as events. Spans go to OTEL_EXPORTER_OTLP_ENDPOINT
  *  when it is set, to stderr as JSON lines when AGENT_TRACE=console, and nowhere otherwise, so tests stay quiet.
  *  No message text goes into a span: counts, names and statuses only. */
-import { trace, type Tracer } from "@opentelemetry/api";
+import { context, ROOT_CONTEXT, trace, type Context, type ContextManager, type Tracer } from "@opentelemetry/api";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchSpanProcessor, SimpleSpanProcessor, TracerProvider, type ReadableSpan, type SpanExporter, type SpanProcessor } from "@opentelemetry/sdk-trace";
@@ -20,6 +21,31 @@ class StderrExporter implements SpanExporter {
   }
 }
 
+/** Keeps the active span across awaits, so a tool call's span and the gateway's trace context belong to the run. */
+class AsyncContext implements ContextManager {
+  private store = new AsyncLocalStorage<Context>();
+  active(): Context {
+    return this.store.getStore() ?? ROOT_CONTEXT;
+  }
+  with<A extends unknown[], F extends (...args: A) => ReturnType<F>>(ctx: Context, fn: F, thisArg?: ThisParameterType<F>, ...args: A): ReturnType<F> {
+    return this.store.run(ctx, () => fn.apply(thisArg, args));
+  }
+  bind<T>(ctx: Context, target: T): T {
+    if (typeof target !== "function") return target;
+    const self = this;
+    return function (this: unknown, ...args: unknown[]) {
+      return self.with(ctx, () => (target as (...a: unknown[]) => unknown).apply(this, args));
+    } as T;
+  }
+  enable(): this {
+    return this;
+  }
+  disable(): this {
+    this.store.disable();
+    return this;
+  }
+}
+
 let provider: TracerProvider | undefined;
 
 export function tracer(): Tracer {
@@ -28,9 +54,22 @@ export function tracer(): Tracer {
     if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) processors.push(new BatchSpanProcessor({ exporter: new OTLPTraceExporter() }));
     else if (process.env.AGENT_TRACE === "console") processors.push(new SimpleSpanProcessor({ exporter: new StderrExporter() }));
     provider = new TracerProvider({ resource: resourceFromAttributes({ "service.name": "__SLUG__" }), spanProcessors: processors });
+    context.setGlobalContextManager(new AsyncContext());
     trace.setGlobalTracerProvider(provider);
   }
   return trace.getTracer("__SLUG__");
+}
+
+/** One span per tool call, named for the tool. Its arguments and result stay out of the trace: they can hold people's data. */
+export function traced<A, R>(name: string, fn: (args: A) => Promise<R>): (args: A) => Promise<R> {
+  return (args) => tracer().startActiveSpan(`tool ${name}`, { attributes: { "gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": name } },
+    async (span) => {
+      try {
+        return await fn(args);
+      } finally {
+        span.end();
+      }
+    });
 }
 
 /** Send what is still buffered before the process exits. */

@@ -5,6 +5,8 @@ description = "A Claude Agent SDK agent from the QualiZeal AI-DLC Studio starter
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "claude-agent-sdk==0.2.186",
+    "opentelemetry-sdk==1.45.2",
+    "opentelemetry-exporter-otlp-proto-http==1.45.2",
 ]
 
 [dependency-groups]

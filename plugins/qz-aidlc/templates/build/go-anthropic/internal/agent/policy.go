@@ -27,7 +27,7 @@ var NeedsApproval = map[string]bool{"issue_refund": true}
 var Roles = map[string][]string{"support": {"get_order", "issue_refund"}, "viewer": {"get_order"}}
 
 // AllowedHosts is go-live gates 3 and 6: the only hosts the agent may call. Each is in .qz/golive.json with its region.
-var AllowedHosts = []string{"api.anthropic.com"}
+var AllowedHosts = []string{"api.anthropic.com", "localhost", "127.0.0.1"} // localhost: the model gateway beside the agent (AGENT_GATEWAY_URL)
 
 // Role is the role a run acts in when the caller names none: AGENT_ROLE, or support.
 func Role() string {
@@ -48,8 +48,11 @@ func Actor() string {
 	return "unknown"
 }
 
-// ModelURL is where the live model is called: ANTHROPIC_BASE_URL, or the Anthropic API.
+// ModelURL is where the live model is called: the model gateway when it is on, else ANTHROPIC_BASE_URL or the Anthropic API.
 func ModelURL() string {
+	if GatewayOn() {
+		return GatewayURL()
+	}
 	if u := os.Getenv("ANTHROPIC_BASE_URL"); u != "" {
 		return u
 	}
@@ -77,6 +80,9 @@ func SmallModelID() string { return os.Getenv("AGENT_MODEL_SMALL") }
 
 // PickModel chooses the model for a run from the person's message: a rule decides, not a model call.
 func PickModel(message string) string {
+	if GatewayOn() { // the gateway's names: the gateway picks the provider
+		return GatewayModel(!hard.MatchString(message))
+	}
 	if small := SmallModelID(); small != "" && !hard.MatchString(message) {
 		return small
 	}

@@ -158,6 +158,19 @@ def test_eval_run_record_replay_and_redaction(tmp_path):
     assert "input changed since it was recorded" in qz(proj, "eval", "replay", ok=False).stdout
 
 
+def test_eval_run_writes_to_its_configs_own_results_folder(tmp_path):
+    """A second gold-set config (the model gateway's) keeps its results and report in its own folder, even in a project
+    where the default one was never run."""
+    proj = eval_project(tmp_path, gold=[g for g in GOLD if g["id"] != "d"])
+    cfg = json.loads((proj / "evals" / "eval.json").read_text())
+    cfg["results"] = "evals/results-gateway"
+    (proj / "evals" / "eval.gateway.json").write_text(json.dumps(cfg))
+    qz(proj, "eval", "run", "--config", "evals/eval.gateway.json", "--label", "gateway")
+    out = proj / "evals" / "results-gateway"
+    assert (out / "latest.json").is_file() and (out / "report.html").read_text().count("<tr>") >= 4
+    assert not (proj / "evals" / "results").exists()
+
+
 def test_eval_refuses_unsafe_adapters_and_lints_gold(tmp_path):
     proj = eval_project(tmp_path, gold=[{"id": "x", "input": "hi"}, {"id": "x", "input": "again", "checks": [{"type": "nope"}]}])
     out = qz(proj, "eval", "lint", ok=False).stdout
@@ -267,7 +280,7 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
         assert meta["verified"].startswith("RUN:") and json.loads((dest / "evals" / "eval.json").read_text())["adapter"]["command"] == meta["adapter"]
         for f in ("CLAUDE.md", "README.md", "docs/runbook.md", ".github/workflows/ci.yml", ".claude/qz/scripts/qz.py", *own_files[name]):
             assert (dest / f).exists(), (name, f)
-        assert not [p for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in str(p) and p.suffix in (".py", ".md", ".json", ".yml") and "__NAME__" in p.read_text(encoding="utf-8", errors="ignore")]
+        assert not [p for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in p.as_posix() and p.suffix in (".py", ".md", ".json", ".yml") and "__NAME__" in p.read_text(encoding="utf-8", errors="ignore")]
         assert qz(dest, "vendor", ".", "--check").stdout.startswith("Vendored kit: in sync")
     # The staged knowledge-app kit carries no agent eval kit; tests/test_rag_kit.py checks it stage by stage.
     assert {k: (m.get("common"), m.get("kit"), bool(build.staging(k))) for k, m in every.items() if k not in stacks and k not in servers} == {
@@ -276,7 +289,7 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
         assert meta["verified"].startswith("RUN:"), name
         dest = tmp_path / name
         qz(tmp_path, "build", "new", name, str(dest), "--name", "Order Support")
-        left = [str(p) for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in str(p) and p.suffix in (".py", ".ts", ".cs", ".go", ".md", ".json", ".yml", ".mod")
+        left = [str(p) for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in p.as_posix() and p.suffix in (".py", ".ts", ".cs", ".go", ".md", ".json", ".yml", ".mod")
                 and any(tok in p.read_text(encoding="utf-8", errors="ignore") for tok in ("__NAME__", "__SLUG__", "__MODULE__", "__ADAPTER__", "__SETUP_STEPS__", "__POLICY__"))]
         assert not left, left
         cfg = json.loads((dest / "evals" / "eval.json").read_text())

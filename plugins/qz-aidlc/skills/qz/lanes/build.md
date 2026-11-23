@@ -25,7 +25,10 @@ passed gate, build what it decided; if not, say that the stack is unconfirmed an
    each change; it proves wiring and checks, not the model.
 5. **Go live deliberately** (`stage build-and-test`). Live runs need the person's key in the environment, never in a
    file or in this conversation. `eval_run [--config, evals/eval.live.json]`, keep that result as the baseline, and
-   gate later changes with `eval [compare, <baseline>, <new>]`.
+   gate later changes with `eval [compare, <baseline>, <new>]`. Anywhere shared, the keys sit behind the model gateway
+   (`gateway/README.md`, `AGENT_GATEWAY=litellm`): the agent then holds only the gateway's key. For the client's cloud,
+   `qz cloud add <azure|aws|gcp|kubernetes>` writes the OpenTofu files and `tofu test` plans them with no account; a
+   person applies them through the client's pipeline, never an agent.
 6. **Before it leaves the team.** `project_audit [scan]` and the Audit lane for the manual items. `qz structure pack`
    writes `docs/solution.md`: the same eight sections for every solution, each with its evidence or what is missing.
    Pull requests and pushes wait for the person's yes.

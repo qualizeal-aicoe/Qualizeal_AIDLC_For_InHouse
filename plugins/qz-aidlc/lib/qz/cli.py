@@ -237,7 +237,8 @@ PASS_THROUGH = {"ship": ("qz.ship", {}), "publish": ("qz.ws.publish", {}), "undo
                 "conventions": ("qz.conventions", {}), "practices": ("qz.practices", {}), "aidlc": ("qz.aidlcws", {}),
                 "guardrails": ("qz.auditkit.gates", {}), "aiact": ("qz.auditkit.aiact", {}), "stack": ("qz.auditkit.oss", {}),
                 "cost": ("qz.auditkit.cost", {}), "standards": ("qz.auditkit.standards", {}), "structure": ("qz.auditkit.shape", {}), "golive": ("qz.auditkit.golive", {}), "autonomy": ("qz.autonomy", {}), "claims": ("qz.claims", {}),
-                "debt": ("qz.debt", {}), "credproxy": ("qz.credproxy", {}), "bench": ("qz.bench", {}), "risk": ("qz.risk", {})}
+                "debt": ("qz.debt", {}), "credproxy": ("qz.credproxy", {}), "bench": ("qz.bench", {}), "risk": ("qz.risk", {}),
+                "gateway": ("qz.gateway", {}), "cloud": ("qz.cloud", {})}
 # Lane tools by command name -> package under qz/. Each parses its own options.
 LANES = {"kf": "kf", "price": "bid", "sow": "bid", "deck": "bid", "voice": "bid", "demo": "demo", "arch": "arch",
          "build": "buildkit", "eval": "evalkit", "test": "stlc", "audit-project": "auditkit", "craft": "craft",

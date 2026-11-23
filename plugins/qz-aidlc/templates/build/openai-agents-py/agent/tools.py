@@ -6,6 +6,7 @@ import json
 from agents import function_tool
 
 from . import durable, policy
+from .telemetry import tool_span
 
 _ORDERS = {
     "ORD-1001": {"status": "shipped", "total": 129.00, "carrier": "DHL", "note": ""},
@@ -17,14 +18,16 @@ _ORDERS = {
 @function_tool(timeout=policy.TOOL_TIMEOUT_S)
 async def get_order(order_id: str) -> str:
     """Look up one order by its number (for example ORD-1001). Read-only."""
-    o = _ORDERS.get(order_id.strip().upper())
-    return json.dumps({"found": False, "order_id": order_id} if o is None else {"found": True, "order_id": order_id.strip().upper(), **o})
+    with tool_span("get_order"):
+        o = _ORDERS.get(order_id.strip().upper())
+        return json.dumps({"found": False, "order_id": order_id} if o is None else {"found": True, "order_id": order_id.strip().upper(), **o})
 
 
 @function_tool(needs_approval="issue_refund" in policy.NEEDS_APPROVAL, timeout=policy.TOOL_TIMEOUT_S)
 async def issue_refund(order_id: str, amount: float, reason: str) -> str:
     """Refund an order. Moves money and cannot be undone: it runs only after a person approves."""
-    return json.dumps(_refund(order_id, amount, reason))
+    with tool_span("issue_refund"):
+        return json.dumps(_refund(order_id, amount, reason))
 
 
 

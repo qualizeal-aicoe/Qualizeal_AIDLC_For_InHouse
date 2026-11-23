@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars (git ignores it) and fill in. No key goes here: keys live in Key Vault.
+subscription_id  = "00000000-0000-0000-0000-000000000000"
+location         = "eastus2"
+foundry_location = "eastus2"
+agent_image      = "example.azurecr.io/my-app:1.0.0"
+gateway_image    = "example.azurecr.io/my-app-gateway:1.0.0"   # an agent only
+registry_server  = "example.azurecr.io"
+# acr_id         = "/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/example"
+secret_writers   = ["00000000-0000-0000-0000-000000000000"]     # who puts the keys in Key Vault
+oidc_issuer      = "https://login.microsoftonline.com/<tenant-id>/v2.0"   # an agent only
+oidc_audience    = "api://my-app"
+langfuse_host    = "https://langfuse.example.com"
+# Applying the Claude deployments accepts Anthropic's terms through the Azure Marketplace: your administrator decides.
+claude_organization_name = ""
+claude_country_code      = ""
+claude_industry          = ""
+start_app = false   # true once each key is in Key Vault

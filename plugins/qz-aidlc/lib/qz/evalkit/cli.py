@@ -158,13 +158,16 @@ def main(name: str, rest: list[str]) -> None:
         for b in r["breaches"]:
             print("  BREACH " + b)
         for x in [x for x in r["rows"] if not x["passed"]][:12]:
-            print(f"  FAIL {x['id']}: " + "; ".join(f"{f['type']} ({f['detail']})" for f in x["fails"])[:220])
+            why = "; ".join(f"{f['type']} ({f['detail']})" for f in x["fails"])
+            print(f"  FAIL {x['id']}: " + (why if len(why) <= 220 else why[:80] + " ... " + why[-135:]))   # an error's end names it
         if r["awaiting_judge"]:
             print(f"  {r['awaiting_judge']} case(s) carry a rubric. Next: qz eval judge-pack, then the qz-eval-judge agent.")
         if r["note"]:
             print("  NOTE " + r["note"])
-        (proj / "evals" / "results" / "report.html").write_text(html(r), encoding="utf-8")
-        record("eval-run", "evals/results/latest.json", "build-and-test", verdict=r["verdict"], pass_rate=r["pass_rate"], n=r["n"])
+        rel = (read_json(proj / a.config) or {}).get("results", "evals/results")   # the gateway's gold set keeps its own results
+        (proj / rel).mkdir(parents=True, exist_ok=True)
+        (proj / rel / "report.html").write_text(html(r), encoding="utf-8")
+        record("eval-run", f"{rel}/latest.json", "build-and-test", verdict=r["verdict"], pass_rate=r["pass_rate"], n=r["n"])
         raise SystemExit(0 if r["verdict"] == "PASS" else 2)
     if a.cmd == "compare":
         base = read_json(proj / a.base)
@@ -211,7 +214,7 @@ def main(name: str, rest: list[str]) -> None:
         judge = {"kappa": cal["kappa"], "n": cal["n"], "trusted": cal["trusted"]} if cal else {"kappa": 0.0, "n": 0, "trusted": False}
         r = runner.summarise(proj, cfg, latest["rows"], latest["mode"], latest.get("label", ""), judge, latest.get("partial", False))
         print(_line(r) + (" · judge verdicts counted" if judge["trusted"] else " · judge verdicts advisory (not calibrated; run qz eval calibrate)"))
-        (proj / "evals" / "results" / "report.html").write_text(html(r), encoding="utf-8")
+        (proj / cfg.get("results", "evals/results") / "report.html").write_text(html(r), encoding="utf-8")
         return
     if a.cmd == "report":
         cmp = runner.compare(read_json(proj / a.base), latest) if a.base else None

@@ -1,7 +1,7 @@
 {
   "title": "MCP server (Python)",
   "summary": "A read-only MCP server on the official SDK (mcp 2.3): checked arguments, customer text marked untrusted, capped results, pinned tool descriptions, a chained audit file.",
-  "verified": "RUN: the scaffold's 8 tests and its 8 contract cases ran here through a real MCP client in memory with mcp 2.3.0, including the argument checks, the untrusted envelope, the tool pins and the audit chain; the project audit reads READY. Not run against a live client session or over HTTP.",
+  "verified": "RUN: the scaffold's 8 tests and its 8 contract cases ran here through a real MCP client in memory with mcp 2.3.0, including the argument checks, the untrusted envelope, the tool pins and the audit chain; the project audit reads READY. Not run against a live client session or over HTTP. 1.4.0: The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied.",
   "stack_line": "A read-only MCP server in Python (mcp 2.3).",
   "policy": "server/policy.py",
   "agent_dir": "server/",

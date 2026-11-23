@@ -1,0 +1,30 @@
+# The model gateway (LiteLLM proxy, MIT): with AGENT_GATEWAY=litellm every model call from the agent comes through here.
+#
+# Run it on a laptop: docker compose -f gateway/compose.yaml up   (gateway/README.md says what each setting does)
+# The provider keys are read from this proxy's own environment (os.environ/...), never the agent's: the agent holds
+# only AGENT_GATEWAY_KEY and asks for the model names below. Change providers and models here, not in the agent.
+model_list:
+__GATEWAY_MODEL_LIST__
+
+router_settings:
+  # When a model fails, is unreachable or has spent its budget, the call goes to the next name on its list.
+  fallbacks: [{"agent-model": ["agent-model-fallback"]}, {"agent-model-small": ["agent-model-fallback"]}]
+  num_retries: 2
+  timeout: 60
+
+litellm_settings:
+  # Traces: one record per model call (model, tokens, cost, latency) in Langfuse, inside the agent's run trace when the
+  # agent sends its trace context (it does). LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY and LANGFUSE_HOST go in this
+  # proxy's environment; remove this line if the team does not use Langfuse.
+  callbacks: ["langfuse_otel"]
+  # No prompt or answer text in any log or trace. Turn it off only by a team decision recorded in docs/decisions/.
+  turn_off_message_logging: true
+  redact_user_api_key_info: true
+  # A call in Anthropic's format (the Claude Agent SDK and Go starters) to an OpenAI-compatible model goes through
+  # chat/completions, which every such server has, not the Responses API, which self-hosted ones mostly do not.
+  use_chat_completions_url_for_anthropic_messages: true
+
+general_settings:
+  # The gateway's own key. On a laptop the agent may use it; anywhere shared, create a virtual key per agent (that
+  # needs the proxy's Postgres database: database_url), so each one has its own budget and can be revoked alone.
+  master_key: os.environ/LITELLM_MASTER_KEY

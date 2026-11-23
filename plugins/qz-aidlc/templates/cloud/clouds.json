@@ -1,0 +1,354 @@
+{
+  "_about": "Each cloud, layer by layer: the cloud's own service, the open option beside it, where the fact comes from and the day it was last checked. `qz cloud show <cloud>` prints a cloud; `qz cloud check` lists every fact older than max_age_days, so nobody builds on a stale one. Re-check a fact at its source, then change its text and its date together.",
+  "max_age_days": 90,
+  "layers": {
+    "models": "Where the models run",
+    "gateway": "The AI gateway: one way in for model calls",
+    "search": "Search and retrieval",
+    "parsing": "Document parsing",
+    "identity": "Who is asking, and how the app reaches the cloud's services",
+    "secrets": "Where keys live",
+    "tracing": "Traces",
+    "containers": "Where the agent runs"
+  },
+  "gateway_pattern": [
+    "One way in: every model call goes through the gateway, which the agent reaches on localhost. The agent holds only the gateway's key.",
+    "It holds the keys: provider keys (where a cloud needs one) sit in the cloud's secret store and reach the gateway's container only.",
+    "It routes between models: the agent asks for agent-model; the gateway maps the name to the cloud's Claude and falls back to the cloud's open-weight model.",
+    "It caps spend: a budget on each paid model; once spent, calls go to the fallback.",
+    "It logs each call: model, tokens, cost and time, inside the run's trace, with no prompt or answer text."
+  ],
+  "clouds": {
+    "azure": {
+      "name": "Microsoft Azure",
+      "template": "Azure Container Apps (the agent and the gateway in one app), Microsoft Foundry for the models, Key Vault for the keys",
+      "layers": {
+        "models": {
+          "service": "Microsoft Foundry: Claude Sonnet 5.5 and Claude Haiku 5.5, deployed as Global Standard and billed through the Azure Marketplace; version 2 of each is hosted on Azure. gpt-oss-120b is sold by Azure and needs a Foundry project.",
+          "open": "gpt-oss-120b (Apache 2.0) in Foundry, or the open models on SIE in AKS (the Kubernetes template)",
+          "sources": [
+            "https://platform.claude.com/docs/en/build-with-claude/claude-in-microsoft-foundry",
+            "https://ai.azure.com/catalog/models/claude-sonnet-5-5",
+            "https://ai.azure.com/catalog/models/claude-haiku-5-5",
+            "https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure#gpt-oss"
+          ],
+          "checked": "2026-11-24"
+        },
+        "gateway": {
+          "service": "Azure API Management AI gateway: a token limit per minute or a quota per key (OpenAI, Anthropic Messages on the v2 tiers, Vertex AI), token metrics to Application Insights, semantic caching, content safety checks, backend load balancing with a circuit breaker",
+          "open": "LiteLLM proxy (MIT) as a second container in the app: what the template runs",
+          "sources": [
+            "https://learn.microsoft.com/azure/api-management/genai-gateway-capabilities",
+            "https://learn.microsoft.com/azure/api-management/llm-token-limit-policy"
+          ],
+          "checked": "2026-11-24"
+        },
+        "search": {
+          "service": "Foundry IQ (Azure AI Search): hybrid search (full text and vectors merged by Reciprocal Rank Fusion) with semantic ranking, and agentic retrieval, whose planning and answer synthesis are generally available in REST API 2026-10-01",
+          "open": "The Studio's hybrid RAG kit in a container, or pgvector in a PostgreSQL the client runs",
+          "sources": [
+            "https://learn.microsoft.com/azure/search/hybrid-search-overview",
+            "https://learn.microsoft.com/azure/search/retrieval-augmented-generation-overview"
+          ],
+          "checked": "2026-11-24"
+        },
+        "parsing": {
+          "service": "Azure Document Intelligence in Foundry Tools: the layout model returns Markdown (outputContentFormat=markdown) from PDFs, scans, images and Office files; Azure Content Understanding in Foundry Tools extracts fields",
+          "open": "Docling, MinerU2.5-Pro or LightOnOCR-3 served by SIE on AKS",
+          "sources": [
+            "https://learn.microsoft.com/azure/ai-services/document-intelligence/concept/retrieval-augmented-generation",
+            "https://learn.microsoft.com/azure/ai-services/content-understanding/overview"
+          ],
+          "checked": "2026-11-24"
+        },
+        "identity": {
+          "service": "Microsoft Entra ID: Foundry's Claude endpoint accepts Entra ID tokens or a deployment key; the container app reads Key Vault with its managed identity (Key Vault Secrets User), no key",
+          "open": "Keycloak (OIDC); the agent checks any OIDC provider's tokens (AGENT_IDENTITY=oidc)",
+          "sources": [
+            "https://learn.microsoft.com/azure/foundry/foundry-models/how-to/use-foundry-models-claude",
+            "https://learn.microsoft.com/azure/container-apps/manage-secrets#reference-secret-from-key-vault"
+          ],
+          "checked": "2026-11-24"
+        },
+        "secrets": {
+          "service": "Azure Key Vault: the container app names a secret by its versionless URL and reads it through its managed identity; a changed value reaches the app on a new revision or a restart",
+          "open": "OpenBao (MPL-2.0, a Linux Foundation OpenSSF project), with External Secrets Operator on AKS",
+          "sources": [
+            "https://learn.microsoft.com/azure/container-apps/manage-secrets",
+            "https://learn.microsoft.com/azure/container-apps/troubleshoot-deployment-errors",
+            "https://openbao.org"
+          ],
+          "checked": "2026-11-24"
+        },
+        "tracing": {
+          "service": "Azure Monitor: OTLP ingestion into Application Insights (through an OpenTelemetry Collector), or the Microsoft OpenTelemetry Distro; an Agents view built on the OpenTelemetry generative AI conventions",
+          "open": "Langfuse, self-hosted, taking OTLP at /api/public/otel: where the starters send their traces",
+          "sources": [
+            "https://learn.microsoft.com/azure/azure-monitor/containers/opentelemetry-options",
+            "https://learn.microsoft.com/azure/azure-monitor/app/agents-view",
+            "https://langfuse.com/docs/opentelemetry"
+          ],
+          "checked": "2026-11-24"
+        },
+        "containers": {
+          "service": "Azure Container Apps: a sidecar is one more container in the app's template, sharing its network and disk; container app jobs run to completion",
+          "open": "AKS with the Kubernetes template",
+          "sources": [
+            "https://learn.microsoft.com/azure/container-apps/containers#multiple-containers"
+          ],
+          "checked": "2026-11-24"
+        }
+      }
+    },
+    "aws": {
+      "name": "Amazon Web Services",
+      "template": "Amazon ECS on Fargate (the agent and the gateway in one task), Amazon Bedrock for the models through the task's role, Secrets Manager for the keys",
+      "layers": {
+        "models": {
+          "service": "Amazon Bedrock: Claude Sonnet 5.5 and Claude Haiku 5.5 through inference profiles only (us., eu. and global.; Haiku also au. and jp.), called with the task's IAM role; gpt-oss-120b in-region as openai.gpt-oss-120b-1:0",
+          "open": "gpt-oss-120b on Bedrock, or the open models on SIE in EKS",
+          "sources": [
+            "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-sonnet-5-5.html",
+            "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-haiku-5-5.html",
+            "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-oss-120b.html"
+          ],
+          "checked": "2026-11-24"
+        },
+        "gateway": {
+          "service": "AWS publishes Guidance for a Multi-Provider Generative AI Gateway on AWS, built on LiteLLM, on ECS or EKS",
+          "open": "LiteLLM proxy (MIT) as a second container in the task: what the template runs",
+          "sources": [
+            "https://docs.aws.amazon.com/solutions/multi-provider-generative-ai-gateway-on-aws/",
+            "https://aws.amazon.com/blogs/machine-learning/streamline-ai-operations-with-the-multi-provider-generative-ai-gateway-reference-architecture"
+          ],
+          "checked": "2026-11-24"
+        },
+        "search": {
+          "service": "Amazon OpenSearch Service and OpenSearch Serverless (hybrid search); Amazon S3 Vectors for low-cost vector storage, exportable to OpenSearch Serverless; both serve as Bedrock Knowledge Bases stores",
+          "open": "OpenSearch (Apache 2.0) or pgvector, or the Studio's hybrid RAG kit",
+          "sources": [
+            "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-vectors-opensearch.html",
+            "https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-vectors-bedrock-kb.html"
+          ],
+          "checked": "2026-11-24"
+        },
+        "parsing": {
+          "service": "Amazon Bedrock Data Automation: document text with Markdown (the default), HTML or CSV tables; Amazon Textract with Layout",
+          "open": "Docling, MinerU2.5-Pro or LightOnOCR-3 served by SIE on EKS",
+          "sources": [
+            "https://docs.aws.amazon.com/bedrock/latest/userguide/bda-output-documents.html",
+            "https://aws.amazon.com/about-aws/whats-new/2023/09/amazon-textract-layout-feature-extract-paragraphs-titles-documents"
+          ],
+          "checked": "2026-11-24"
+        },
+        "identity": {
+          "service": "Amazon Cognito user pools: an OIDC provider issuing JWTs, which also federates the client's SAML or OIDC workforce provider; the task role gives the gateway Bedrock with no key",
+          "open": "Keycloak (OIDC); the agent checks any OIDC provider's tokens (AGENT_IDENTITY=oidc)",
+          "sources": [
+            "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+            "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html"
+          ],
+          "checked": "2026-11-24"
+        },
+        "secrets": {
+          "service": "AWS Secrets Manager: the task definition names each secret's ARN and the task execution role reads it when the task starts (secretsmanager:GetSecretValue, and kms:Decrypt for a customer key)",
+          "open": "OpenBao (MPL-2.0, a Linux Foundation OpenSSF project), with External Secrets Operator on EKS",
+          "sources": [
+            "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/secrets-envvar-secrets-manager.html",
+            "https://aws.amazon.com/premiumsupport/knowledge-center/ecs-data-security-container-task/",
+            "https://openbao.org"
+          ],
+          "checked": "2026-11-24"
+        },
+        "tracing": {
+          "service": "Amazon CloudWatch: an OTLP endpoint for traces (HTTP only, signed with SigV4, so a collector such as the AWS Distro for OpenTelemetry signs the calls) feeding Application Signals",
+          "open": "Langfuse, self-hosted, taking OTLP at /api/public/otel: where the starters send their traces",
+          "sources": [
+            "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-OTLPEndpoint.html",
+            "https://aws.amazon.com/about-aws/whats-new/2024/11/application-signals-otel-x-ray-otlp-endpoint-traces",
+            "https://langfuse.com/docs/opentelemetry"
+          ],
+          "checked": "2026-11-24"
+        },
+        "containers": {
+          "service": "Amazon ECS on Fargate: in awsvpc mode the containers of one task talk over localhost; Amazon Bedrock AgentCore Runtime is the managed host built for agents (runs up to 8 hours)",
+          "open": "EKS with the Kubernetes template",
+          "sources": [
+            "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-networking-awsvpc.html",
+            "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-how-it-works.html"
+          ],
+          "checked": "2026-11-24"
+        }
+      }
+    },
+    "gcp": {
+      "name": "Google Cloud",
+      "template": "Cloud Run (the agent and the gateway in one service), Claude on Gemini Enterprise Agent Platform through the service account, Secret Manager for the keys",
+      "layers": {
+        "models": {
+          "service": "Gemini Enterprise Agent Platform (formerly Vertex AI) Model Garden: Claude Sonnet 5.5 (from 28 September 2026) and Claude Haiku 5.5 (from 7 October 2026) as managed APIs, called with the service account; gpt-oss-120b as gpt-oss-120b-maas on the global endpoint and us-central1",
+          "open": "gpt-oss-120b on Agent Platform, or the open models on SIE in GKE",
+          "sources": [
+            "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/use-claude",
+            "https://docs.cloud.google.com/gemini-enterprise-agent-platform/release-notes",
+            "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/maas/openai/gpt-oss-120b"
+          ],
+          "checked": "2026-11-24"
+        },
+        "gateway": {
+          "service": "Apigee as an AI gateway: LLM token policies (token quotas and limits per app), semantic caching, and circuit breaking between model endpoints",
+          "open": "LiteLLM proxy (MIT) as a sidecar in the Cloud Run service: what the template runs",
+          "sources": [
+            "https://cloud.google.com/solutions/apigee-ai",
+            "https://docs.cloud.google.com/apigee/docs/api-platform/tutorials/using-ai-token-policies"
+          ],
+          "checked": "2026-11-24"
+        },
+        "search": {
+          "service": "Agent Retrieval (formerly Vector Search 2.0): managed collections with semantic, text and hybrid search, the embeddings made in the same call; Agent Search (formerly Vertex AI Search) for enterprise search",
+          "open": "pgvector in a PostgreSQL the client runs, or the Studio's hybrid RAG kit",
+          "sources": [
+            "https://docs.cloud.google.com/vertex-ai/docs/vector-search-2/overview",
+            "https://docs.cloud.google.com/generative-ai-app-builder/docs/builder-apis"
+          ],
+          "checked": "2026-11-24"
+        },
+        "parsing": {
+          "service": "Document AI layout parser (processor type LAYOUT_PARSER_PROCESSOR): layout-aware chunks; through RAG Engine, at most 20 MB per file and 500 pages per PDF",
+          "open": "Docling, MinerU2.5-Pro or LightOnOCR-3 served by SIE on GKE",
+          "sources": [
+            "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/layout-parser-integration"
+          ],
+          "checked": "2026-11-24"
+        },
+        "identity": {
+          "service": "Identity-Aware Proxy signs each request it lets through with an ES256 JWT in x-goog-iap-jwt-assertion; the service account reaches Agent Platform with IAM, no key. The agent's OIDC check reads RS256 bearer tokens, so it sits behind the client's OIDC provider, not IAP's header",
+          "open": "Keycloak (OIDC); the agent checks any OIDC provider's RS256 tokens (AGENT_IDENTITY=oidc)",
+          "sources": [
+            "https://docs.cloud.google.com/iap/docs/signed-headers-howto"
+          ],
+          "checked": "2026-11-24"
+        },
+        "secrets": {
+          "service": "Secret Manager: Cloud Run sets a secret as an environment variable or mounts it as a file; the service's identity needs Secret Manager Secret Accessor",
+          "open": "OpenBao (MPL-2.0, a Linux Foundation OpenSSF project), with External Secrets Operator on GKE",
+          "sources": [
+            "https://docs.cloud.google.com/run/docs/configuring/secrets",
+            "https://openbao.org"
+          ],
+          "checked": "2026-11-24"
+        },
+        "tracing": {
+          "service": "Cloud Trace through the Telemetry (OTLP) API at telemetry.googleapis.com, Google's recommended path; the Google-Built OpenTelemetry Collector runs as a Cloud Run sidecar and adds the credentials",
+          "open": "Langfuse, self-hosted, taking OTLP at /api/public/otel: where the starters send their traces",
+          "sources": [
+            "https://cloud.google.com/blog/products/management-tools/opentelemetry-now-in-google-cloud-observability",
+            "https://docs.cloud.google.com/stackdriver/docs/instrumentation/opentelemetry-collector-cloud-run",
+            "https://langfuse.com/docs/opentelemetry"
+          ],
+          "checked": "2026-11-24"
+        },
+        "containers": {
+          "service": "Cloud Run: one ingress container and sidecars in one instance, talking over localhost; Cloud Run jobs run to completion",
+          "open": "GKE with the Kubernetes template",
+          "sources": [
+            "https://codelabs.developers.google.com/codelabs/create-cloud-run-service-sidebar-localhost-volume-mount",
+            "https://cloud.google.com/blog/products/serverless/cloud-run-now-supports-multi-container-deployments"
+          ],
+          "checked": "2026-11-24"
+        }
+      }
+    },
+    "kubernetes": {
+      "name": "Your own Kubernetes",
+      "template": "A Deployment with the agent and the gateway in one pod, SIE from its Helm chart for the open models, External Secrets Operator bringing the keys from the cloud's secret store",
+      "layers": {
+        "models": {
+          "service": "SIE (Superlinked Inference Engine, Apache 2.0) serves the open models an agent calls through one OpenAI-compatible API, loading each on demand; the agent loop runs on qwen3.8-27b. Claude comes from the Claude API through the gateway",
+          "open": "SIE is the open option itself",
+          "sources": [
+            "https://github.com/superlinked/sie"
+          ],
+          "checked": "2026-11-24"
+        },
+        "gateway": {
+          "service": "LiteLLM proxy (MIT) as a second container in the agent's pod; SIE has its own load-balancing gateway in front of its workers, which this one calls with SIE's token",
+          "open": "LiteLLM is the open option itself",
+          "sources": [
+            "https://docs.litellm.ai/docs/observability/langfuse_otel_integration",
+            "https://github.com/superlinked/sie"
+          ],
+          "checked": "2026-11-24"
+        },
+        "search": {
+          "service": "SIE serves the retrieval models (bge-m3, splade-v3, colbertv2, qwen3-reranker); the vectors live in the client's store or the Studio's hybrid RAG kit",
+          "open": "Qdrant or pgvector",
+          "sources": [
+            "https://github.com/superlinked/sie"
+          ],
+          "checked": "2026-11-24"
+        },
+        "parsing": {
+          "service": "SIE serves document-to-Markdown models: lightonocr-3, mineru (MinerU2.5-Pro), glm-ocr, paddleocr-vl and docling",
+          "open": "The same models, all open weights",
+          "sources": [
+            "https://github.com/superlinked/sie"
+          ],
+          "checked": "2026-11-24"
+        },
+        "identity": {
+          "service": "The client's OIDC provider; the agent checks its RS256 tokens (AGENT_IDENTITY=oidc)",
+          "open": "Keycloak 26.6 (April 2026), which supports federated client authentication with Kubernetes service account tokens",
+          "sources": [
+            "https://www.keycloak.org/2026/04/keycloak-2660-released"
+          ],
+          "checked": "2026-11-24"
+        },
+        "secrets": {
+          "service": "External Secrets Operator copies each key from the cloud's secret store (AWS Secrets Manager, Azure Key Vault, Google Secret Manager) or OpenBao into a Kubernetes Secret, through a ClusterSecretStore and ExternalSecret resources (external-secrets.io/v1)",
+          "open": "OpenBao (MPL-2.0, a Linux Foundation OpenSSF project)",
+          "sources": [
+            "https://docs.cloud.google.com/distributed-cloud/connected/latest/docs/external-secrets",
+            "https://openbao.org"
+          ],
+          "checked": "2026-11-24"
+        },
+        "tracing": {
+          "service": "Langfuse takes OTLP over HTTP at /api/public/otel (traces only, no gRPC); SIE ships Grafana dashboards for its own metrics",
+          "open": "Langfuse self-hosted is the open option itself",
+          "sources": [
+            "https://langfuse.com/docs/opentelemetry",
+            "https://langfuse.com/faq/all/opentelemetry-logs-metrics-span-links",
+            "https://github.com/superlinked/sie"
+          ],
+          "checked": "2026-11-24"
+        },
+        "containers": {
+          "service": "A Deployment with the agent and the gateway in one pod; SIE from its Helm chart (oci://ghcr.io/superlinked/charts/sie-cluster 0.11.1) with KEDA scale-to-zero; SIE's Terraform modules create GPU clusters on EKS, AKS, GKE and ACK",
+          "open": "Kubernetes and SIE are the open option themselves",
+          "sources": [
+            "https://github.com/superlinked/sie",
+            "https://github.com/superlinked/sie/blob/main/deploy/helm/sie-cluster/README.md"
+          ],
+          "checked": "2026-11-24"
+        }
+      }
+    }
+  },
+  "sie": {
+    "_about": "What the Kubernetes template sets on SIE's chart, and why: each of these is unsafe at the chart's default before 0.13.0. `qz cloud lint` fails when the template leaves any of them at its default.",
+    "chart": "oci://ghcr.io/superlinked/charts/sie-cluster",
+    "version": "0.11.1",
+    "defaults_before_0_13": {
+      "telemetry.enabled": true,
+      "gateway.auth.mode": "none",
+      "workers.auth.enabled": false,
+      "workers.networkPolicy.enabled": false
+    },
+    "sources": [
+      "https://github.com/superlinked/sie/blob/main/deploy/helm/sie-cluster/README.md#securing-the-cluster",
+      "https://github.com/superlinked/sie/blob/main/deploy/helm/sie-cluster/values.yaml"
+    ],
+    "checked": "2026-11-24"
+  }
+}

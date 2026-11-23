@@ -1,7 +1,7 @@
 {
   "title": "Microsoft Agent Framework (.NET)",
   "summary": "ChatClientAgent with ApprovalRequiredAIFunction for the approval gate, AgentSession for resume, output-token limit, UseOpenTelemetry, Anthropic provider for live runs.",
-  "verified": "RUN: built with the .NET SDK 10.0.404 against Microsoft.Agents.AI 1.28.0, and the xUnit tests plus gold set ran here against the offline stub chat client through the real framework, including approval request, approve and reject. The live Anthropic provider path compiled; no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (Microsoft.Data.Sqlite) and answered from another process, the refund made once after a crash, and the HTTP interface on ASP.NET Core with OIDC token checks, all in its tests and gold set.",
+  "verified": "RUN: built with the .NET SDK 10.0.404 against Microsoft.Agents.AI 1.28.0, and the xUnit tests plus gold set ran here against the offline stub chat client through the real framework, including approval request, approve and reject. The live Anthropic provider path compiled; no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (Microsoft.Data.Sqlite) and answered from another process, the refund made once after a crash, and the HTTP interface on ASP.NET Core with OIDC token checks, all in its tests and gold set. 1.4.0: every model call through the LiteLLM gateway with AGENT_GATEWAY=litellm, its wiring tested here against a stand-in provider, and the gold set run in the Studio's CI through the real LiteLLM 1.110.0 proxy against stand-ins, with the keys and the traces checked. The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied.",
   "stack_line": "A Microsoft Agent Framework agent in C# on .NET 10 (Microsoft.Agents.AI 1.28).",
   "policy": "src/Agent/Policy.cs",
   "agent_dir": "src/Agent/",
@@ -121,6 +121,18 @@
         "purpose": "the model: prompts, tool results and replies",
         "processor": "Anthropic",
         "region": "TODO: the processing region agreed for this account"
+      },
+      {
+        "host": "localhost",
+        "purpose": "the model gateway beside the agent (AGENT_GATEWAY=litellm): every model call goes through it",
+        "processor": "the gateway runs where the agent runs; the providers it forwards to are named in gateway/litellm.yaml",
+        "region": "local"
+      },
+      {
+        "host": "127.0.0.1",
+        "purpose": "the model gateway beside the agent (AGENT_GATEWAY=litellm): every model call goes through it",
+        "processor": "the gateway runs where the agent runs; the providers it forwards to are named in gateway/litellm.yaml",
+        "region": "local"
       }
     ],
     "answers": {
@@ -141,5 +153,27 @@
     "0.0.0.0"
   ],
   "serve_cmd": "dotnet run --project src/Agent -- --serve",
-  "answer_cmd": "dotnet run --project src/Agent -- --answer <thread> --approve"
+  "answer_cmd": "dotnet run --project src/Agent -- --answer <thread> --approve",
+  "gateway": {
+    "models": [
+      [
+        "agent-model",
+        "anthropic/claude-sonnet-5-5",
+        "ANTHROPIC_API_KEY",
+        25
+      ],
+      [
+        "agent-model-small",
+        "anthropic/claude-haiku-5-5",
+        "ANTHROPIC_API_KEY",
+        10
+      ],
+      [
+        "agent-model-fallback",
+        "ollama_chat/qwen3:8b",
+        "",
+        0
+      ]
+    ]
+  }
 }

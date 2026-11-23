@@ -40,6 +40,22 @@ def serve_step(cmd: list[str] | None) -> str:
             "          docker logs --tail 20 \"$cid\"; docker rm -f \"$cid\" > /dev/null; test \"$s\" = healthy\n")
 
 
+def gateway_models(meta: dict) -> str:
+    """The model_list of gateway/litellm.yaml: the gateway's model names, each on its provider, the keys read from the
+    gateway's own environment, a budget on each paid one."""
+    out = []
+    for name, model, key, budget in (meta.get("gateway") or {}).get("models", []):
+        out += [f"  - model_name: {name}", "    litellm_params:", f"      model: {model}"]
+        if key:
+            out.append(f"      api_key: os.environ/{key}")
+        if model.startswith("ollama"):
+            out.append("      api_base: os.environ/OLLAMA_API_BASE")
+        if budget:
+            out += [f"      max_budget: {budget}                  # USD per budget_duration; once spent, calls go to the fallback",
+                    "      budget_duration: 30d"]
+    return "\n".join(out)
+
+
 def staging(stack: str) -> dict | None:
     p = ROOT / stack / "stages.json"
     return read_json(p) if p.exists() else None
@@ -93,6 +109,8 @@ def new(stack: str, dest: Path, name: str, module: str | None = None, kit: bool 
         "__SECRET_ENV__": "\n".join(f"          {k}: ${{{{ secrets.{k} }}}}" for k in meta.get("secret_env", [])),
         "__CONTAINER_CHECK__": meta.get("container_check", "docker run --rm --network none app:ci"),
         "__SERVE_STEP__": serve_step(meta.get("serve")),
+        "__SERVE_JSON__": json.dumps(meta.get("serve") or []),
+        "__GATEWAY_MODEL_LIST__": gateway_models(meta),
     }
     for p in dest.rglob("*"):
         if p.is_file() and (p.suffix in TEXT or p.name in ("CODEOWNERS", ".gitignore")) and p.name not in ("go.sum", "packages.lock.json"):
@@ -330,6 +348,21 @@ change. Before anyone else can reach the interface, set `AGENT_IDENTITY=oidc` wi
 """
 
 
+def gateway_section(m: dict) -> str:
+    """The model gateway option, for an agent starter that has one."""
+    if not (m.get("gateway") or {}).get("models"):
+        return ""
+    return """## Model gateway and traces
+
+`AGENT_GATEWAY=litellm` sends every model call through a LiteLLM proxy (`gateway/litellm.yaml`): the provider keys,
+fallbacks between providers and budgets live there, and the agent holds only `AGENT_GATEWAY_KEY`. Traces go to
+Langfuse over OpenTelemetry, the gateway's record of each call inside the run's trace, with no prompt or answer text
+unless the team turns it on. `docker compose -f gateway/compose.yaml up --build` runs both on a laptop;
+`gateway/README.md` says what each setting does, and `evals/eval.gateway.json` runs the gold set through the gateway.
+
+"""
+
+
 def readme(name: str, m: dict) -> str:
     steps = "\n".join(f"{i}. {s}" for i, s in enumerate(m["next"], 1))
     durable = ("\n- Durable runs and an HTTP interface: a run that waits for a person is kept in SQLite and finished from any "
@@ -357,7 +390,7 @@ Gold set: `python3 .claude/qz/scripts/qz.py eval run` (writes `evals/results/rep
 
 Live: {m['live']} Then `python3 .claude/qz/scripts/qz.py eval run --config evals/eval.live.json`.
 
-{serve_section(m)}## What was checked before you got this
+{serve_section(m)}{gateway_section(m)}## What was checked before you got this
 
 {m['verified']}
 

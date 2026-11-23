@@ -12,7 +12,8 @@ import warnings
 from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ClaudeSDKClient, PermissionResultAllow, PermissionResultDeny,
                               ResultMessage, TextBlock, ToolUseBlock)
 
-from . import guardrails, policy
+from . import durable, gateway, guardrails, policy
+from .telemetry import tracer
 from .tools import RESULTS, SERVER, TOOLS
 
 # One line per run (tools and their status, tokens, whether it waits): never the message or the reply. Claude Code's own
@@ -43,13 +44,33 @@ def make_gate(approve: bool | None, calls: list[dict]):
 
 
 def options(gate, model: str | None = None) -> ClaudeAgentOptions:
+    mine = policy.ROLES.get(guardrails.role(), ())
     return ClaudeAgentOptions(                           # the SDK caches the system prompt and tools itself
         model=model or policy.MODEL, system_prompt=policy.SYSTEM, mcp_servers={policy.SERVER: SERVER}, tools=[],          # no built-in tools: no shell, no file access
-        allowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in policy.READ_ONLY if t in policy.ROLES.get(guardrails.role(), ())], can_use_tool=gate,
-        max_turns=policy.MAX_TURNS, max_budget_usd=policy.MAX_BUDGET_USD, setting_sources=[], permission_mode="default")
+        allowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in policy.READ_ONLY if t in mine], can_use_tool=gate,
+        disallowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in TOOLS if t not in mine],   # a tool the role lacks is never shown to the model
+        max_turns=policy.MAX_TURNS, max_budget_usd=policy.MAX_BUDGET_USD, setting_sources=[], permission_mode="default",
+        env=gateway.claude_code_env(model or policy.MODEL) if gateway.on() else {})     # the model gateway, when on: gateway/litellm.yaml
 
 
 async def run_async(message: str, approve: bool | None = None) -> dict:
+    with tracer().start_as_current_span("agent.run") as span:          # the gateway's record of each call joins this trace
+        if durable.THREAD.get():
+            span.set_attribute("langfuse.session.id", durable.THREAD.get())
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.input", message)
+        out = await _run(message, approve)
+        span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in out["tool_calls"]]))
+        for k in ("input_tokens", "output_tokens"):
+            span.set_attribute(f"gen_ai.usage.{k}", out["usage"].get(k, 0))
+        if out.get("cost_usd"):
+            span.set_attribute("gen_ai.usage.cost", out["cost_usd"])
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.output", out["output"])
+        return out
+
+
+async def _run(message: str, approve: bool | None = None) -> dict:
     calls: list[dict] = []
     seen: list[tuple[str, dict]] = []
     RESULTS.set(seen)                                    # the tools add what they returned; matched to the calls below
@@ -70,11 +91,13 @@ async def run_async(message: str, approve: bool | None = None) -> dict:
                         elif isinstance(block, ToolUseBlock) and block.name.split("__")[-1] in policy.READ_ONLY:
                             calls.append({"name": block.name.split("__")[-1], "args": block.input, "status": "ok"})
                 elif isinstance(msg, ResultMessage):
-                    if msg.is_error:
-                        raise RuntimeError(f"The run failed ({msg.subtype}): {msg.result or msg.errors}")
                     u = msg.usage or {}
                     usage = {"input_tokens": u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0) + u.get("cache_creation_input_tokens", 0), "output_tokens": u.get("output_tokens", 0)}
-                    cost, text = msg.total_cost_usd, msg.result or text
+                    cost = msg.total_cost_usd
+                    if msg.is_error and not any(c["status"] == "pending" for c in calls):   # the gate stopping the run to wait is not a failure
+                        raise RuntimeError(f"The run failed ({msg.subtype}): {msg.result or msg.errors}")
+                    if not msg.is_error:
+                        text = msg.result or text
     for c in calls:                                      # each call that ran gets its result, in order, by tool name
         hit = next((i for i, (n, _) in enumerate(seen) if n == c["name"]), None) if c["status"] == "ok" else None
         if hit is not None:

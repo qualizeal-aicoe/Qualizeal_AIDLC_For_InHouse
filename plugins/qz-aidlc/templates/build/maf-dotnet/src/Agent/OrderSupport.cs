@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -37,8 +38,7 @@ public static class OrderSupport
         };
         if (live) Access.CheckEndpoint(Policy.ModelUrl);
         AIAgent agent = live
-            ? new AnthropicClient { ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? throw new InvalidOperationException("Set ANTHROPIC_API_KEY for live runs.") }
-                .AsAIAgent(model: model ?? Policy.Model, name: options.Name, instructions: null, tools: tools,
+            ? Client().AsAIAgent(model: model ?? Policy.Model, name: options.Name, instructions: null, tools: tools,
                     // The system prompt goes in as a cached block: the breakpoint covers the tools before it, so every turn reuses both.
                     clientFactory: inner => inner.AsBuilder().ConfigureOptions(o => o.MaxOutputTokens ??= Policy.MaxOutputTokens)
                         .Use((messages, chatOptions, next, ct) => next(messages.Prepend(CachedSystem()), chatOptions, ct)).Build())
@@ -46,6 +46,14 @@ public static class OrderSupport
         // Spans for every agent run, model call and tool call. Prompts and results stay out of traces.
         return agent.AsBuilder().UseOpenTelemetry(Policy.TelemetrySource, o => o.EnableSensitiveData = false).Build();
     }
+
+    /// <summary>The live model's client: the model gateway with the gateway's key when it is on (gateway/litellm.yaml),
+    /// else the Anthropic API with ANTHROPIC_API_KEY.</summary>
+    private static AnthropicClient Client() => Gateway.On
+        ? new AnthropicClient { BaseUrl = Gateway.Url, AuthToken = Gateway.Key() }
+        : new AnthropicClient { ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? throw new InvalidOperationException("Set ANTHROPIC_API_KEY for live runs.") };
+
+    private static readonly ActivitySource Source = new(Policy.TelemetrySource);
 
     /// <summary>approve: true or false answers the approval request; null leaves it waiting (keep the session to resume).
     /// role and actor say who is asking (defaults: Policy.Role and Policy.Actor); the run goes to the audit log.</summary>
@@ -167,6 +175,9 @@ public static class OrderSupport
             return new RunResult(input.Text, [], new() { ["input_tokens"] = 0, ["output_tokens"] = 0 }, false, new() { ["input"] = input.Findings, ["output"] = [] },
                 Guardrails.AiNotice, false);
         message = input.Text;
+        using Activity? run = Source.StartActivity("agent.run");     // the framework's spans and the gateway's record nest under it
+        if (Durable.Thread is { } thread) run?.SetTag("langfuse.session.id", thread);
+        if (Gateway.ContentInTraces) run?.SetTag("langfuse.observation.input", message);
         agent ??= Build(Policy.PickModel(message), role);
         AgentSession session = await agent.CreateSessionAsync();
         List<ToolCall> calls = [];
@@ -197,6 +208,10 @@ public static class OrderSupport
             ? $"This needs approval from a person before it can go ahead: {string.Join(", ", calls.Where(c => c.status == "pending").Select(c => c.name))}. It is waiting; nothing has been changed."
             : response.Text;
         Guardrails.Screened output = Guardrails.ScreenOutput(text);   // gate 2: checked before anyone sees it
+        run?.SetTag("agent.tool_calls", string.Join(",", calls.Select(c => $"{c.name}:{c.status}")));
+        run?.SetTag("gen_ai.usage.input_tokens", usage["input_tokens"]);
+        run?.SetTag("gen_ai.usage.output_tokens", usage["output_tokens"]);
+        if (Gateway.ContentInTraces) run?.SetTag("langfuse.observation.output", output.Text);
         return new RunResult(output.Text, calls, usage, waiting, new() { ["input"] = input.Findings, ["output"] = output.Findings },
             Guardrails.AiNotice, !output.Blocked && !waiting);
     }

@@ -18,7 +18,7 @@ BLOCKED_TERMS: list[str] = []   # words or phrases a reply must never contain (g
 ROLES = {"support": ["get_order", "issue_refund"], "viewer": ["get_order"]}
 ROLE = os.environ.get("AGENT_ROLE", "support")
 # Gates 3 and 6, residency and network: the only hosts the agent may call. Each is in .qz/golive.json with its region.
-ALLOWED_HOSTS = [f"bedrock-runtime.{REGION}.amazonaws.com"]
+ALLOWED_HOSTS = [f"bedrock-runtime.{REGION}.amazonaws.com", "localhost", "127.0.0.1"]        # localhost: the model gateway beside the agent (AGENT_GATEWAY_URL)
 
 
 def _whoami() -> str:
@@ -42,7 +42,11 @@ HARD = re.compile(r"\b(refund|cancel|charge|money|pay|complain|dispute|wrong|bro
 
 
 def pick_model(message: str) -> str:
-    """The model for this turn: the small one for an easy question, the main one otherwise."""
+    """The model for this turn: the small one for an easy question, the main one otherwise. With the gateway on, these
+    are the gateway's model names (AGENT_GATEWAY_MODEL and AGENT_GATEWAY_MODEL_SMALL), and the gateway picks the provider."""
+    from . import gateway
+    if gateway.on():
+        return gateway.model(small=not HARD.search(message or ""))
     return SMALL_MODEL if SMALL_MODEL and not HARD.search(message or "") else MODEL_ID
 
 

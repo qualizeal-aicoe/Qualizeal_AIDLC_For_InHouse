@@ -9,7 +9,7 @@ import os
 from strands import Agent
 from strands.hooks import BeforeToolCallEvent, HookProvider, HookRegistry
 
-from . import guardrails, policy
+from . import durable, gateway, guardrails, policy
 from .tools import TOOLS
 
 _telemetry = False
@@ -29,10 +29,33 @@ class ApprovalGate(HookProvider):
                 event.cancel_tool = "A person declined this action. Do not retry it."
 
 
+def _gateway_model():
+    """Strands' OpenAI model with a new client, and so a new connection, for every request. Strands runs each turn in
+    an event loop of its own (an approval's answer is a second turn), and the gateway keeps connections open, so a
+    client shared between turns would reuse a connection that belongs to a closed loop. Strands makes its own clients
+    the same way (strands/models/openai.py, _get_client); this one adds the run's trace context to each request."""
+    from contextlib import asynccontextmanager
+
+    from openai import AsyncOpenAI
+    from strands.models.openai import OpenAIModel
+
+    class GatewayModel(OpenAIModel):
+        @asynccontextmanager
+        async def _get_client(self):
+            async with AsyncOpenAI(base_url=gateway.url() + "/v1", api_key=gateway.key(), http_client=gateway.httpx_client(True)) as client:
+                yield client
+
+    return GatewayModel
+
+
 def _model(model_id: str | None = None):
     if os.environ.get("AGENT_MODE", "stub") == "stub":
         from .stub import StubModel
         return StubModel()
+    if gateway.on():                                      # every call through the model gateway (gateway/litellm.yaml)
+        guardrails.check_endpoint(gateway.url())
+        gateway.key()                                     # no start beside a provider key, or without the gateway's key
+        return _gateway_model()(model_id=model_id or gateway.model(), params={"max_tokens": policy.MAX_OUTPUT_TOKENS})
     if not policy.MODEL_ID:
         raise SystemExit("Set AGENT_MODEL to a Bedrock model id or inference profile for live runs.")
     from strands.models import BedrockModel, CacheConfig
@@ -43,9 +66,16 @@ def _model(model_id: str | None = None):
 
 def build(model_id: str | None = None) -> Agent:
     global _telemetry
-    if not _telemetry and os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+    if not _telemetry:
         from strands.telemetry import StrandsTelemetry
-        StrandsTelemetry().setup_otlp_exporter()      # spans for every model call and tool call
+        opt_in = os.environ.get("OTEL_SEMCONV_STABILITY_OPT_IN", "")
+        if not gateway.content_in_traces() and "gen_ai_unredacted_attributes=" not in opt_in:
+            # Strands puts messages and tool inputs in its spans unless told to redact them: an empty allow-list
+            # redacts every one, so no prompt or answer text leaves in a trace (AGENT_TRACE_CONTENT=1 keeps them).
+            os.environ["OTEL_SEMCONV_STABILITY_OPT_IN"] = ",".join(x for x in (opt_in, "gen_ai_unredacted_attributes=") if x)
+        telemetry = StrandsTelemetry()                # the tracer the run, Strands and the gateway's trace context share
+        if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+            telemetry.setup_otlp_exporter()           # spans for every model call and tool call
         _telemetry = True
     return Agent(model=_model(model_id), tools=guardrails.tools_for(TOOLS), system_prompt=policy.SYSTEM, hooks=[ApprovalGate()], callback_handler=None, name="__NAME__")
 
@@ -55,15 +85,27 @@ def run(message: str, approve: bool | None = None, agent: Agent | None = None) -
     """approve: True or False answers the approval request; None leaves it waiting (keep the agent, or a session manager, to resume)."""
     agent = agent or build(policy.pick_model(message))
     limits = {"turns": policy.MAX_TURNS, "total_tokens": policy.MAX_TOTAL_TOKENS}
-    result = agent(message, limits=limits)
-    gate = "none"
-    while result.stop_reason == "interrupt":
-        if approve is None:
-            gate = "pending"
-            break
-        gate = "ok" if approve else "denied"
-        result = agent([{"interruptResponse": {"interruptId": i.id, "response": "approve" if approve else "decline"}} for i in result.interrupts], limits=limits)
-    return _result(agent, result, gate)
+    from opentelemetry import trace
+    with trace.get_tracer("__NAME__").start_as_current_span("agent.run") as span:      # Strands' own spans nest under it
+        if durable.THREAD.get():
+            span.set_attribute("langfuse.session.id", durable.THREAD.get())
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.input", message)
+        result = agent(message, limits=limits)
+        gate = "none"
+        while result.stop_reason == "interrupt":
+            if approve is None:
+                gate = "pending"
+                break
+            gate = "ok" if approve else "denied"
+            result = agent([{"interruptResponse": {"interruptId": i.id, "response": "approve" if approve else "decline"}} for i in result.interrupts], limits=limits)
+        out = _result(agent, result, gate)
+        span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in out["tool_calls"]]))
+        for k in ("input_tokens", "output_tokens"):
+            span.set_attribute(f"gen_ai.usage.{k}", (out.get("usage") or {}).get(k, 0))
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.output", out["output"])
+        return out
 
 
 def _call(name: str, args: dict) -> dict:

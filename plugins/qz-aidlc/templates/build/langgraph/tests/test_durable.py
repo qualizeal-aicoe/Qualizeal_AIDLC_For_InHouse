@@ -55,6 +55,28 @@ def test_a_waiting_run_is_answered_after_a_restart(db):
     assert durable.load(r["thread_id"])["status"] == "done" and refunds(db) == [("ORD-1002", 42.5)]
 
 
+def test_every_step_is_written_before_the_next_starts(db, monkeypatch):
+    """A crash inside a tool must find the step before it already checkpointed: the graph runs with synchronous
+    durability, on the first call, the answer and a carry-on alike."""
+    from agent import app
+    seen = []
+    real = app.build
+
+    def build(*a, **k):
+        g = real(*a, **k)
+        inner = g.invoke
+
+        def invoke(inp, cfg=None, **kw):
+            seen.append(kw.get("durability"))
+            return inner(inp, cfg, **kw)
+        g.invoke = invoke
+        return g
+    monkeypatch.setattr(app, "build", build)
+    r = run(REFUND)
+    answer(r["thread_id"], True)
+    assert len(seen) >= 2 and set(seen) == {"sync"}
+
+
 def test_a_crash_right_after_the_refund_leads_to_exactly_one_refund(db):
     r = run(REFUND)
     crashed = subprocess.run([sys.executable, "-m", "agent.durable", "answer", r["thread_id"], "--approve"], cwd=ROOT,

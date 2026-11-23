@@ -4,8 +4,10 @@
 # the test suite, with every hook and the tool server started exactly as Claude Code starts them;
 # the guard red-team; the doctor; Claude Code's own plugin check; the bootstrap attendees run (check only);
 # the RAG demo rehearsed stage by stage;
-# and each starter built and tested with the offline stub (no keys, no model spend). On a release branch's pull request,
-# a tag, or when asked, each starter's image is built too and its gold set run inside it with no network.
+# and each starter built and tested with the offline stub (no keys, no model spend); each agent starter's gold set through
+# the real model gateway against stand-in providers; and every cloud template for every starter linted, policy-scanned,
+# validated and planned with no cloud account (nothing is ever applied). On a release branch's pull request, a tag, or
+# when asked, each starter's image is built too and its gold set run inside it with no network.
 name: ci
 on:
   pull_request:
@@ -259,6 +261,80 @@ jobs:
       - name: The seven standards on the new project (go-live gates built in, agent evals at three levels)
         shell: bash
         run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py standards "$RUNNER_TEMP/proj" --gate
+
+  gateway:
+    # Each agent starter's gold set through the real LiteLLM proxy against stand-in providers, with traces to a stand-in
+    # Langfuse endpoint (.github/scripts/gateway_check.sh): keys, traces, no prompt text, fallbacks and budgets.
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [langgraph, openai-agents-py, claude-agent-sdk-py, claude-agent-sdk-ts, go-anthropic, maf-dotnet, strands-agentcore]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        if: matrix.stack == 'claude-agent-sdk-ts'
+        with:
+          node-version: "22"
+      - uses: actions/setup-go@v5
+        if: matrix.stack == 'go-anthropic'
+        with:
+          go-version: "1.26"
+      - uses: actions/setup-dotnet@v4
+        if: matrix.stack == 'maf-dotnet'
+        with:
+          dotnet-version: "10.0.x"
+      - name: Create the project from the starter
+        run: uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py build new ${{ matrix.stack }} "$RUNNER_TEMP/proj" --name "Order Support"
+      - name: Install
+        working-directory: ${{ runner.temp }}/proj
+        run: |
+          case "${{ matrix.stack }}" in
+            claude-agent-sdk-ts) npm ci ;;
+            go-anthropic) go build ./... ;;
+            maf-dotnet) dotnet build evals/Adapter ;;
+            strands-agentcore) uv venv --python 3.12 .venv && uv pip install --python .venv -r requirements.txt && echo "$PWD/.venv/bin" >> "$GITHUB_PATH" ;;
+            *) uv sync --locked --python 3.12 ;;
+          esac
+      - name: The gold set through the gateway, then the keys, the traces, a failed provider and a spent budget
+        run: bash .github/scripts/gateway_check.sh "$RUNNER_TEMP/proj"
+      - name: The gateway's logs, when a step failed
+        if: failure()
+        run: tail -n 60 "$RUNNER_TEMP"/gateway/*.log || true
+
+  cloud:
+    # Every cloud template for every starter (.github/scripts/cloud_check.sh), with no cloud account and nothing applied,
+    # ever: `qz cloud lint`, the policy scan (Checkov), OpenTofu's validate and plan tests against mock providers, SIE put
+    # back to its defaults to show the Kubernetes checks then fail, and the gateway's image healthy as a non-root user.
+    strategy:
+      fail-fast: false
+      matrix:
+        cloud: [kubernetes, aws, gcp, azure]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: 1.13.10
+          tofu_wrapper: false
+      - name: Every cloud fact checked within 90 days (a warning; on a release, a failure)
+        if: matrix.cloud == 'kubernetes'
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF: ${{ github.ref }}
+        run: |
+          if uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py cloud check; then exit 0; fi
+          case "$HEAD_REF:$REF" in
+            release/*|*:refs/tags/*) echo "::error::a release does not ship a cloud fact older than 90 days: check each at its source"; exit 1 ;;
+            *) echo "::warning::cloud facts older than 90 days: check each at its source before the next release" ;;
+          esac
+      - name: Lint, policy scan, validate and plan tests for every starter, then the gateway's image
+        run: bash .github/scripts/cloud_check.sh ${{ matrix.cloud }} "$RUNNER_TEMP/cloud"
 
   containers:
     # Each starter's image, built and checked the way the project's own CI checks it: the gold set (or the RAG gate)

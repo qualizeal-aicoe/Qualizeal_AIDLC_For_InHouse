@@ -1,0 +1,36 @@
+# The agent's HTTP interface behind the model gateway, on a laptop. The agent shares the gateway's network, so it
+# reaches the gateway at 127.0.0.1:4000 (on its allow-list) and nothing else about it changes.
+#
+#   cp gateway/.env.example gateway/.env     # fill it in there; .env is ignored by git
+#   docker compose -f gateway/compose.yaml up --build
+#
+# The agent: http://127.0.0.1:8080 (README: "Serve it"). The gateway: http://127.0.0.1:4000, its key in gateway/.env.
+services:
+  gateway:
+    image: ghcr.io/berriai/litellm-non_root:1.110.0  # pinned, and not root: change it on purpose, after its release notes
+    command: ["--config", "/app/litellm.yaml", "--port", "4000"]
+    env_file: .env                                   # the provider keys and the Langfuse keys: the gateway's alone
+    environment:
+      LITELLM_LOCAL_MODEL_COST_MAP: "True"           # prices from the pinned image, not fetched at each start
+    volumes:
+      - ./litellm.yaml:/app/litellm.yaml:ro
+    ports:
+      - "127.0.0.1:4000:4000"                        # the gateway, for this machine only
+      - "127.0.0.1:8080:8080"                        # the agent's HTTP interface (it lives in the gateway's network)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"          # the open-weight fallback model on this machine's Ollama
+
+  agent:
+    build: ..
+    command: __SERVE_JSON__
+    network_mode: "service:gateway"
+    depends_on: [gateway]
+    environment:
+      AGENT_MODE: live
+      AGENT_GATEWAY: litellm
+      AGENT_GATEWAY_URL: http://127.0.0.1:4000
+      AGENT_GATEWAY_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in gateway/.env}   # the gateway's key, never a provider's
+      # The run traces to Langfuse; without Langfuse, remove these three lines and the callback in litellm.yaml.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${LANGFUSE_HOST:?set LANGFUSE_HOST in gateway/.env}/api/public/otel
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_HEADERS: Authorization=Basic%20${LANGFUSE_AUTH:?set LANGFUSE_AUTH in gateway/.env}

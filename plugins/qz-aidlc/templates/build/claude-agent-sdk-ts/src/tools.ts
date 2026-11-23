@@ -3,6 +3,7 @@ import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { connect, once } from "./durable.ts";
 import { policy } from "./policy.ts";
+import { traced } from "./telemetry.ts";
 
 type Order = { status: string; total: number; carrier: string; note: string };
 const ORDERS: Record<string, Order> = {
@@ -50,14 +51,14 @@ export async function issueRefund(args: { order_id: string; amount: number; reas
   return out(await once("issue_refund", { order_id: id, amount: args.amount, reason: args.reason }, (key) => payments(id, args.amount, args.reason, key)));
 }
 
-export const handlers: Record<string, (args: any) => Promise<{ content: Array<{ type: "text"; text: string }> }>> = { get_order: getOrder, issue_refund: issueRefund };
+export const handlers: Record<string, (args: any) => Promise<{ content: Array<{ type: "text"; text: string }> }>> = { get_order: traced("get_order", getOrder), issue_refund: traced("issue_refund", issueRefund) };
 
 export const server = createSdkMcpServer({
   name: policy.server,
   version: "1.0.0",
   tools: [
-    tool("get_order", "Look up one order by its number (for example ORD-1001). Read-only.", { order_id: z.string() }, getOrder),
+    tool("get_order", "Look up one order by its number (for example ORD-1001). Read-only.", { order_id: z.string() }, handlers.get_order),
     tool("issue_refund", "Refund an order. Moves money and cannot be undone: it runs only after a person approves.",
-      { order_id: z.string(), amount: z.number(), reason: z.string() }, issueRefund),
+      { order_id: z.string(), amount: z.number(), reason: z.string() }, handlers.issue_refund),
   ],
 });

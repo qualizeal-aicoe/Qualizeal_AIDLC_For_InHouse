@@ -29,7 +29,8 @@ REPO = "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse"
 WIN = os.name == "nt"
 STUDIO_VENV = qz_home() / "venv"
 OPTIONAL = (("openpyxl", "pricing workbooks"), ("docx", "Word documents"), ("pptx", "decks"), ("pypdf", "PDF reading"),
-            ("lxml", "office files"), ("PIL", "contact sheets"), ("playwright", "browser checks and recordings"))
+            ("lxml", "office files"), ("PIL", "contact sheets"), ("playwright", "browser checks and recordings"),
+            ("yaml", "the model gateway's and the cloud templates' checks"))
 
 
 def _run(cmd: list[str], timeout: float = 30, **kw) -> tuple[int, str, str]:

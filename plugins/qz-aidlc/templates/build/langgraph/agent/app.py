@@ -12,7 +12,7 @@ from langchain_anthropic.middleware import AnthropicPromptCachingMiddleware
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.types import Command
 
-from . import durable, guardrails, policy
+from . import durable, gateway, guardrails, policy
 from .telemetry import tracer
 from .tools import TOOLS
 
@@ -23,6 +23,11 @@ def _model(model_id: str | None = None):
         return StubChatModel(available=[guardrails.tool_name(t) for t in guardrails.tools_for(TOOLS)])
     from langchain.chat_models import init_chat_model
     common = dict(max_tokens=policy.MAX_OUTPUT_TOKENS, timeout=policy.REQUEST_TIMEOUT_S, max_retries=2)
+    if gateway.on():                                       # every call through the model gateway (gateway/litellm.yaml)
+        guardrails.check_endpoint(gateway.url())
+        return init_chat_model(model_id or gateway.model(), model_provider="openai", base_url=gateway.url() + "/v1", api_key=gateway.key(),
+                               http_client=gateway.httpx_client(timeout=policy.REQUEST_TIMEOUT_S),
+                               http_async_client=gateway.httpx_client(True, policy.REQUEST_TIMEOUT_S), **common)
     if policy.MODEL:                                       # a vendor, chosen by setting AGENT_MODEL
         mid = model_id or policy.MODEL
         guardrails.check_endpoint(policy.MODEL_HOSTS.get(mid.split(":", 1)[0], mid))    # go-live gates 3 and 6
@@ -30,6 +35,12 @@ def _model(model_id: str | None = None):
     guardrails.check_endpoint(policy.LOCAL_BASE_URL)
     return init_chat_model(model_id or policy.LOCAL_MODEL, model_provider="openai", base_url=policy.LOCAL_BASE_URL,
                            api_key=os.environ.get("OPENAI_API_KEY") or "local", **common)
+
+
+# Each step's checkpoint is written before the next step starts. LangGraph's default writes it while the next step
+# runs, so a process that dies inside a tool (a crash, a deploy) could leave a checkpoint that shows the answer taken but
+# nothing left to run; the answer from a new process then has nothing to carry on from.
+DURABILITY = "sync"
 
 
 def saver():
@@ -57,7 +68,10 @@ def run(message: str, approve: bool | None = None, thread_id: str | None = None,
     cfg = {"configurable": {"thread_id": thread_id}, "recursion_limit": policy.RECURSION_LIMIT}
     with tracer().start_as_current_span("agent.run") as span:
         span.set_attribute("agent.thread_id", thread_id)
-        state = agent.invoke({"messages": [{"role": "user", "content": message}]}, cfg)
+        span.set_attribute("langfuse.session.id", thread_id)          # a thread's runs and answers group as one session
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.input", message)
+        state = agent.invoke({"messages": [{"role": "user", "content": message}]}, cfg, durability=DURABILITY)
         gate = "none"
         while state.get("__interrupt__"):
             if approve is None:
@@ -66,11 +80,13 @@ def run(message: str, approve: bool | None = None, thread_id: str | None = None,
             n = len(state["__interrupt__"][0].value["action_requests"])
             decision = {"type": "approve"} if approve else {"type": "reject", "message": "A person declined this action. Do not retry it."}
             gate = "ok" if approve else "denied"
-            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg)
+            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg, durability=DURABILITY)
         result = _result(state, gate, thread_id)
         span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in result["tool_calls"]]))
         span.set_attribute("gen_ai.usage.input_tokens", result["usage"]["input_tokens"])
         span.set_attribute("gen_ai.usage.output_tokens", result["usage"]["output_tokens"])
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.output", result["output"])
         return result
 
 
@@ -82,17 +98,18 @@ def answer(thread: str, approve: bool, saved: dict, agent=None) -> dict:
     cfg = {"configurable": {"thread_id": thread}, "recursion_limit": policy.RECURSION_LIMIT}
     with tracer().start_as_current_span("agent.answer") as span:
         span.set_attribute("agent.thread_id", thread)
+        span.set_attribute("langfuse.session.id", thread)
         snap = agent.get_state(cfg)
         waiting = list(getattr(snap, "interrupts", None) or [i for task in snap.tasks for i in (task.interrupts or [])])
         if waiting:
             n = len(waiting[0].value["action_requests"])
             decision = {"type": "approve"} if approve else {"type": "reject", "message": "A person declined this action. Do not retry it."}
-            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg)
+            state = agent.invoke(Command(resume={"decisions": [decision] * n}), cfg, durability=DURABILITY)
         elif snap.next:
             # The answer was given and the process stopped part-way through the step (a crash, a deploy): carry on from
             # the checkpoint, which holds the answer. The change itself is made once (agent/durable.py).
             span.set_attribute("agent.continued", True)
-            state = agent.invoke(None, cfg)
+            state = agent.invoke(None, cfg, durability=DURABILITY)
         else:
             raise RuntimeError(f"thread {thread} has no action waiting in its checkpoint")
         gate = "pending" if state.get("__interrupt__") else ("ok" if approve else "denied")

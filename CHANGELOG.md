@@ -3,6 +3,92 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
+## 1.4.0 · 24 November 2026
+
+A model gateway that alone holds the keys, and the client's cloud: every model call an agent starter makes can go
+through one gateway, traced in Langfuse, and `qz cloud add` puts any starter on Azure, AWS, Google Cloud or the
+client's own Kubernetes, with Claude through the cloud's own model service (on Kubernetes, the Claude API).
+
+### Added
+
+- **A model gateway in all seven agent starters**: the LiteLLM proxy (MIT), pinned to 1.110.0. `AGENT_GATEWAY=litellm`
+  sends every model call through it at `AGENT_GATEWAY_URL` with the gateway's own key (`AGENT_GATEWAY_KEY`). The agent
+  asks for the gateway's names (`agent-model`, and `agent-model-small` for easy questions) and `gateway/litellm.yaml`
+  maps them to providers, so models change there and never in the agent. Provider keys live in the gateway's
+  environment only: in gateway mode the agent refuses to start while one is in its own. Fallbacks between providers
+  (`agent-model-fallback`), a budget per model (once spent, calls go to the fallback), and `gateway/compose.yaml` to
+  run the agent's HTTP interface behind the gateway on a laptop. The gateway runs LiteLLM's non-root image and takes
+  prices from the list inside it rather than one fetched at each start, so a budget means the same every day. The
+  tools, the approval gate and the limits are unchanged.
+- **Every model call in Langfuse, inside the run's trace.** The gateway sends one record per call (model, tokens,
+  cost, latency) to Langfuse, hosted or self-hosted, and each call carries the run's trace context, so the records sit
+  under the run beside its tool calls. Neither side exports prompt or answer text unless a team turns it on
+  (`AGENT_TRACE_CONTENT=1` in the agent, `turn_off_message_logging` in the gateway).
+- **`qz gateway`**: a stand-in model provider (OpenAI chat completions and Anthropic messages, plain and streamed, by
+  the offline stub's rules), a stand-in Langfuse endpoint, the CI gateway config and the checks. The Studio's CI runs
+  each agent starter's gold set through the real LiteLLM proxy against two stand-ins, then checks that every call
+  reached the provider with the key only the gateway holds and never with the gateway's own key, that no key appears in
+  an answer, a log or a trace, that a run's trace shows its tool calls, tokens and cost, that no prompt text was
+  exported, and that a failed provider and a spent budget both move calls to the fallback.
+- **`qz cloud`: the client's cloud, layer by layer.** `qz cloud show <azure|aws|gcp|kubernetes>` gives the cloud's own
+  service for models, the gateway, search, document parsing, identity, secrets, tracing and containers, the open
+  option beside each, and every fact's sources and the day it was checked; then the AI gateway as one pattern on all
+  four: one way in that holds the keys, routes between models, caps spend and logs each call. `qz cloud check` lists
+  any fact older than 90 days with its source and exits 1.
+- **`qz cloud add <cloud>`** writes `cloud/<cloud>/` into any of the 13 starter projects: OpenTofu files
+  (Terraform-compatible) for the project's shape (an HTTP service or a job), a README of what a person does before the
+  first apply, and plan tests that need no cloud account. Agent starters get the gateway beside the agent
+  (127.0.0.1:4000), with the agent's own model names mapped to the cloud's models:
+  - **AWS**: ECS on Fargate, no public IP; Claude on Bedrock through a cross-region inference profile (`--geo us`,
+    `eu` or `global`) and gpt-oss-120b beside it; the task's role may invoke only those models; keys in Secrets Manager.
+  - **Azure**: Container Apps, internal ingress by default; Claude and gpt-oss-120b deployed in Microsoft Foundry
+    (deploying Claude accepts Anthropic's terms through the Azure Marketplace, so the apply needs the client's
+    organisation name, country and industry); keys in Key Vault, read through the app's managed identity.
+  - **Google Cloud**: Cloud Run, internal ingress by default; Claude and gpt-oss-120b on Vertex AI as the service's own
+    service account, with no key; keys in Secret Manager.
+  - **Kubernetes**: a Deployment, or a suspended CronJob for a job, in a namespace held to the restricted pod security
+    standard, with a network policy and the state database on a volume; keys copied from the cloud's secret store by
+    External Secrets Operator; Claude through the Claude API, and the open-weight model on SIE (Superlinked Inference
+    Engine) from its Helm chart 0.11.1, with telemetry off, a token on its gateway and its workers, and their network
+    policy on.
+  - On AWS, Azure and Google Cloud the first apply creates the secret-store entries with no values and starts nothing
+    (`start_app = false`); a person sets the values, then applies again. No plan or state ever holds a key's value, and
+    one replica runs (the SQLite state database has one writer).
+- **`qz cloud lint`**: no resource that would put a key's value in the plan or the state, every key in the gateway's
+  file read from its environment, and SIE's chart values (telemetry off, gateway and workers behind tokens, network
+  policy on) taken only from their file, with nothing set beside it that could undo them.
+- **A `cloud` job in the Studio's CI**: for each of the four clouds and all 13 starters, `qz cloud lint`, the Checkov
+  policy scan, and OpenTofu 1.13.10's init, validate and plan tests against mock providers; SIE put back to its
+  defaults, to show the Kubernetes lint and plan tests then fail; and the gateway's image built and started with no
+  network, healthy, refusing a call without its key, serving the starter's model names, and not running as root. The
+  templates are never applied, in CI or anywhere else. A release fails on a cloud fact older than 90 days; any other
+  pull request gets a warning.
+
+### Changed
+
+- PyYAML is one of the Studio's own packages, and the doctor lists it: the gateway config and the cloud lint read YAML,
+  and the SIE check fails closed without it.
+- In the Claude Agent SDK starters (Python and TypeScript) a tool the caller's role may not use is no longer shown to the
+  model at all, as well as refused by the approval gate; and a run that the gate stops to wait for a person is a waiting
+  run, not a failed one, when Claude Code ends it with an error result.
+- Every image variable in the cloud templates needs a release tag or a digest: an image with no tag is `latest`.
+
+### Fixed
+
+- Found by the first runs through the real gateway: a call in Anthropic's format (the Claude Agent SDK, Go and .NET
+  starters) to an OpenAI-compatible model went to the Responses API, which self-hosted servers such as SIE and Ollama do
+  not have; both gateway configs now send it through chat/completions. The Strands starter shared one model client
+  between turns, so the answer to an approval reused a connection from a closed event loop; it now makes a client per
+  request. An evaluation run with its own results folder (the gateway's gold set) wrote its report to the default one,
+  and the CI's stand-in Langfuse read only bodies sent with a length, so the TypeScript starter's traces, which Node
+  sends in chunks, were lost there.
+- The LangGraph starter's crash case (a crash right after the refund) failed about one run in twelve: LangGraph writes
+  a step's checkpoint while the next step runs, so a process that died inside the refund could leave a checkpoint
+  with the answer taken and nothing left to run. The starter now writes each checkpoint before the next step starts;
+  the case passed 30 runs in a row, against 23 of 25 before.
+- On Windows, two of the Studio's tests read paths with backslashes and fed git carriage returns, so a shipped
+  `.env.example` looked ignored.
+
 ## 1.3.0 · 23 November 2026
 
 Durable runs and an HTTP interface in every agent starter: a run that waits for a person survives a restart, a change

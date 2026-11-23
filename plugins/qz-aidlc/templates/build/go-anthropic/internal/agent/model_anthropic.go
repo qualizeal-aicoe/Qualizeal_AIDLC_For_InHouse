@@ -16,9 +16,18 @@ type AnthropicModel struct {
 }
 
 // NewAnthropicModel builds the live model with a timeout and retries, for an endpoint on AllowedHosts (go-live gates 3 and 6).
+// With the gateway on, it calls the gateway's Messages API with the gateway's key.
 func NewAnthropicModel() AnthropicModel {
-	return AnthropicModel{client: anthropic.NewClient(option.WithMaxRetries(2), option.WithRequestTimeout(RequestTimeoutS*time.Second)),
-		err: CheckEndpoint(ModelURL())}
+	opts := []option.RequestOption{option.WithMaxRetries(2), option.WithRequestTimeout(RequestTimeoutS * time.Second)}
+	if GatewayOn() {
+		key, err := GatewayKey()
+		if err != nil {
+			return AnthropicModel{err: err}
+		}
+		// The SDK sends the run's trace context itself (its own OpenTelemetry spans carry no content by default).
+		opts = append(opts, option.WithBaseURL(GatewayURL()), option.WithAuthToken(key))
+	}
+	return AnthropicModel{client: anthropic.NewClient(opts...), err: CheckEndpoint(ModelURL())}
 }
 
 // Next implements Model: it converts the transcript to messages, sends it with the tool list and reads one decision.
