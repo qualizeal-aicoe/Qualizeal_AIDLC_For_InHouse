@@ -9,7 +9,8 @@ fictional company.
 
 [![The handbook demo, under a minute](media/handbook-demo-poster.jpg)](media/handbook-demo.mp4)
 
-The video (under a minute, no sound) is made from real output of the commands below; nothing in it was mocked.
+The video (under a minute, no sound) is made from real output of the commands below; nothing in it was mocked. It
+was recorded with 1.0.0: since 1.0.1 a refusal also says what it looked for, the closest sections and who to ask.
 
 ## Five days before: every laptop ready
 

@@ -149,6 +149,7 @@ documents with the section it used, and refuses when the handbook does not say o
 [![The handbook demo, under a minute](docs/media/handbook-demo-poster.jpg)](docs/media/handbook-demo.mp4)
 
 The video (under a minute, no sound) is made from real output of the commands in the plan; nothing in it was mocked.
+It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, the closest sections and who to ask.
 
 ## How it keeps prompts, keys and pricing safe
 
@@ -188,30 +189,34 @@ The video (under a minute, no sound) is made from real output of the commands in
 
 ## What was run, and what was not
 
-Run on 20 and 21 November 2026:
-- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 398 tests (396 passed and 2 skipped
-  on Linux, the two that need the internal pricing workbook; 394 passed and 4 skipped on Windows, where the runner
-  also lacks Chrome for one visual check and Claude Code's sandbox does not run natively); the guard's red-team, 147
-  of 147; the doctor, and the bootstrap in check-only mode, started the way an attendee starts them, both ending
-  `ready for a live session`; the handbook demo rehearsed stage by stage; and Claude Code's own plugin check on the
-  marketplace and both plugins, with Claude Code from its native installer. Every pull request and every push to main
-  runs the same checks, and the Actions tab shows the latest.
+Run on 23 November 2026 for 1.0.1, the same way 1.0.0 was checked on 20 and 21 November:
+- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 408 tests (406
+  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 405 passed and 3 skipped on macOS,
+  whose runner also lacks Chrome for one visual check; 404 passed and 4 skipped on Windows, where in addition Claude
+  Code's sandbox does not run natively); the guard's red-team, 147 of 147; the doctor, and the bootstrap in
+  check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the vectorless
+  demo rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude
+  Code from its native installer. Every pull request and every push to main runs the same checks, and the Actions tab
+  shows the latest.
 - **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
-  their gate) and health check inside the image with no network: 13 of 13 passed.
+  their gate) and health check inside the image with no network: 13 of 13 passed. The first attempt stalled on a slow
+  Ubuntu package mirror in the .NET image; apt now retries with a 30-second timeout, and the build log shows each step.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
-  ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety
-  violations. The command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail
-  rather than skip if the server were missing.
+  ones. The hybrid kit with its real models on a CPU with no GPU scored 41 of 43 on both systems, against 38 for
+  keyword search alone, with no safety violations; its 72 tests also passed on Python 3.11, 3.12 and 3.13. The
+  command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail rather than skip if
+  the server were missing.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
-  and both plugins installed at 1.0.0 by Claude Code 2.1.329, in a clean configuration.
-- **The handbook demo end to end**, which is where the video comes from, and its offline fallback, which answers 35 of
-  40 and is described in the session plan.
+  and both plugins installed at 1.0.1 by Claude Code 2.1.330, in a clean configuration.
+- **The handbook demo end to end** on Linux with the real models, scaffolded the way an attendee does: the questions,
+  the trace, the refusal, the HR answer, both gates and the chat page over HTTP. Its offline fallback answers 38 of 43,
+  as the session plan says.
 
 Not run:
 - **An attendee's own laptop.** The first bootstrap on a QualiZeal machine is the real test; the doctor's report says
   what is missing. The likely surprises are a company proxy or a network that re-signs HTTPS, and the doctor checks
   for both.
-- **macOS in CI.** It runs on a release tag, or by hand from the Actions tab.
+- **macOS on an ordinary pull request.** It runs on a release branch, a tag, or by hand from the Actions tab.
 - **A live model.** No starter, kit or agent here called one: the gold sets run against offline stubs, and the demo's
   answers are sentences taken from the documents, so the session needs no API key. A starter's first call with a real
   key, or to an open-weight model on Ollama (the default for LangGraph and the OpenAI Agents SDK), is the first time
