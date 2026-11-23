@@ -1,11 +1,11 @@
-# QualiZeal AI-DLC Studio · 1.0.0
+# QualiZeal AI-DLC Studio · 1.0.1
 
 How the QualiZeal AI Center of Excellence (AI CoE) builds with Claude Code, in one install. An AI full-stack developer
 or a generative AI (GenAI) engineer gets tested starters for the stacks our projects use, lanes that carry a piece of
 work from a decision to a reviewed pull request, and a harness that keeps prompts, keys and pricing where they belong.
 AI-DLC is the AI-Driven Development Life Cycle.
 
-Prepared by the QualiZeal AI Center of Excellence (AI CoE). Internal to QualiZeal.
+Prepared by the QualiZeal AI Center of Excellence (AI CoE), for QualiZeal's own teams.
 
 | Plugin | What it is |
 |---|---|
@@ -14,8 +14,8 @@ Prepared by the QualiZeal AI Center of Excellence (AI CoE). Internal to QualiZea
 
 ## Start here
 
-About 15 minutes, no administrator rights. The repository is private, so accept the invitation to the
-`qualizeal-aicoe` organisation on GitHub first.
+About 15 minutes, no administrator rights. The repository is public, so there is no invitation to accept and no
+GitHub sign-in to clone it.
 
 Windows, in PowerShell:
 
@@ -62,10 +62,10 @@ of evaluation cases gates each change, and CI and a runbook come with it.
 | `claude-agent-sdk-py` | Claude Agent SDK (Python) | 9 tests and 11 gold cases; Windows and Linux |
 | `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 7 tests and 11 gold cases; Linux |
 | `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 8 tests and 8 contract cases through a real MCP client; Windows and Linux |
-| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 66 tests; 38 of 40 golden questions with the real models, against 35 for keyword search alone; no safety violations; Windows and Linux |
+| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler | 72 tests; 41 of 43 golden questions with the real models, against 38 for keyword search alone; no safety violations; Windows and Linux |
 | `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 62 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
 | `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 18 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
-| `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 42 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
+| `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 43 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
 | `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 31 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
 | `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 10 tests and 11 gold cases; Linux |
 | `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 9 tests and 11 gold cases; Linux |
@@ -104,7 +104,7 @@ All 13 starters meet all four the moment they are created; `tests/test_standards
 | Architect | `/qz-aidlc:qz-architect` | Testable requirements; options scored against a no-agent baseline on locked criteria; spikes with criteria fixed in advance; diagrams at enterprise, system and workflow level; an independent review; a gate before anything is called final. Motion diagrams from one reviewed spec: a page that plays, a looping GIF, an MP4 and an animated PowerPoint |
 | Spec | `/qz-aidlc:qz-spec` | A design document drafted section by section in `docs/designs/`, reviewed in stages by reviewers that see only the document and the files it links, never the conversation; findings merged; the author's resolution checked; your approval; then writes held to the spec's file boundary |
 | Build | `/qz-aidlc:qz-build` | A project from one of the starters above, with its approval gate, limits, tracing, offline stub, gold set, CI and runbook |
-| RAG | `/qz-aidlc:qz-rag` | A knowledge assistant over documents from a tested kit, vectorless or hybrid: cited answers or a refusal, access control inside the search query, planted instructions quarantined, 40 golden questions and a gate. The vectorless kit is built live one stage per story; the hybrid kit keeps a trace of every answer and packs its index into portable knowledge cores |
+| RAG | `/qz-aidlc:qz-rag` | A knowledge assistant over documents from a tested kit, vectorless or hybrid: cited answers, or a refusal that says what it looked for and who to ask; access control inside the search query, planted instructions quarantined, golden questions (40 in the vectorless kit, 43 in the hybrid) and a gate. The vectorless kit is built live one stage per story; the hybrid kit keeps a trace of every answer and packs its index into portable knowledge cores |
 | Eval | `/qz-aidlc:qz-eval` | Gold set runner with record and replay, pass rate with a 95% interval, regression gate, model judge calibrated against people |
 | Test | `/qz-aidlc:qz-test` | Test cases designed from a story with named techniques, coverage check, traceability, export to Xray, Gherkin or Playwright after approval. UI scenarios that leave a screenshot per step, a captioned video and an evidence page; a packaged suite to hand over |
 | Design | `/qz-aidlc:qz-design` | A direction agreed before any styling; the rendered page measured at four widths for contrast, type, focus, touch targets, overflow and motion; an independent critique; named fix passes |
@@ -131,6 +131,14 @@ waits for a person, with who decided it and why. CI runs the same check on every
 Studio keeps its own in [docs/decisions/](docs/decisions/). Method after Trail-code, without its telemetry or its
 cloud workspace.
 
+What the Studio keeps carries its evidence. A project note that names its source (`(from src/rate.py#quote)`) is
+checked against that code at every session start, and marked stale, not deleted, when the code changes or goes;
+glossary terms keep their earlier definitions with the dates they applied. `qz claims` lists every stale note,
+decision and term. Every commit an agent makes ends with `Request:`, `Stage:` and `Base:` lines, so `qz conventions
+why <file>` says why a file changed and at whose request from git alone. A shortcut taken on purpose is marked where
+it lives (`# shortcut: <limit>, <when to upgrade>`) and listed by `qz debt`, and the band above the prompt says
+whether the tests ran after the last change.
+
 ## A live session
 
 [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md) is the plan for an instructed session: what everyone does five days and
@@ -141,6 +149,7 @@ documents with the section it used, and refuses when the handbook does not say o
 [![The handbook demo, under a minute](docs/media/handbook-demo-poster.jpg)](docs/media/handbook-demo.mp4)
 
 The video (under a minute, no sound) is made from real output of the commands in the plan; nothing in it was mocked.
+It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, the closest sections and who to ask.
 
 ## How it keeps prompts, keys and pricing safe
 
@@ -180,30 +189,35 @@ The video (under a minute, no sound) is made from real output of the commands in
 
 ## What was run, and what was not
 
-Run on 20 and 21 November 2026:
-- **CI**, on Windows (Python 3.12) and Linux (Python 3.11 and 3.13): the Studio's 398 tests (396 passed and 2 skipped
-  on Linux, the two that need the internal pricing workbook; 394 passed and 4 skipped on Windows, where the runner
-  also lacks Chrome for one visual check and Claude Code's sandbox does not run natively); the guard's red-team, 147
-  of 147; the doctor, and the bootstrap in check-only mode, started the way an attendee starts them, both ending
-  `ready for a live session`; the handbook demo rehearsed stage by stage; and Claude Code's own plugin check on the
-  marketplace and both plugins, with Claude Code from its native installer. Every pull request and every push to main
-  runs the same checks, and the Actions tab shows the latest.
+Run on 23 November 2026 for 1.0.1, the same way 1.0.0 was checked on 20 and 21 November:
+- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 408 tests (406
+  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 405 passed and 3 skipped on macOS,
+  whose runner also lacks Chrome for one visual check; 404 passed and 4 skipped on Windows, where in addition Claude
+  Code's sandbox does not run natively); the guard's red-team, 147 of 147; the doctor, and the bootstrap in
+  check-only mode, started the way an attendee starts them, both ending `ready for a live session`; the vectorless
+  demo rehearsed stage by stage; and Claude Code's own plugin check on the marketplace and both plugins, with Claude
+  Code from its native installer. Every pull request and every push to main runs the same checks, and the Actions tab
+  shows the latest.
 - **Containers**: on the release branch, CI built all 13 starters' images and ran each one's gold set (the RAG kits:
-  their gate) and health check inside the image with no network: 13 of 13 passed.
+  their gate) and health check inside the image with no network: 13 of 13 passed. On the way, the .NET image stalled
+  twice on a slow public Ubuntu mirror: its gold stage now reads only Ubuntu's main component, with retries and a
+  30-second timeout, from the mirror named in `UBUNTU_MIRROR` (GitHub's own on its runners), and the log shows each step.
 - **Every starter**, created from the packed kit and tested as the table above says, Windows and Linux for the Python
-  ones. The hybrid kit with its real models on a CPU with no GPU scored 38 of 40 on both systems, with no safety
-  violations. The command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail
-  rather than skip if the server were missing.
+  ones. The hybrid kit with its real models on a CPU with no GPU scored 41 of 43 on both systems, against 38 for
+  keyword search alone, with no safety violations; its 72 tests also passed on Python 3.11, 3.12 and 3.13. The
+  command-line harness ran against the real WireMock 3.13.2 on both systems, with CI set to fail rather than skip if
+  the server were missing.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
-  and both plugins installed at 1.0.0 by Claude Code 2.1.329, in a clean configuration.
-- **The handbook demo end to end**, which is where the video comes from, and its offline fallback, which answers 35 of
-  40 and is described in the session plan.
+  and both plugins installed at 1.0.1 by Claude Code 2.1.330, in a clean configuration.
+- **The handbook demo end to end** on Linux with the real models, scaffolded the way an attendee does: the questions,
+  the trace, the refusal, the HR answer, both gates and the chat page over HTTP. Its offline fallback answers 38 of 43,
+  as the session plan says.
 
 Not run:
 - **An attendee's own laptop.** The first bootstrap on a QualiZeal machine is the real test; the doctor's report says
   what is missing. The likely surprises are a company proxy or a network that re-signs HTTPS, and the doctor checks
   for both.
-- **macOS in CI.** It runs on a release tag, or by hand from the Actions tab.
+- **macOS on an ordinary pull request.** It runs on a release branch, a tag, or by hand from the Actions tab.
 - **A live model.** No starter, kit or agent here called one: the gold sets run against offline stubs, and the demo's
   answers are sentences taken from the documents, so the session needs no API key. A starter's first call with a real
   key, or to an open-weight model on Ollama (the default for LangGraph and the OpenAI Agents SDK), is the first time
@@ -215,7 +229,7 @@ Not run:
 - **A person working in a live Claude Code session with the hooks.** The hooks were started exactly as Claude Code
   starts them, with the input it sends, but no interactive session was recorded.
 - The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
-- Cursor and Codex. 1.0.0 is for Claude Code; they are planned for 1.1.
+- Cursor and Codex. 1.0.1 is for Claude Code; they are planned for 1.1.
 
 ## How a release ships
 
@@ -229,13 +243,13 @@ deletes a branch once its head is the head of a merged pull request, and keeps a
 
 | | |
 |---|---|
-| [CHANGELOG.md](CHANGELOG.md) | What changed in 1.0.0 |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each release |
 | [docs/SETUP-GUIDE.md](docs/SETUP-GUIDE.md) | Every way to install: one person, many laptops, a whole organisation |
 | [docs/LIVE-SESSION.md](docs/LIVE-SESSION.md) | Running an instructed session |
 | [docs/QUICK-GUIDE.md](docs/QUICK-GUIDE.md) | Every command, the QualiZeal names, and how to spend fewer tokens |
 | [docs/DEMO-VECTORLESS-RAG.md](docs/DEMO-VECTORLESS-RAG.md) | A longer session that builds the vectorless kit live, one story at a time |
 | [docs/GITHUB-AGENT.md](docs/GITHUB-AGENT.md) | The GitHub agent, set up from the website |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.0.1 and 1.1 add and why: durable runs, changes mid-run, LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.1 adds and why: your client's cloud (Azure, AWS, Google Cloud or Kubernetes), document parsing you can measure, durable runs, changes mid-run, LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
 | [docs/HISTORY.md](docs/HISTORY.md) | Releases 0.4.0 to 0.10.0, as described at the time |
 | [LAYERS.md](LAYERS.md) | What is AWS AI-DLC and what is ours |
 | [CREDITS.md](CREDITS.md) | The projects that shaped the Studio, and their licences |

@@ -76,7 +76,10 @@ an approval gate; a request to change data is refused and named as such. The rol
   `provider = "anthropic"`, then `uv run -m sqlagent eval`. Add your users' real questions, with gold SQL, before you
   trust the numbers.
 - `semantic.toml` is where quality comes from: a description for every table, the words people use, one formula per
-  metric, and the ambiguous words of your business. Have whoever owns the data review it.
+  metric, and the ambiguous words of your business. Have whoever owns the data review it. Each metric names its
+  owner, version and effective date; when a formula changes, the old one moves into the metric's history with the
+  dates it applied, so "revenue last year" can use last year's formula. A history whose dates overlap stops the
+  agent at start.
 - The double-count check knows foreign keys. Declare them in the database, or the check cannot see a fan-out.
 - The audit chain shows tampering; it does not stop it, and cannot see a record cut off the end. Ship records to an
   append-only store as they are written when that matters.

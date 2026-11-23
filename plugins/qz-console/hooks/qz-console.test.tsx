@@ -43,6 +43,8 @@ test('the guard rule id and the run status line are read from the harness words'
   expect(ruleOf('Credentials are never read by an agent. (rule QZ-SH-ENV-CREDS)')).toBe('QZ-SH-ENV-CREDS')
   expect(ruleOf('no rule here')).toBeUndefined()
   expect(runFrom('[qz-ledger] Run R-7 · lane bid · stage pricing · stage tokens 12,000/60,000.')).toEqual({ id: 'R-7', lane: 'bid', stage: 'pricing', used: 12000, limit: 60000 })
+  expect(runFrom('[qz-ledger] Run R-8 · lane deliver · stage build · stage tokens 1,000/9,000 · tests not run since the last change.')?.tests).toBe('not run since the last change')
+  expect(runFrom('[qz-ledger] Run R-8 · lane deliver · stage build · stage tokens 1,000/9,000 · tests passed 42.')).toEqual({ id: 'R-8', lane: 'deliver', stage: 'build', used: 1000, limit: 9000, tests: 'passed 42' })
 })
 
 test('the map draws on both themes and says where the run is', () => {

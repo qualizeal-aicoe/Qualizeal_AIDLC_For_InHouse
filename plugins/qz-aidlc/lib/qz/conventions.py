@@ -13,12 +13,17 @@ discovery (`qz practices`).
   minor, fix, perf and revert patch, anything else no release.
 They apply where a Jira key is known (the practices, the story being delivered, or the branch name). A protected
 branch is never pushed to, anywhere.
+- Trailers: a commit an agent makes ends with why it was made, so the chain of commits is the audit trail:
+  `Request:` (the story, and which of the person's messages in which run asked for it), `Stage:` (the AI-DLC stage)
+  and `Base:` (the commit the run started from). The hook turns back an agent commit without them, with the lines
+  to add. `qz conventions why <path>` answers "why did this file change, and at whose request" from git alone.
 
     qz conventions [gate]               the delivery gate for this branch (ship_check shows the same)
     qz conventions branch NAME          is the branch name accepted, and what it should be
     qz conventions commit "SUBJECT"     does the subject fit, and the fixed one
     qz conventions name --key QZ-123 --title "Rate quote for a shipment"    the branch name to create
     qz conventions check --base origin/master [--ci]    for CI: branch name and merge-request title fail, commits warn
+    qz conventions why PATH             each commit that changed a file: what, at whose request, in which stage
 """
 from __future__ import annotations
 
@@ -59,6 +64,42 @@ RANK = {"major": 3, "minor": 2, "patch": 1, None: 0}
 STOP = set("a an the to for of and or with in on at by from as is are be into via that this it its i we you they user users "
            "want wants so should can will able".split())
 VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
+TRAILERS = ("Request", "Stage", "Base")
+TRAILER = re.compile(r"(?mi)^(Request|Stage|Base):[ \t]*(\S.*)$")
+
+
+def trailers(proj: Path, led: dict | None, story: str) -> dict:
+    """What an agent commit should say about why it was made, from the run ledger."""
+    led = led or {}
+    base = str(led.get("base") or "")
+    if not base:
+        from .decisions import default_base
+        b = default_base(proj)
+        base = git(proj, "merge-base", "HEAD", b) if b != "HEAD" else ""
+        base = base or git(proj, "rev-parse", "HEAD")
+    n = int(led.get("human_turns") or 0)
+    req = story + (f", message {n} of run {led['run_id']}" if n and led.get("run_id") else (f", run {led['run_id']}" if led.get("run_id") else ""))
+    return {"Request": req, "Stage": str(led.get("stage") or "unknown"), "Base": base[:12]}
+
+
+def missing_trailers(body: str, want: dict) -> list[str]:
+    have = {m.group(1).title() for m in TRAILER.finditer(body or "")}
+    return [f"{k}: {want[k]}" for k in TRAILERS if k not in have and want.get(k)]
+
+
+def why(proj: Path, path: str, limit: int = 20) -> list[dict]:
+    """The commits that changed a file, newest first, each with the request and stage its trailers name."""
+    raw = git(proj, "log", f"-{limit}", "--format=%h%x1f%an%x1f%ad%x1f%s%x1f%b%x1e", "--date=short", "--", path, timeout=8.0)
+    out = []
+    for rec in raw.split("\x1e"):
+        parts = rec.strip("\n").split("\x1f")
+        if len(parts) < 4:
+            continue
+        parts += [""] * (5 - len(parts))                 # the oldest commit's empty body is trimmed off the output
+        found = {m.group(1).title(): m.group(2).strip() for m in TRAILER.finditer(parts[4])}
+        out.append({"commit": parts[0], "author": parts[1], "date": parts[2], "subject": parts[3],
+                    "request": found.get("Request", ""), "stage": found.get("Stage", ""), "base": found.get("Base", "")})
+    return out
 
 
 # ---------------------------------------------------------------------- one subject, one branch
@@ -378,6 +419,25 @@ def _unquote(s: str) -> str:
     return s
 
 
+def _head(seg: str) -> str:
+    """The words of one shell command: up to the first newline, `;`, `&` or `|` outside quotes, so a quoted message
+    may run over several lines (a subject, a blank line, a body and its trailers)."""
+    q, i, n = "", 0, len(seg)
+    while i < n:
+        c = seg[i]
+        if c == "\\" and q != "'" and i + 1 < n:
+            i += 2
+            continue
+        if q:
+            q = "" if c == q else q
+        elif c in "\"'":
+            q = c
+        elif c in "\n;&|":
+            return seg[:i]
+        i += 1
+    return seg
+
+
 HEREDOC = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n(.*?)\n\s*\1\s*(?=\n|$|\))", re.S)
 MSG = re.compile(r"""(?:^|\s)(?:-[a-zA-Z]*m|--message)(?:=|\s*)("(?:[^"\\]|\\.)*"|'[^']*'|[^\s;&|'"]+)""")
 
@@ -392,7 +452,7 @@ def commit_message(command: str, proj: Path) -> tuple[str | None, str]:
     if h and re.search(r"(?:-[a-zA-Z]*m|--message|-F|--file)\b", seg[:h.start()]):
         text = h.group(2)
     else:
-        line = re.split(r"\s(?:&&|\|\||;)\s|\n", seg, maxsplit=1)[0]
+        line = _head(seg)
         parts = MSG.findall(line)
         if parts:
             text = "\n\n".join(_unquote(p) for p in parts)
@@ -488,7 +548,12 @@ def hook_check(proj: Path, command: str, led: dict | None = None, timeout: float
             return None
         p = parse_subject(subj, body, eff)
         if p["ok"]:
-            return None
+            gone = missing_trailers(body, trailers(proj, led, p.get("key") or story)) if P.get(eff, "commit.trailers", True) else []
+            if not gone:
+                return None
+            return {"action": "deny", "rule": "QZ-CONVENTION-TRAILERS",
+                    "message": "A commit an agent makes says why it was made, so the history is the audit trail. End the message, after a "
+                               "blank line and beside any Co-Authored-By line, with: " + " | ".join(f"`{x}`" for x in gone) + "."}
         why = "" if p["why"].startswith("it is not in the form") else f" ({p['why']})"
         return {"action": "deny", "rule": "QZ-CONVENTION-COMMIT",
                 "message": f"Commit messages here are `{P.get(eff, 'commit.format')}`{why}. Use: `{fix_subject(p, story)}`"
@@ -546,7 +611,7 @@ def _event() -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="qz conventions", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", nargs="?", default="gate", choices=["gate", "branch", "commit", "name", "check"])
+    ap.add_argument("action", nargs="?", default="gate", choices=["gate", "branch", "commit", "name", "check", "why"])
     ap.add_argument("text", nargs="?")
     ap.add_argument("--base")
     ap.add_argument("--key")
@@ -567,6 +632,18 @@ def main(argv: list[str] | None = None) -> int:
         key = P.team_key(proj, eff)[0] or "KEY"
         print(json.dumps(p, indent=2) if a.json else ("FITS " + p["subject"] if p["ok"] else f"DOES NOT FIT: {p['why']}. Use: {fix_subject(p, p.get('key') or key + '-0')}"))
         return 0 if p["ok"] else 1
+    if a.action == "why":
+        if not a.text:
+            ap.error("why needs a path: qz conventions why src/quote.py")
+        rows = why(proj, a.text)
+        if a.json:
+            print(json.dumps(rows, indent=2))
+        else:
+            for r in rows:
+                asked = f" · at the request of {r['request']}" if r["request"] else " · no Request trailer (a person's commit, or older)"
+                print(f"{r['commit']} {r['date']} {r['subject']}{asked}" + (f" · stage {r['stage']}" if r["stage"] else ""))
+            print("" if rows else f"No commit has changed {a.text}.")
+        return 0
     if a.action == "name":
         if not a.key or not re.fullmatch(KEYPAT, a.key):
             ap.error("name needs --key like QZ-123 (and --title)")

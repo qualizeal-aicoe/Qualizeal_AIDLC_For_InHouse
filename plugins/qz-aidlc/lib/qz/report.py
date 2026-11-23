@@ -60,6 +60,10 @@ def summarise(proj: Path, run_id: str | None = None) -> dict:
     }
     out["advice"] = footprint.advice(out, out["context"])
     out["standards"] = standards_of(proj)
+    out["claims"] = claims_of(proj)
+    from . import testrun
+    out["tests"] = testrun.state(led)
+    out["debt"] = debt_of(proj)
     out["window"] = window(proj, led, cfg)
     out["routing"] = routing(led)
     return out
@@ -76,6 +80,50 @@ def standards_of(proj: Path) -> dict | None:
     parts = [{"title": v["title"], "ok": v["result"]["ok"], "verdict": v["result"]["verdict"]} for v in st["standards"].values()]
     notes = [str(i) for v in st["standards"].values() for i in (v["result"].get("insights") or [])]
     return {"verdict": st["verdict"], "ok": st["ok"], "parts": parts, "insights": notes[:4]}
+
+
+def claims_of(proj: Path) -> dict | None:
+    """Memory notes, decisions and glossary terms whose evidence changed or is gone, as the card is made."""
+    try:
+        from . import claims
+        return claims.gather(proj)
+    except Exception:
+        return None
+
+
+def debt_of(proj: Path) -> dict | None:
+    """The deliberate shortcuts marked in the code (`shortcut: <limit>, <when to upgrade>`)."""
+    try:
+        from . import debt
+        return debt.scan(proj)
+    except Exception:
+        return None
+
+
+def render_debt(d: dict | None, t: dict | None) -> str:
+    rows = "".join(f"<tr><td><code>{esc(r['file'])}:{r['line']}</code></td><td>{esc(r['limit'])}</td>"
+                   f"<td>{esc(r['upgrade']) if r['trigger'] else '<b>no trigger</b>'}</td></tr>" for r in (d or {}).get("shortcuts", [])[:12])
+    tests = (f"<p>{esc(t['label'])}" + (f" (<code>{esc(t['command'])}</code>)" if t.get("command") else "") + ".</p>") if t and t["state"] != "none" else ""
+    if not rows and not tests:
+        return ""
+    more = f"<p class='s'>{d['count'] - 12} more: <code>qz debt</code>.</p>" if d and d["count"] > 12 else ""
+    return (f"<section><h2>Tests and shortcuts {label('MEASURED')}</h2>{tests}"
+            + (f"<p class='s'>Deliberate shortcuts marked in the code, each with the limit it accepts and when to upgrade it. One without a "
+               f"trigger tends to stay forever.</p><table><tr><th>Where</th><th>Limit</th><th>Upgrade</th></tr>{rows}</table>{more}" if rows else "")
+            + "</section>")
+
+
+def render_claims(c: dict | None) -> str:
+    if not c or not c["checked"]:
+        return ""
+    from . import claims
+    found = claims.lines(c)
+    items = "".join(f"<li>{esc(x)}</li>" for x in found[:10]) or "<li>Every claim with evidence still matches it.</li>"
+    return (f"<section><h2>Claims and their evidence {label('MEASURED')}</h2>"
+            f"<p class='s'>{c['checked']} claim(s) carry evidence: memory notes {c['memory']['checked']}, decisions {c['decisions']['checked']}, "
+            f"glossary terms {c['glossary']['checked']}. Checked when this card was made, with no model: {c['stale']} stale, "
+            f"{c['leads']} worth reading again. A stale claim is kept and flagged until a person checks it; <code>qz claims</code> lists them.</p>"
+            f"<ul>{items}</ul></section>")
 
 
 def render_standards(st: dict | None) -> str:
@@ -166,6 +214,17 @@ def render(s: dict) -> str:
     if s.get("standards"):
         st = s["standards"]
         chips.insert(3, f'<span class="chip {"ok" if st["ok"] else "bad"}">Standards {esc(st["verdict"].split(" STANDARDS")[0].lower())}</span>')
+    cl = s.get("claims")
+    if cl and cl["checked"]:
+        chips.insert(-1, f'<span class="chip {"warn" if cl["stale"] else "ok"}">Stale claims {cl["stale"]}</span>')
+    tr = s.get("tests") or {}
+    if tr.get("state") not in (None, "none"):
+        cls = {"passed": "ok", "failed": "bad"}.get(tr["state"], "warn")
+        chips.insert(-1, f'<span class="chip {cls}">{esc(tr["label"][0].upper() + tr["label"][1:])}</span>')
+    d = s.get("debt")
+    if d and d["count"]:
+        chips.insert(-1, f'<span class="chip {"warn" if d["no_trigger"] else "ok"}">Shortcuts {d["count"]}'
+                         + (f' · {d["no_trigger"]} without a trigger' if d["no_trigger"] else "") + "</span>")
     deny = sum(s["guard"]["deny"].values())
     asks = sum(s["guard"]["ask"].values())
     tiles = [
@@ -218,6 +277,8 @@ def render(s: dict) -> str:
 {render_window(s.get("window") or {})}
 {render_routing(s.get("routing"))}
 {render_standards(s.get("standards"))}
+{render_claims(s.get("claims"))}
+{render_debt(s.get("debt"), s.get("tests"))}
 <section><h2>The five AI-DLC measures</h2><table>{meas}</table></section>
 <section><h2>Human gates</h2><table><tr><th>When</th><th>Stage</th><th>Gate</th><th>Outcome</th><th>Detail</th></tr>{gates}</table></section>
 <section><h2>Governance and security</h2><table><tr><th>Rule</th><th>Action</th><th>Count</th></tr>{guard_rows}</table>

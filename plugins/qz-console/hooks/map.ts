@@ -48,12 +48,15 @@ export function ruleOf(message: string | undefined): string | undefined {
   return m ? m[1] : undefined
 }
 
-/** The harness status line: "Run R-1 · lane deliver · stage code-generation · stage tokens 41,000/900,000." */
+/** The harness status line: "Run R-1 · lane deliver · stage code-generation · stage tokens 41,000/900,000[ · tests passed 42]." */
 export function runFrom(text: string): Run | undefined {
   const m = /Run (\S+) · lane (\S+) · stage (\S+) · stage tokens ([\d,]+)\/([\d,]+)/.exec(text)
   if (!m) return undefined
   const n = (s: string | undefined): number => Number((s ?? '').replace(/,/g, ''))
-  return { id: m[1] ?? '', lane: m[2] ?? '', stage: m[3] ?? '', used: n(m[4]), limit: n(m[5]) }
+  const run: Run = { id: m[1] ?? '', lane: m[2] ?? '', stage: m[3] ?? '', used: n(m[4]), limit: n(m[5]) }
+  const t = /stage tokens [\d,]+\/[\d,]+ · tests ([^·\n]+?)\.(?:\s|$)/.exec(text)
+  if (t?.[1]) run.tests = t[1]
+  return run
 }
 
 const QZ = /^mcp__(?:plugin_qz-aidlc_qz|qz)__(.+)$/
@@ -148,6 +151,7 @@ export function describeNow(b: Board): string {
   const parts = [r.lane ? r.lane.toUpperCase() : 'no run', r.key, r.stage ? `stage ${r.stage}` : undefined]
   const p = pct(r)
   if (p !== undefined) parts.push(`${p}% of stage budget`)
+  if (r.tests) parts.push(`tests ${r.tests}`)
   if (b.context !== undefined) {
     const top = topCost(b, 2)
     parts.push(`context ${Math.round(b.context)}%${top.length ? ` (most from ${top.map(([k]) => NAME[k]).join(', ')})` : ''}`)

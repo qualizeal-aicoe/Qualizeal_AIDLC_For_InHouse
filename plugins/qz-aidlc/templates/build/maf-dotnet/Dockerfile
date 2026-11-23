@@ -11,7 +11,18 @@ RUN dotnet test tests/Agent.Tests -c Release && dotnet publish src/Agent -c Rele
 # The gold set runs here, in its own stage, against the published build: `docker build --target gold .` fails
 # when a case fails. The cases run the same Agent.dll the final image ships, from inside the project (out/).
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS gold
-RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+# python3 runs the gold-set runner. apt reads only Ubuntu's main component, with no prompts, retries and a 30-second
+# timeout; UBUNTU_MIRROR, when set, replaces the public mirror (a company's own, or GitHub's on its runners).
+ARG UBUNTU_MIRROR=""
+ARG DEBIAN_FRONTEND=noninteractive
+RUN set -e; f=/etc/apt/sources.list.d/ubuntu.sources; . /etc/os-release; \
+    if [ -n "$UBUNTU_MIRROR" ]; then \
+      printf 'Types: deb\nURIs: %s\nSuites: %s %s-updates\nComponents: main\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' \
+        "$UBUNTU_MIRROR" "$VERSION_CODENAME" "$VERSION_CODENAME" > "$f"; \
+    elif [ -f "$f" ]; then sed -i 's/^Components: .*/Components: main/' "$f"; fi; \
+    apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::Languages=none update; \
+    apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends python3; \
+    rm -rf /var/lib/apt/lists/*
 ENV AGENT_MODE=stub
 WORKDIR /src
 COPY . .

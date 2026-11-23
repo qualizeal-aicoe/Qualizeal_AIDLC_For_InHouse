@@ -16,4 +16,4 @@ Install in Claude Code 2.1.295 or later:
 On a laptop, the repository's bootstrap (`setup\bootstrap.cmd` on Windows, `sh setup/bootstrap.sh` elsewhere) does
 this and installs what the plugin needs: uv, and Python 3.11 to 3.13. Start with `/qz-aidlc:qz` and say what you need,
 or `/qz-aidlc:qz-help` for every command; setup is `/qz-aidlc:qz-setup`. The README, setup guide, live-session plan
-and credits are in the root of `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Internal to QualiZeal.
+and credits are in the root of `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`, made for QualiZeal's own teams.

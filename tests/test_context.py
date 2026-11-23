@@ -109,6 +109,9 @@ def test_guard_checks_commands_sent_through_ctx_and_asks_before_memory_is_saved(
     d = guard.decide("mcp__plugin_qz-aidlc_qz__project_memory", {"action": "save", "text": "Demos go to GitHub Pages"})
     assert d.action == "ask" and "Demos go to GitHub Pages" in d.message
     assert guard.decide("mcp__plugin_qz-aidlc_qz__project_memory", {"action": "search", "query": "demo"}).action is None
+    assert guard.decide("mcp__plugin_qz-aidlc_qz__project_memory", {"action": "show"}).action is None
+    d = guard.decide("mcp__plugin_qz-aidlc_qz__project_memory", {"action": "confirm"})
+    assert d.action == "ask" and "still true" in d.message and "Every note marked stale" in d.message
 
 
 def test_hooks_shorten_big_output_redirect_big_reads_and_count_what_stayed_out(tmp_path):
@@ -213,6 +216,40 @@ def test_memory_is_confirmed_bounded_versioned_and_searchable(tmp_path, monkeypa
     assert "Project memory (notes the person confirmed" in ctx and "Entra ID" in ctx
 
 
+AUTH = "def login(user):\n    return check(user)\n\n\ndef logout(user):\n    return None\n"
+
+
+def test_a_note_keeps_its_evidence_and_is_marked_stale_not_deleted_when_the_code_moves(tmp_path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "auth.py").write_text(AUTH, encoding="utf-8")
+    (tmp_path / "RUNBOOK.md").write_text("# Runbook\nDeploy with make.\n", encoding="utf-8")
+    kept = memory.save(tmp_path, "- Every login goes through one function (from src/auth.py#login).\n"
+                                 "- Deploys follow RUNBOOK.md.\n- Releases go out on Fridays.\n- Never read ../outside.txt or /etc/hosts.")
+    assert "2 note(s) name a source" in kept                               # the runbook is named by its file name alone
+    assert [(r["line"], r["stale"]) for r in memory.verify(tmp_path)] == [(1, False), (2, False)]
+    (tmp_path / "src" / "auth.py").write_text(AUTH.replace("return None", "return 'bye'"), encoding="utf-8")
+    assert not any(r["stale"] for r in memory.verify(tmp_path))            # logout changed; the note is about login
+    (tmp_path / "src" / "auth.py").write_text(AUTH.replace("check(user)", "check(user, mfa=True)").replace("\n", "\r\n"), encoding="utf-8")
+    text = memory.session_text(tmp_path)
+    assert "1 note(s) below are marked [stale]" in text and "- [stale: src/auth.py#login changed] Every login goes" in text
+    assert "Fridays" in text and "[stale" not in text.split("RUNBOOK")[1]          # the other notes read as before
+    assert "Kept" in memory.save(tmp_path, "- Tests run with pytest.", mode="append")
+    assert memory.verify(tmp_path)[0]["stale"]                                  # saving again never re-trusts a stale note
+    assert memory.save(tmp_path, memory.session_text(tmp_path).split("\n", 2)[2], mode="replace").startswith("No change")
+    assert "Confirmed 1 note(s)" in memory.confirm(tmp_path)                    # a person checked: fingerprinted again
+    assert not any(r["stale"] for r in memory.verify(tmp_path)) and "Nothing to confirm" in memory.confirm(tmp_path)
+    (tmp_path / "src" / "auth.py").write_text("def logout(user):\n    return None\n", encoding="utf-8")
+    (tmp_path / "RUNBOOK.md").unlink()
+    assert {r["line"]: memory._why(r) for r in memory.verify(tmp_path) if r["stale"]} == {1: "src/auth.py#login was removed", 2: "RUNBOOK.md was removed"}
+    assert "[stale: RUNBOOK.md was removed]" in hook("SessionStart", {"session_id": "s10", "source": "startup"}, tmp_path)["hookSpecificOutput"]["additionalContext"]
+    from qz import mcp_tools
+    shown = mcp_tools.t_project_memory({"action": "show", "project_dir": str(tmp_path)})
+    assert [r["line"] for r in shown["stale"]] == [1, 2] and shown["sourced"] == 2 and "confirm" in shown["note"]
+    from qz import claims
+    c = claims.gather(tmp_path, kf=False)
+    assert c["stale"] == 2 and c["memory"]["checked"] == 2 and any("memory line 2: RUNBOOK.md was removed" in x for x in claims.lines(c))
+
+
 def test_voice_is_off_by_default_and_on_when_set(tmp_path):
     a = hook("SessionStart", {"session_id": "s1", "source": "startup"}, tmp_path)["hookSpecificOutput"]["additionalContext"]
     assert "Voice for chat replies" not in a
@@ -257,8 +294,9 @@ def test_release_manifest_names_edited_and_added_files(tmp_path):
     assert r["ok"] is False and r["changed"] == ["skills/a/SKILL.md"] and r["extra"] == ["skills/b/SKILL.md"]
 
 
-def test_report_card_shows_the_context_window(tmp_path):
+def test_report_card_shows_the_context_window(tmp_path, monkeypatch):
     from qz import ledger, report
+    monkeypatch.setenv("QZ_KF_HOME", str(tmp_path / "no-kf"))           # this laptop's own glossary stays out of the count
     led = ledger.start_run(tmp_path, "deliver", "NW-7", "Refunds")
     cx = led.setdefault("context", {})
     cx.update({"series": [20_000 + 6_000 * i for i in range(12)], "turn_ends": [20_000 + 12_000 * i for i in range(6)],
@@ -281,3 +319,10 @@ def test_report_card_shows_the_context_window(tmp_path):
         assert words in html, words
     empty = report.render_window({})
     assert empty == ""
+    assert "Claims and their evidence" not in html and "Stale claims" not in html        # nothing carries evidence yet: no section
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "refund.py").write_text("def refund(order):\n    return order.total\n", encoding="utf-8")
+    memory.save(tmp_path, "- Refunds are computed in one place (from src/refund.py#refund).")
+    (tmp_path / "src" / "refund.py").write_text("def refund(order):\n    return order.total - order.fee\n", encoding="utf-8")
+    html = report.render(report.summarise(tmp_path))
+    assert "Stale claims 1" in html and "Claims and their evidence" in html and "memory line 1: src/refund.py#refund changed" in html

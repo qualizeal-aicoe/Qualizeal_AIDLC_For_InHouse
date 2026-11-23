@@ -62,6 +62,11 @@ def start_run(proj: Path, lane: str, key: str = "", title: str = "") -> dict:
     slug = re.sub(r"[^A-Za-z0-9-]+", "-", f"{lane}-{key or 'run'}").strip("-").lower()
     run_id = f"{now()[:10].replace('-', '')}-{slug}"
     led = _empty(run_id, lane, key, title, proj)
+    try:                                           # the commit the run starts from: agent commits name it (Base:)
+        from .util import git
+        led["base"] = git(proj, "rev-parse", "--short=12", "HEAD") or ""
+    except Exception:
+        led["base"] = ""
     write_json(runs_dir(proj) / run_id / "ledger.json", led)
     write_json(current_path(proj), {"run_id": run_id})
     return led

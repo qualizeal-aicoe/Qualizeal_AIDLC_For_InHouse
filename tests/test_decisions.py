@@ -199,6 +199,22 @@ def test_stale_decisions_and_a_repo_without_any(repo, tmp_path):
     assert D.stale(repo)[0]["why"] == ["src/scan.py is gone"]
 
 
+def test_code_changed_after_a_decision_is_a_lead_to_read_it_again_not_a_verdict(repo, capsys):
+    decided(repo, READY, CLICK)
+    assert D.changed(repo) == []                               # nothing committed since the decisions
+    (repo / "src" / "scan.py").write_text('def verdict(pct, blockers):\n    return "NOT READY" if blockers or pct < 75 else "READY"\n', encoding="utf-8")
+    assert D.changed(repo) == []                               # an uncommitted edit is the check's business, not this
+    g(repo, "commit", "-qam", "tighten the bar")
+    leads = {r["key"]: r["why"] for r in D.changed(repo)}
+    assert leads == {"keep-ready-at-70-percent": ["src/scan.py changed in 1 commit since"], "the-command-line-stays-on-argparse": ["src changed in 1 commit since"]}
+    assert D.stale(repo) == []                                 # the code is still there: a lead, not stale
+    assert D.main(["stale"]) == 0
+    out = capsys.readouterr().out
+    assert "No decision names code that is gone." in out and "Worth reading again" in out and "keep-ready-at-70-percent" in out
+    assert D.main(["stale", "--json"]) == 0
+    assert set(json.loads(capsys.readouterr().out)) == {"stale", "changed"}
+
+
 def test_recording_a_decision_waits_for_the_person_and_the_tool_reads_freely(repo):
     ask = guard.decide("mcp__plugin_qz-aidlc_qz__decisions", {"args": ["note"], "text": READY}, repo)
     assert ask.action == "ask" and ask.rule == "QZ-ASK-DECISION" and "Keep READY at 70 percent" in ask.message

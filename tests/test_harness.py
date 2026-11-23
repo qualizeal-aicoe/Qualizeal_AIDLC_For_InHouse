@@ -92,3 +92,22 @@ def test_redteam_all_pass():
     from qz import redteam
     r = redteam.run()
     assert r["passed"] == r["total"], r["failures"]
+
+
+def test_the_status_line_says_whether_the_tests_passed_after_the_last_change(tmp_path):
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    run_hook("SessionStart", {"session_id": "s1", "source": "startup", "cwd": str(proj)}, proj)
+    first = run_hook("UserPromptSubmit", {"prompt": "fix the refund bug"}, proj)["hookSpecificOutput"]["additionalContext"]
+    assert "stage tokens" in first and "· tests" not in first                               # no test run yet: nothing claimed
+    run_hook("PostToolUse", {"tool_name": "Bash", "tool_input": {"command": "uv run -m pytest -q"}, "tool_use_id": "b1",
+                             "tool_response": {"stdout": ".....\n5 passed in 0.12s", "stderr": "", "interrupted": False}}, proj)
+    ran = run_hook("UserPromptSubmit", {"prompt": "next"}, proj)["hookSpecificOutput"]["additionalContext"]
+    assert "· tests passed 5." in ran
+    run_hook("PostToolUse", {"tool_name": "Write", "tool_input": {"file_path": str(proj / "refund.py"), "content": "x = 1\n"}, "tool_use_id": "w1",
+                             "tool_response": {}}, proj)
+    edited = run_hook("UserPromptSubmit", {"prompt": "and now"}, proj)["hookSpecificOutput"]["additionalContext"]
+    assert "· tests not run since the last change." in edited
+    run_hook("PostToolUse", {"tool_name": "Bash", "tool_input": {"command": "npm test"}, "tool_use_id": "b2",
+                             "tool_response": {"stdout": "Tests:       1 failed, 12 passed, 13 total", "stderr": "", "interrupted": False}}, proj)
+    assert "· tests failing 1." in run_hook("UserPromptSubmit", {"prompt": "why"}, proj)["hookSpecificOutput"]["additionalContext"]

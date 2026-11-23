@@ -5,7 +5,10 @@
 # Images are named by release tag (semantic-release): a rollback is the previous tag. See docs/release.md.
 FROM node:22-slim
 # python3 runs the vendored QualiZeal kit (the gold-set runner); nothing else uses it.
-RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+    && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends python3 \
+    && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production AGENT_MODE=stub
 WORKDIR /app
 COPY package.json package-lock.json ./

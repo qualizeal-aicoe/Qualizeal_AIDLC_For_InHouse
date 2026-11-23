@@ -10,14 +10,19 @@ loses questions; a wrong answer about leave or money costs more than a refusal.
 
 1. **Grounding.** The question becomes quoted terms for BM25 (and synonyms, when a list is set).
 2. **Exploration.** BM25 and the vectors each take the 20 best sections, over only the current documents the
-   asker's groups may read. Access control is a join in both queries, so hidden text never reaches a score.
+   asker's groups may read. Access control is a join in both queries, so hidden text never reaches a score. A
+   document written for some people only (manifest `scope`) is left out for anyone else, unless the question names
+   its scope ("in the EU"): it may be read, but its rule does not apply to them.
 3. **Fusion.** Reciprocal rank fusion: each section scores the sum of 1 / (60 + its rank) across the two lists.
    Only order matters, so BM25's and the vectors' scales never meet.
 4. **Focus.** A cross-encoder (ms-marco MiniLM, ONNX) reads the question with each candidate and re-scores it. The
    top 5 stay.
 5. **Synthesis.** The assistant answers when the best section is close in meaning (`[rerank] min_score`) or in
    words (`[answer] min_coverage`). The answer is the sentences the cross-encoder ranks highest, each read with its
-   heading. A model can write the answer instead; its quotes are checked against the sections it was given.
+   heading. A model can write the answer instead; its quotes are checked against the sections it was given, and
+   each sentence must hold its figures and most of its words in the section it cites, or the documents' own
+   sentences are used. Below the threshold the refusal says what it looked for, the closest sections the person
+   may read (with their owners) and whom to ask.
 
 Each step is written to a trace (`.arag/traces/<id>.json`, `arag explain <id>`), and the audit log links to it.
 The trace counts how many sections access control left out. The answer never mentions them.

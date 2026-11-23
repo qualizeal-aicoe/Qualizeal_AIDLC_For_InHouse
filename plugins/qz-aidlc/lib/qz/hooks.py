@@ -11,7 +11,7 @@ import time
 import json
 from pathlib import Path
 
-from . import audit, conventions, decisions, footprint, guard, ledger
+from . import audit, conventions, decisions, footprint, guard, ledger, testrun
 from .ctx import hook as ctxhook
 from .names import shown, tag
 from .util import now, project_config, project_dir, qz_dir
@@ -150,14 +150,17 @@ def user_prompt(p: dict) -> dict | None:
     # One status line when lane, stage or budget (in 10% steps) changes: the model knows where it is,
     # and the qz-console pane reads it from here instead of reading files.
     used, lim, frac = ledger.budget_state(proj, led)
-    key = f"{led['run_id']}|{led['lane']}|{led['stage']}|{int(frac * 10)}"
+    tests = _quiet(testrun.band, led) or ""
+    key = f"{led['run_id']}|{led['lane']}|{led['stage']}|{int(frac * 10)}|{tests}"
     note = None
     if led.get("last_status") != key:
         led["last_status"] = key
-        note = f"{tag('qz-ledger')} Run {led['run_id']} · lane {led['lane']} · stage {led['stage']} · stage tokens {used:,}/{lim:,}."
+        note = (f"{tag('qz-ledger')} Run {led['run_id']} · lane {led['lane']} · stage {led['stage']} · stage tokens {used:,}/{lim:,}"
+                + (f" · tests {tests}" if tests else "") + ".")
     hint = _quiet(_route, proj, led, text)
+    led["human_turns"] = int(led.get("human_turns") or 0) + 1          # "message N of run R" in an agent commit's Request:
     ledger.save(proj, led)
-    audit.append(proj, "HUMAN_TURN", run=led["run_id"], stage=led["stage"], sha256=hashlib.sha256(text.encode()).hexdigest()[:16])
+    audit.append(proj, "HUMAN_TURN", run=led["run_id"], stage=led["stage"], turn=led["human_turns"], sha256=hashlib.sha256(text.encode()).hexdigest()[:16])
     note = "\n".join(x for x in (note, hint) if x)
     if note:
         return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": note}}
@@ -339,6 +342,7 @@ def post_tool(p: dict) -> dict | None:
     if tool in guard.WRITE_TOOLS:
         rel = str(tin.get("file_path", "")).replace("\\", "/").replace(str(proj).replace("\\", "/") + "/", "")
         ledger.note_write(led, rel)
+        testrun.wrote(led)
         led["written"] = ([x for x in led.get("written", []) if x != rel] + [rel])[-12:]
         from . import fmt
         fm = _quiet(fmt.after_write, proj, str(tin.get("file_path") or tin.get("notebook_path") or ""))
@@ -348,6 +352,7 @@ def post_tool(p: dict) -> dict | None:
     if tool == "Read":
         dnote = _quiet(decisions.on_read, proj, led, str(tin.get("file_path") or ""), str(p.get("agent_id") or ""))
     if tool in guard.SHELL_TOOLS and isinstance(resp, dict):
+        _quiet(testrun.record, led, str(tin.get("command") or ""), resp)
         so, n1 = guard.redact(str(resp.get("stdout", "")))
         se, n2 = guard.redact(str(resp.get("stderr", "")))
         if n1 + n2:

@@ -3,6 +3,7 @@ with BM25 ranking and Porter stemming) and one dense vector per section. The fil
 atomically, so a failed run never leaves half an index, and a knowledge core is this one file plus its sources."""
 from __future__ import annotations
 
+import json
 import math
 import os
 import re
@@ -16,6 +17,7 @@ SCHEMA = """
 CREATE TABLE docs(doc_id TEXT PRIMARY KEY, title TEXT, path TEXT, sha256 TEXT, owner TEXT, version TEXT,
                   effective TEXT, status TEXT, superseded_by TEXT, source TEXT);
 CREATE TABLE doc_acl(doc_id TEXT, grp TEXT, PRIMARY KEY (doc_id, grp));
+CREATE TABLE doc_scope(doc_id TEXT, grp TEXT, label TEXT, words TEXT, PRIMARY KEY (doc_id, grp));
 CREATE TABLE nodes(rowid INTEGER PRIMARY KEY, node_id TEXT UNIQUE, doc_id TEXT, parent_id TEXT, level INTEGER,
                    ordinal INTEGER, title TEXT, heading_path TEXT, search_path TEXT, text TEXT, summary TEXT,
                    keywords TEXT, page_start INTEGER, page_end INTEGER);
@@ -70,6 +72,10 @@ def build(cfg, result) -> dict:
                         (d.doc_id, m["title"], d.doc_id, d.sha256, m.get("owner", ""), m.get("version", ""),
                          m.get("effective", ""), m.get("status", "current"), m.get("superseded_by", ""), m.get("source", "")))
             con.executemany("INSERT INTO doc_acl VALUES (?,?)", [(d.doc_id, g) for g in sorted(set(m["acl"]))])
+            if m.get("scope"):
+                sc = m["scope"]
+                con.executemany("INSERT INTO doc_scope VALUES (?,?,?,?)", [(d.doc_id, g, sc["label"], json.dumps(sc.get("words", [])))
+                                                                          for g in sorted(set(sc["groups"]))])
             for n in d.nodes:
                 path = f"{m['title']} > {n.heading_path}" if n.heading_path else m["title"]
                 con.execute("INSERT INTO nodes(node_id, doc_id, parent_id, level, ordinal, title, heading_path, search_path, "
@@ -99,6 +105,31 @@ def connect(cfg) -> sqlite3.Connection:
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False)
     con.row_factory = sqlite3.Row
     return con
+
+
+def out_of_scope(con: sqlite3.Connection, groups: list[str], question: str) -> set[str]:
+    """Documents written for some people only (manifest "scope": an EU addendum, a contractor policy), left out for
+    an asker outside those groups unless the question names the scope ("in the EU"). Scope is not access: the asker
+    may still read the document; its rule just does not apply to them, so it must not answer for them."""
+    try:
+        rows = con.execute("SELECT doc_id, grp, words FROM doc_scope").fetchall()
+    except sqlite3.OperationalError:              # an index built before scopes existed: nothing is scoped
+        return set()
+    mine, q, out, named = set(groups), question.lower(), {}, set()
+    for doc_id, grp, words in rows:
+        out.setdefault(doc_id, set()).add(grp)
+        if any(re.search(rf"(?<!\w){re.escape(w.lower())}(?!\w)", q) for w in json.loads(words or "[]")):
+            named.add(doc_id)
+    return {d for d, gs in out.items() if not (gs & mine) and d not in named}
+
+
+def scope_of(con: sqlite3.Connection, doc_id: str) -> str:
+    """Whom a document's rules apply to, or "" when they apply to everyone who may read it."""
+    try:
+        r = con.execute("SELECT label FROM doc_scope WHERE doc_id = ? LIMIT 1", (doc_id,)).fetchone()
+    except sqlite3.OperationalError:
+        return ""
+    return r[0] if r else ""
 
 
 def readable(con: sqlite3.Connection, groups: list[str]) -> set[str]:

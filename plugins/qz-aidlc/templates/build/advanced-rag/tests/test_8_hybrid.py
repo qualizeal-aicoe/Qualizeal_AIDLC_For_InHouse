@@ -46,7 +46,7 @@ def test_a_hybrid_answer_cites_and_leaves_a_trace_without_token_counts(indexed):
 def test_a_question_the_documents_cannot_answer_is_refused(indexed):
     cfg, con = indexed
     ans = A.answer(con, cfg, "What is the company's policy on bringing dogs to the office?", "employee", "hybrid")
-    assert ans.refused and ans.text == A.REFUSAL
+    assert ans.refused and ans.text.startswith(A.REFUSAL)
 
 
 def test_a_core_moves_with_its_sources_and_is_checked_on_load(indexed, tmp_path_factory):
@@ -102,3 +102,22 @@ def test_compare_scores_both_strategies_and_stays_safe(indexed, capsys):
     evaluate.compare(cfg, None, False)
     rep = json.loads((cfg.path("eval", "results") / "compare.json").read_text())
     assert rep["bm25"]["questions"] == rep["hybrid"]["questions"] >= 30 and rep["hybrid"]["safety_violations"] == 0
+
+
+def test_a_model_answer_with_a_figure_its_section_does_not_hold_is_replaced_by_the_documents_own_words(indexed):
+    import json
+
+    class Unfaithful:
+        usage: dict = {}
+
+        def complete(self, system, prompt, model, max_tokens):
+            sid = prompt.split('<section id="', 1)[1].split('"', 1)[0]
+            body = prompt.split(f'<section id="{sid}"', 1)[1].split(">\n", 1)[1].split("\n</section>", 1)[0]
+            quote = " ".join(body.split()[:6])
+            return json.dumps({"answer": f"Full-time employees get 30 working days of paid annual leave. [{sid}]",
+                               "citations": [{"id": sid, "quote": quote}], "not_found": False})
+
+    cfg, con = indexed
+    ans = A.answer(con, cfg, "How many days of annual leave do full-time employees get?", "employee", "hybrid", Unfaithful())
+    assert "model answer rejected; extractive answer used" in ans.flags and "30 working days" not in ans.text
+    assert "22" in ans.text and not ans.ai_generated

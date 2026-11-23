@@ -19,6 +19,7 @@ strategy = "hybrid"                 # hybrid (BM25 + vectors, fused, reranked), 
 min_coverage = 0.6                  # bm25 and tree: share of the question's words the best sections must contain
 max_sentences = 3
 cache = 256                         # repeat questions answered from memory by the server (a cost lever); 0: off
+contact = "the service desk (help@northwind.example)"   # the person a refusal names to ask; each closest section also shows its owner
 
 [guard]
 redact = ["phone", "card"]          # personal data removed from answers (stage 4)
@@ -42,6 +43,7 @@ employee = ["all"]
 manager = ["all", "managers"]
 hr = ["all", "hr", "managers"]
 finance = ["all", "finance"]
+eu_employee = ["all", "eu"]         # also in group eu: the EU addendum applies to them (manifest "scope")
 
 [audit]
 path = ".arag/audit.jsonl"

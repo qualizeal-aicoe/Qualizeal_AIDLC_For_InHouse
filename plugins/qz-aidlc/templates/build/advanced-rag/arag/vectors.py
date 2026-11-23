@@ -33,10 +33,13 @@ def search(con: sqlite3.Connection, cfg, embedder, question: str, groups: list[s
     if not groups:
         return []
     marks = ",".join("?" * len(groups))
+    from .index import out_of_scope
+    skip = sorted(out_of_scope(con, groups, question))
     rows = con.execute(
         f"""SELECT v.rowid, v.v FROM vecs v JOIN nodes n ON n.rowid = v.rowid JOIN docs d ON d.doc_id = n.doc_id
-            WHERE (d.status = 'current' OR ?) AND n.doc_id IN (SELECT doc_id FROM doc_acl WHERE grp IN ({marks}))""",
-        (int(bool(cfg["search"]["include_superseded"])), *groups)).fetchall()
+            WHERE (d.status = 'current' OR ?) AND n.doc_id IN (SELECT doc_id FROM doc_acl WHERE grp IN ({marks}))
+              AND n.doc_id NOT IN ({",".join("?" * len(skip))})""",
+        (int(bool(cfg["search"]["include_superseded"])), *groups, *skip)).fetchall()
     if not rows:
         return []
     m = np.frombuffer(b"".join(r[1] for r in rows), dtype=np.float32).reshape(len(rows), -1)

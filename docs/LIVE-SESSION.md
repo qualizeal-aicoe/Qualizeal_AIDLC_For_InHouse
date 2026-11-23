@@ -1,6 +1,6 @@
 # A live session with the Studio
 
-Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE). For Studio 1.0.0.
+Prepared by Prashobh Paul, QualiZeal AI Center of Excellence (AI CoE). For Studio 1.0.1.
 
 One small use case, start to finish: a knowledge assistant over a company handbook, built with the hybrid RAG
 (retrieval-augmented generation) kit. It answers from the documents and cites the section it used. It refuses when the
@@ -9,12 +9,13 @@ fictional company.
 
 [![The handbook demo, under a minute](media/handbook-demo-poster.jpg)](media/handbook-demo.mp4)
 
-The video (under a minute, no sound) is made from real output of the commands below; nothing in it was mocked.
+The video (under a minute, no sound) is made from real output of the commands below; nothing in it was mocked. It
+was recorded with 1.0.0: since 1.0.1 a refusal also says what it looked for, the closest sections and who to ask.
 
 ## Five days before: every laptop ready
 
-About 15 minutes for each person, no administrator rights. Accept the GitHub invitation to `qualizeal-aicoe` first:
-the repository is private.
+About 15 minutes for each person, no administrator rights. The repository is public, so nobody needs a GitHub
+invitation or sign-in.
 
 Windows, in PowerShell:
 
@@ -85,10 +86,11 @@ What each step shows:
    and cites it.
 2. **A trace for every answer.** What keyword search and the vectors each found, how they were fused, and what the
    reranker kept.
-3. **Access before search.** An employee asking for salary bands gets the same plain refusal as for something the
-   handbook does not hold, so it gives away nothing.
+3. **Access before search.** An employee asking for salary bands gets the same refusal as for something the
+   handbook does not hold: what it looked for, the closest sections that employee may read, and who to ask. It gives
+   away nothing about the bands.
 4. **The same question from HR** gets the band and its source.
-5. **A gate in CI.** On 40 golden questions, hybrid passes 38 and keyword search alone 35. Safety violations: 0.
+5. **A gate in CI.** On 43 golden questions, hybrid passes 41 and keyword search alone 38. Safety violations: 0.
 6. **The chat page**, with the same answers in a browser. It says the answers are written by AI (EU AI Act,
    Article 50), and a repeat question comes back from the cache with no search and no model call.
 7. **The QualiZeal standards.** Ask Claude to "check the QualiZeal standards on the handbook": one scorecard, with the
@@ -111,8 +113,8 @@ on record. Undo the change afterwards.
   under `[dense]` and `reranker = "overlap"` under `[rerank]`, then run `uv run -m arag ingest` again. Everything runs
   offline, and less well: the hotel question now refuses, because keyword search alone cannot get from "abroad" to
   "international". Say so, and ask it in the handbook's words instead: `uv run -m arag ask "What is the hotel cap for
-  international travel?"`. Offline it passes 35 of 40, so `uv run -m arag eval --gate` fails its 0.9 accuracy floor
-  (0.857), which is the point of having the models; `compare --gate` still passes, as a tie.
+  international travel?"`. Offline it passes 38 of 43, so `uv run -m arag eval --gate` fails its 0.9 accuracy floor
+  (0.868), which is the point of having the models; `compare --gate` still passes, as a tie.
 - **uv reports a certificate error** ("invalid peer certificate", "UnknownIssuer"): the company's network re-signs
   HTTPS. Tell uv to trust what the computer already trusts, for this terminal, then run the command again:
   `$env:UV_SYSTEM_CERTS = "true"` in PowerShell, or `export UV_SYSTEM_CERTS=true` on macOS or Linux.
@@ -123,7 +125,7 @@ on record. Undo the change afterwards.
 
 - Run: CI on every pull request, on Windows and Linux: the Studio's tests, the doctor and the bootstrap started as an attendee
   starts them, and every Python starter's tests and gold set, including the hybrid kit with its real models. CI got
-  the same 38 of 40 on both, on a CPU with no GPU.
+  the same 41 of 43 on both, on a CPU with no GPU.
 - Run: this demo end to end, which is where the video comes from, and the offline fallback above.
 - Not yet: an attendee's own laptop. The first bootstrap on a QualiZeal machine is the real test; the doctor's report
   says what is missing if it does not pass.

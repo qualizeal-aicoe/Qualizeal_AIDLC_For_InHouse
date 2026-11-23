@@ -1,6 +1,6 @@
 # QualiZeal AI-DLC Studio · setup guide
 
-Version 1.0.0. The Studio lives in the private repository `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Pick the part
+Version 1.0.1. The Studio lives in the public repository `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Pick the part
 that fits you; all of them end the same way, with `/qz-aidlc:qz-setup` inside Claude.
 
 | Part | Who | Time |
@@ -19,8 +19,7 @@ desktop app's Code tab, adds the hooks, the agents, the tools and the console pa
 
 ## A. On a laptop, with the bootstrap
 
-The repository is private: accept the invitation to the `qualizeal-aicoe` organisation on GitHub first, or ask the
-AI CoE for one.
+The repository is public: a laptop clones it with no GitHub account or invitation.
 
 Windows, in PowerShell:
 
@@ -66,8 +65,8 @@ Then go to part D.
 1. Customize > Plugins > Add marketplace, and enter `qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse`. Your GitHub account
    needs read access to the repository; ask the AI CoE if the add fails.
 2. Install **qz-aidlc** and **qz-console**. They load in every new session on your account, phone included.
-3. No marketplace access? Upload `qz-aidlc-1.0.0.zip` instead (Customize > Plugins > Add > Upload plugin), from the AI
-   CoE or the 1.0.0 release on GitHub. Remove an older version first.
+3. No marketplace access? Upload `qz-aidlc-1.0.1.zip` instead (Customize > Plugins > Add > Upload plugin), from the AI
+   CoE or the 1.0.1 release on GitHub. Remove an older version first.
 4. Go to part D.
 
 ## C. For the whole organisation
@@ -198,8 +197,9 @@ When it blocks something, the message names the rule (for example `QZ-SH-GIT-PUS
 
 - **"the guard could not evaluate this call"**, or every tool call is blocked: uv is missing or not on the PATH. Run
   the bootstrap again (`-CheckOnly` shows what is missing), then restart Claude Code.
-- **The marketplace add fails**: your GitHub account cannot read the repository yet. Accept the invitation, then
-  `gh auth login` and `gh auth setup-git`, or clone the repository once and sign in in the browser.
+- **The marketplace add fails**: the laptop cannot reach GitHub. The doctor's network check says whether a company
+  proxy is in the way; a proxy that needs a sign-in takes `gh auth login` and `gh auth setup-git`, or one clone of the
+  repository with a sign-in in the browser.
 - **A certificate error** ("invalid peer certificate", "UnknownIssuer", "CERTIFICATE_VERIFY_FAILED"): the company's
   network re-signs HTTPS. For uv, `setx UV_SYSTEM_CERTS true` on Windows (then a new terminal), or
   `export UV_SYSTEM_CERTS=true` in your shell profile on macOS or Linux; for Python and Claude Code, point
@@ -216,10 +216,10 @@ When it blocks something, the message names the rule (for example `QZ-SH-GIT-PUS
 
 ## Not proven yet
 
-Run on 20 November 2026 for 1.0.0: the test suite, the guard's red-team, the doctor and the bootstrap (check only) in
-continuous integration (CI) on Windows and Linux; every starter's tests and gold set; the marketplace added from
-GitHub and both plugins installed by Claude Code; the handbook demo end to end. The README's "What was run" has the
-counts.
+Run on 23 November 2026 for 1.0.1, as on 20 November for 1.0.0: the test suite, the guard's red-team, the doctor and
+the bootstrap (check only) in continuous integration (CI) on Windows and Linux; every starter's tests and gold set;
+the marketplace added from GitHub and both plugins installed by Claude Code; the handbook demo end to end. The
+README's "What was run" has the counts.
 
 Not yet: an attendee's own laptop (the first bootstrap on a QualiZeal machine is the real test); macOS in CI (it runs
 on a release tag, or by hand); a live model behind any starter or kit; an interactive Claude Code session with the

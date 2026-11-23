@@ -106,7 +106,6 @@
         h("div", { class: "why" }, c.why), h("div", { class: "meter " + (c.v >= 0.6 ? "grad" : "warm") }, h("i", { style: { width: Math.round(c.v * 100) + "%" } })),
         h("details", {}, h("summary", {}, "How this is calculated"), h("p", {}, c.how))))),
       h("div", { class: "callout " + (strong === 5 ? "ok" : "warn"), style: { marginTop: "18px" } }, h("div", { class: "small" }, strong === 5 ? "All five checks came back strong." : "Read the weaker checks before acting on this answer."))));
-    requestAnimationFrame(() => $$(".meter > i", out).forEach((i) => { const w = i.style.width; i.style.width = "0"; requestAnimationFrame(() => (i.style.width = w)); }));
     lineage(r);
     const cited = r.cites.map((c) => c.s.p.doc.id);
     graphFocus(cited, r.ents);

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # QualiZeal AI-DLC Studio: add the marketplace and install both plugins in Claude Code (macOS, Linux, WSL).
-# Safe to run again. The repository is private: sign in to GitHub on this machine first (GitHub CLI or Git Credential Manager).
+# Safe to run again. The repository is public: the machine only needs to reach github.com.
 set -e
 REPO="${1:-qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse}"
 if ! command -v claude >/dev/null 2>&1; then

@@ -13,14 +13,14 @@ def nodes(result, doc_id):
 def test_every_listed_document_is_read(project, monkeypatch, capsys):
     r = ingest.ingest(project)
     assert r.problems == []
-    assert len(r.docs) == 13
+    assert len(r.docs) == 14
     # before stage 2 there is no index: the commands still say what was read and show each document's tree
     from arag import __main__ as cli
     monkeypatch.setattr(cli, "optional", lambda module: None)
     assert cli.main(["ingest"]) == 0 and cli.main(["map", "it/incident-response.pdf"]) == 0
     assert cli.main(["map", "hr/salary-bands.md"]) == 0                     # not shown to an employee
     out = capsys.readouterr().out
-    assert "Read 13 documents" in out and "Response times (p. 2)" in out and "Salary bands" not in out
+    assert "Read 14 documents" in out and "Response times (p. 2)" in out and "Salary bands" not in out
 
 
 def test_headings_become_a_tree_in_every_format(project):
@@ -65,3 +65,18 @@ def test_a_document_without_readers_is_refused(project):
     m.write_text(json.dumps(data))
     r = ingest.ingest(project)
     assert any("it/acceptable-use.md" in p and "acl" in p for p in r.problems)
+
+
+def test_a_scanned_page_is_reported_not_silently_dropped(project, tmp_path):
+    from pypdf import PdfWriter
+    w = PdfWriter()
+    w.add_blank_page(width=595, height=842)
+    w.add_blank_page(width=595, height=842)
+    scan = tmp_path / "scan.pdf"
+    with scan.open("wb") as f:
+        w.write(f)
+    secs = ingest.parse(scan)
+    assert len(secs) == 1 and secs[0].text == "" and secs[0].notes == [
+        "pages 1, 2 of 2 have no text layer (a scan or an image): nothing on them can be found until they are run through OCR"]
+    nodes, flags = ingest.build("it/scan.pdf", {"title": "Scanned form"}, secs)
+    assert [f["kind"] for f in flags] == ["no-text-layer"] and flags[0]["node_id"] == "it/scan.pdf#0"

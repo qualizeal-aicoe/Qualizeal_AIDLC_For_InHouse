@@ -30,6 +30,8 @@ Nothing below was copied: no code, prompt, rubric or text. We read each project 
 | Team decisions tied to the code they name, shown when an agent opens that code and checked before a commit and in CI; Decided, Ruled out and Watch out sections; replace, never edit; overrides on record. We do not use its telemetry, its cloud workspace or its reading of past chat transcripts | Trail-code (trailhq) | MIT: the method only, no code copied |
 | A command line per tool for agents to drive: the real software behind it, JSON on every command, introspection, a skill file written from the commands, tests through the installed command; we do not use its hub, which installs community packages and skills unpinned | CLI-Anything (HKUDS) | Apache-2.0: the method only, no code copied |
 | Web pages for RAG: robots.txt, the main content only, change detection between crawls | Firecrawl (mendableai), Crawl4AI (unclecode) | AGPL-3.0, Apache-2.0: ideas only |
+| The smallest complete change (reuse, then the standard library, then the least code); `shortcut:` markers kept as a ledger; a review that reads past the diff, with must, should and nice-to-have findings in four parts and a verdict; the test result after the last change on the band | ponytail (DietrichGebert) | MIT |
+| Claims kept with their evidence and version, checked for drift without a model, flagged and kept rather than deleted | the self-correcting memory pattern, and git-ontology-agent (gogoymh) | MIT |
 | Design, UI testing and deck practices | public skill collections, read but not copied | as published |
 
 ## Installed only when you ask

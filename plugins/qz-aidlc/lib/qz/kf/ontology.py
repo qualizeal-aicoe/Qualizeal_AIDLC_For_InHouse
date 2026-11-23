@@ -6,7 +6,11 @@ editing a certified definition sends it back to draft), typed relations between 
 says when the store does not cover a question, and an export a wiki can read. From Matt Pocock's skills: the
 glossary as the project's shared language, so people and agents use one word for one thing and spend fewer words.
 The model does the language work (reading, naming, defining); this module does the deterministic part: storing,
-validating, matching and exporting."""
+validating, matching and exporting.
+
+Definitions are versioned: a changed definition keeps the one it replaces, with the dates each applied, so "what did
+an active customer mean last quarter" has an answer (`at`, `history`). A term whose source moved under it (the quoted
+words are gone, or the document was replaced) is flagged by `stale` and by lint, never changed on its own."""
 from __future__ import annotations
 
 import json
@@ -18,6 +22,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS terms(id INTEGER PRIMARY KEY, name TEXT UNIQUE COLLATE NOCASE, definition TEXT, synonyms TEXT, status TEXT, owner TEXT, updated REAL);
 CREATE TABLE IF NOT EXISTS term_sources(term_id INTEGER, doc_id INTEGER, locator TEXT, quote TEXT);
 CREATE TABLE IF NOT EXISTS relations(src INTEGER, rel TEXT, dst INTEGER, doc_id INTEGER, quote TEXT, UNIQUE(src, rel, dst));
+CREATE TABLE IF NOT EXISTS term_history(term_id INTEGER, definition TEXT, synonyms TEXT, status TEXT, owner TEXT,
+  effective_from REAL, effective_to REAL);
 """
 STATUSES = ("draft", "certified", "deprecated")
 RELS = ("is_a", "part_of", "has", "owns", "uses", "depends_on", "produces", "replaces", "same_as", "related_to")
@@ -29,6 +35,19 @@ DEF_PATTERNS = [re.compile(r"^\s*(?:[-*]\s*)?\*\*(?P<t>[^*]{2,60})\*\*\s*[:–�
 
 def ensure(db) -> None:
     db.executescript(SCHEMA)
+    if "effective" not in {r[1] for r in db.execute("PRAGMA table_info(terms)")}:       # glossaries made before 1.0.1
+        db.execute("ALTER TABLE terms ADD COLUMN effective REAL")
+        db.execute("UPDATE terms SET effective = updated WHERE effective IS NULL")
+        db.commit()
+
+
+def _when(v) -> float | None:
+    from .store import _epoch
+    return _epoch(v)
+
+
+def _day(t: float | None) -> str:
+    return time.strftime("%Y-%m-%d", time.gmtime(t)) if t else ""
 
 
 def _id(db, name: str) -> int | None:
@@ -41,22 +60,39 @@ def _id(db, name: str) -> int | None:
     return None
 
 
-def add(db, name: str, definition: str, synonyms: list[str] | None = None, doc_id: int | None = None, quote: str = "", locator: str = "", owner: str = "") -> dict:
+def add(db, name: str, definition: str, synonyms: list[str] | None = None, doc_id: int | None = None, quote: str = "", locator: str = "",
+        owner: str = "", effective: str | float | None = None) -> dict:
+    """Add a term, or change one. A changed definition keeps the old one in the history with the dates it applied;
+    effective is when the new one starts (default now). A source from a document the term already cites replaces that
+    citation, which is how a term flagged stale is re-checked against its source."""
     ensure(db)
     name = name.strip()
     if not name or len(definition.strip()) < 10:
         return {"error": "A term needs a name and a definition of at least a short sentence."}
     tid = _id(db, name)
     syn = sorted({s.strip() for s in (synonyms or []) if s.strip() and s.strip().lower() != name.lower()})
+    start = _when(effective) if effective not in (None, "") else time.time()
+    if start is None:
+        return {"error": f"Effective must be a date such as 2026-01-01, not {effective!r}."}
     if tid:
         old = db.execute("SELECT * FROM terms WHERE id=?", (tid,)).fetchone()
         merged = sorted(set(json.loads(old["synonyms"] or "[]")) | set(syn))
         changed = old["definition"].strip() != definition.strip()
         status = "draft" if changed and old["status"] == "certified" else old["status"]
-        db.execute("UPDATE terms SET definition=?, synonyms=?, status=?, updated=? WHERE id=?", (definition.strip(), json.dumps(merged), status, time.time(), tid))
-        note = "The definition changed, so the term is back in draft until someone certifies it again." if changed and old["status"] == "certified" else "Updated."
+        since = old["effective"] or old["updated"]
+        if changed:
+            if since and start <= since:
+                return {"error": f"The new definition must start after the current one ({_day(since)}); give a later effective date."}
+            db.execute("INSERT INTO term_history VALUES(?,?,?,?,?,?,?)", (tid, old["definition"], old["synonyms"], old["status"], old["owner"], since, start))
+        db.execute("UPDATE terms SET definition=?, synonyms=?, status=?, updated=?, effective=? WHERE id=?",
+                   (definition.strip(), json.dumps(merged), status, time.time(), start if changed else since, tid))
+        note = ("The definition changed, so the term is back in draft until someone certifies it again." if changed and old["status"] == "certified"
+                else "Updated.") + (f" The earlier definition is kept for dates before {_day(start)}." if changed else "")
+        if doc_id:
+            db.execute("DELETE FROM term_sources WHERE term_id=? AND doc_id=?", (tid, doc_id))
     else:
-        tid = db.execute("INSERT INTO terms(name, definition, synonyms, status, owner, updated) VALUES(?,?,?,?,?,?)", (name, definition.strip(), json.dumps(syn), "draft", owner, time.time())).lastrowid
+        tid = db.execute("INSERT INTO terms(name, definition, synonyms, status, owner, updated, effective) VALUES(?,?,?,?,?,?,?)",
+                         (name, definition.strip(), json.dumps(syn), "draft", owner, time.time(), start)).lastrowid
         note = "Added as draft."
     if doc_id or quote:
         db.execute("INSERT INTO term_sources VALUES(?,?,?,?)", (tid, doc_id, locator, quote[:400]))
@@ -76,6 +112,34 @@ def set_status(db, name: str, status: str) -> dict:
     db.execute("UPDATE terms SET status=?, updated=? WHERE id=?", (status, time.time(), tid))
     db.commit()
     return {"term": name, "status": status}
+
+
+def history(db, name: str) -> dict:
+    """Every definition the term has had, oldest first, with the dates each applied."""
+    ensure(db)
+    tid = _id(db, name)
+    if not tid:
+        return {"error": f"No term named {name}."}
+    t = db.execute("SELECT * FROM terms WHERE id=?", (tid,)).fetchone()
+    rows = [{"version": i, "definition": h["definition"], "from": _day(h["effective_from"]), "until": _day(h["effective_to"]), "status": h["status"]}
+            for i, h in enumerate(db.execute("SELECT * FROM term_history WHERE term_id=? ORDER BY effective_to", (tid,)).fetchall(), 1)]
+    rows.append({"version": len(rows) + 1, "definition": t["definition"], "from": _day(t["effective"] or t["updated"]), "until": "", "status": t["status"]})
+    return {"term": t["name"], "versions": rows}
+
+
+def at(db, name: str, when) -> dict:
+    """The definition that applied on a given date: the current one, or the one the history kept for that time."""
+    h = history(db, name)
+    if "error" in h:
+        return h
+    t = _when(when)
+    if t is None:
+        return {"error": f"A date such as 2026-01-01, not {when!r}."}
+    day = _day(t)
+    for v in h["versions"]:
+        if (not v["from"] or v["from"] <= day) and (not v["until"] or day < v["until"]):
+            return {"term": h["term"], "date": day, **v}
+    return {"term": h["term"], "date": day, "error": f"{h['term']} had no definition yet on {day}; the first applies from {h['versions'][0]['from']}."}
 
 
 def relate(db, a: str, rel: str, b: str, doc_id: int | None = None, quote: str = "") -> dict:
@@ -160,13 +224,44 @@ def glossary(db) -> str:
             out.append("  " + "; ".join(f"{x['rel'].replace('_', ' ')} {x['name']}" for x in rel) + ".")
         if src:
             out.append("  Source: " + "; ".join(f"{s['title'] or 'document'}" + (f" › {s['locator']}" if s["locator"] else "") for s in src) + ".")
+        prev = db.execute("SELECT definition, effective_to FROM term_history WHERE term_id=? ORDER BY effective_to DESC LIMIT 1", (r["id"],)).fetchone()
+        if prev:
+            out.append(f"  Before {_day(prev['effective_to'])}: {prev['definition']}")
         out.append("")
     return "\n".join(out)
 
 
-def lint(db) -> list[str]:
+def _flat(s: str) -> str:
+    return re.sub(r"\s+", " ", s or "").strip().lower()
+
+
+def stale(db) -> list[dict]:
+    """Terms whose source moved under them: the quoted words are no longer in the document, or the document was replaced
+    or quarantined, or is gone. Flagged, never demoted on its own: the term's owner reads the source again and either
+    confirms the definition or changes it (which sends a certified term back to draft). No model."""
     ensure(db)
     out = []
+    rows = db.execute("SELECT t.name, t.status, t.owner, ts.doc_id, ts.quote, ts.locator, d.title, d.status AS dstatus "
+                      "FROM term_sources ts JOIN terms t ON t.id = ts.term_id LEFT JOIN docs d ON d.id = ts.doc_id").fetchall()
+    for r in rows:
+        if not r["doc_id"]:
+            continue
+        if r["title"] is None:
+            why = "its source document is no longer in the Knowledge Fabric"
+        elif r["dstatus"] in ("superseded", "quarantined"):
+            why = f"its source document was {'replaced by a newer version' if r['dstatus'] == 'superseded' else 'quarantined'}"
+        elif r["quote"] and _flat(r["quote"])[:200] not in _flat(" ".join(x[0] for x in db.execute("SELECT body FROM chunks WHERE doc_id = ?", (r["doc_id"],)))):
+            why = "the quoted words are no longer in its source document"
+        else:
+            continue
+        out.append({"term": r["name"], "status": r["status"], "owner": r["owner"] or "", "source": r["title"] or "",
+                    "locator": r["locator"] or "", "why": why})
+    return out
+
+
+def lint(db) -> list[str]:
+    ensure(db)
+    out = [f"{s['term']}: {s['why']}; read it again and confirm or change the definition." for s in stale(db)]
     names = {r["name"].lower(): r["name"] for r in db.execute("SELECT name FROM terms")}
     for r in db.execute("SELECT * FROM terms"):
         if not db.execute("SELECT 1 FROM term_sources WHERE term_id=?", (r["id"],)).fetchone():

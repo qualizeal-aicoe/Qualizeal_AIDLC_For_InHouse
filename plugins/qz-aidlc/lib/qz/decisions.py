@@ -15,7 +15,7 @@ Method from Trail-code (trailhq, MIT); this is the Studio's own code, standard l
   qz decisions template                              a decision to fill in
   qz decisions note --file F|- [--replaces ID] [--always] [--anyway]   save one whose text the person approved
   qz decisions check [--base REF] [--staged] [--pr-body F] [--json] [--ci]   hold a change against the decisions
-  qz decisions stale                                 decisions whose code is gone"""
+  qz decisions stale [--json]                        decisions whose code is gone or changed since"""
 from __future__ import annotations
 
 import argparse
@@ -664,6 +664,27 @@ def stale(proj: Path, ds: list[Decision] | None = None) -> list[dict]:
     return out
 
 
+def changed(proj: Path, ds: list[Decision] | None = None, timeout: float = 4.0) -> list[dict]:
+    """Leads, not verdicts: decisions whose files were changed by commits made after the decision was committed. The
+    decision may still hold; someone who knows the code reads it again. A file that is gone is stale(), not this."""
+    out = []
+    for d in live(ds if ds is not None else load(proj)):
+        since = git(proj, "log", "--diff-filter=A", "--format=%H", "-1", "--", d.path, timeout=timeout)
+        if not since:
+            continue                              # not committed yet: nothing to measure from
+        why = []
+        for t in d.touches:
+            path = _split(t)[0].rstrip("/")
+            if not (Path(proj) / path).exists():
+                continue
+            n = git(proj, "rev-list", "--count", f"{since}..HEAD", "--", path, timeout=timeout)
+            if n.isdigit() and int(n):
+                why.append(f"{path} changed in {n} commit{'s' if int(n) > 1 else ''} since")
+        if why:
+            out.append({"id": d.id, "key": d.key, "path": d.path, "why": why})
+    return out
+
+
 # ---------------------------------------------------------------------- the command line
 def _ci_texts() -> list[str]:
     ev = os.environ.get("GITHUB_EVENT_PATH")
@@ -728,11 +749,14 @@ def main(argv: list[str]) -> int:
             print("\n\n".join(render(p, hits) if hits else f"No decisions on {p}." for p, hits in res.items()))
         return 0
     if a.cmd == "stale":
-        rows = stale(proj, ds)
+        rows, leads = stale(proj, ds), changed(proj, ds)
         if a.json:
-            print(json.dumps(rows, indent=2, ensure_ascii=False))
+            print(json.dumps({"stale": rows, "changed": leads}, indent=2, ensure_ascii=False))
         else:
             print("\n".join(f"{r['key']}: may be stale ({'; '.join(r['why'])})" for r in rows) or "No decision names code that is gone.")
+            if leads:
+                print("Worth reading again (the code changed after the decision was committed):\n"
+                      + "\n".join(f"  {r['key']}: {'; '.join(r['why'])}" for r in leads))
         return 0
     texts = _ci_texts() if a.ci else []
     if a.pr_body:

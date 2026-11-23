@@ -108,16 +108,53 @@ def test_a_chore_branch_releases_nothing_and_a_breaking_one_is_major(repo):
     assert r["squash"]["subject"].startswith("fix!: QZ-7") and r["squash"]["release"] == "major" and r["version"]["next"] == "v2.0.0"
 
 
+WHY = "\n\nRequest: QZ-123, message 1 of run r\nStage: code-generation\nBase: 0123456789ab"
+
+
 def test_the_hook_returns_a_commit_that_does_not_fit_with_the_fixed_subject(repo):
     story(repo)
     d = pre(repo, 'git commit -m "fixed stuff"')
     why = d["hookSpecificOutput"]["permissionDecisionReason"]
     assert d["hookSpecificOutput"]["permissionDecision"] == "deny" and "QZ-CONVENTION-COMMIT" in why and "`fix: QZ-123 fixed stuff`" in why
-    assert pre(repo, 'git commit -m "feat: QZ-123 add rounding"', "t2") is None
-    assert pre(repo, "git commit -qm 'chore: QZ-0 tidy the lock file'", "t3") is None              # no ticket: <KEY>-0
+    assert pre(repo, f'git commit -m "feat: QZ-123 add rounding{WHY}"', "t2") is None
+    assert pre(repo, f"git commit -qm 'chore: QZ-0 tidy the lock file{WHY}'", "t3") is None              # no ticket: <KEY>-0
     heredoc = "git commit -m \"$(cat <<'EOF'\nadd the endpoint\n\nbody\nEOF\n)\""
     assert "`feat: QZ-123 add the endpoint`" in pre(repo, heredoc, "t4")["hookSpecificOutput"]["permissionDecisionReason"]
     assert pre(repo, "git commit --amend --no-edit", "t5") is None
+
+
+
+def test_the_message_is_read_from_the_command_however_it_is_quoted(tmp_path):
+    m = lambda cmd: C.commit_message(cmd, tmp_path)
+    assert m('git commit -m "feat: QZ-1 add x\n\nRequest: QZ-1\nStage: build" && git push') == ("feat: QZ-1 add x", "\nRequest: QZ-1\nStage: build")
+    assert m("git add . && git commit -qm 'fix: QZ-1 the; odd | subject'; echo done") == ("fix: QZ-1 the; odd | subject", "")
+    assert m('git commit -m "docs: QZ-1 say \\"hi\\"" -m "Stage: docs"') == ('docs: QZ-1 say "hi"', "\nStage: docs")
+    assert m("git commit") == (None, "") and m("git commit -F -") == (None, "")
+
+def test_an_agent_commit_says_at_whose_request_in_which_stage_and_from_which_commit(repo, monkeypatch):
+    from qz import ledger
+    story(repo)
+    base = g(repo, "rev-parse", "--short=12", "HEAD").strip()          # the commit the run started from
+    led = ledger.start_run(repo, "deliver", "QZ-123", "Rate quote")
+    assert led["base"] == base
+    led["human_turns"], led["stage"] = 3, "code-generation"
+    ledger.save(repo, led)
+    d = pre(repo, 'git commit -m "feat: QZ-123 round the quote"')
+    why = d["hookSpecificOutput"]["permissionDecisionReason"]
+    assert d["hookSpecificOutput"]["permissionDecision"] == "deny" and "QZ-CONVENTION-TRAILERS" in why
+    want = [f"Request: QZ-123, message 3 of run {led['run_id']}", "Stage: code-generation", f"Base: {base}"]
+    assert all(f"`{x}`" in why for x in want), why
+    body = "\n".join(want)
+    assert pre(repo, f'git commit -m "feat: QZ-123 round the quote\n\n{body}\nCo-Authored-By: an agent <a@example.com>"', "t2") is None
+    partial = pre(repo, 'git commit -m "feat: QZ-123 round the quote\n\nStage: build"', "t3")["hookSpecificOutput"]["permissionDecisionReason"]
+    assert "`Request: QZ-123" in partial and "`Base: " in partial and "`Stage:" not in partial
+    (repo / "src" / "rate.py").write_text("def quote():\n    return round(41.6)\n", encoding="utf-8")
+    g(repo, "commit", "-qam", f"feat: QZ-123 round the quote\n\n{body}")
+    rows = C.why(repo, "src/rate.py")
+    assert rows[0]["subject"] == "feat: QZ-123 round the quote" and rows[0]["request"] == want[0][len("Request: "):]
+    assert rows[0]["stage"] == "code-generation" and rows[1]["request"] == "" and len(rows) == 3
+    out = qz(repo, "conventions", "why", "src/rate.py").stdout
+    assert f"at the request of QZ-123, message 3 of run {led['run_id']} · stage code-generation" in out and "no Request trailer" in out
 
 
 def test_a_protected_branch_is_never_pushed_to_named_or_checked_out(repo):

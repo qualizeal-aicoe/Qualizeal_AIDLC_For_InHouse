@@ -1,6 +1,10 @@
 """Stage 3 · Answer: take the sentences that answer the question from the best sections, cite where each came from,
 and refuse when those sections do not cover the question. No model is needed. With a model (stage 6) the model
-writes the answer from the same sections, and its citations are checked before anything is shown."""
+writes the answer from the same sections, and its citations and every sentence are checked before anything is shown.
+
+A refusal is made useful: it says what was looked for, names the closest sections this person may read with the team
+that owns each, and gives a person to ask ([answer] contact). A cited document written for some people only
+(manifest "scope") is named as such in the answer, so a rule for one group is not read as a rule for all."""
 from __future__ import annotations
 
 import calendar
@@ -39,9 +43,80 @@ class Answer:
     ai_generated: bool = False     # EU AI Act Article 50(2): true only when a model wrote the text
     latency_ms: int = 0
     trace: str = ""
+    searched: list[str] = field(default_factory=list)     # a refusal: the words looked for
+    closest: list[dict] = field(default_factory=list)     # a refusal: the nearest sections this person may read
+    contact: str = ""                                     # a refusal: who to ask instead
 
     def as_dict(self) -> dict:
         return asdict(self)
+
+
+def refusal(con: sqlite3.Connection, cfg, cs: list[S.Concept], hits: list[S.Hit]) -> tuple[str, list[str], list[dict], str]:
+    """The "I don't know" that helps: what was looked for, the closest sections this person may read (retrieval only
+    ever returns those), and a person to ask. Nothing here comes from a document the person may not read."""
+    searched = [c.word for c in cs if len(c.word) > 2][:6]
+    closest: list[dict] = []
+    for h in hits:
+        if h.doc_id in {c["doc_id"] for c in closest}:
+            continue
+        r = con.execute("SELECT owner FROM docs WHERE doc_id = ?", (h.doc_id,)).fetchone()
+        closest.append({"doc_id": h.doc_id, "doc_title": h.doc_title, "section": h.section, "owner": (r[0] if r else "") or ""})
+        if len(closest) == 3:
+            break
+    contact = str(cfg["answer"].get("contact", "") or "")
+    parts = [REFUSAL]
+    if searched:
+        parts.append("I looked for " + ", ".join(f'"{w}"' for w in searched) + ".")
+    if closest:
+        parts.append("Closest, though it does not answer it: " + "; ".join(
+            (f"{c['doc_title']} > {c['section']}" if c["section"] and c["section"] != c["doc_title"] else c["doc_title"])
+            + (f" ({c['owner']})" if c["owner"] else "") for c in closest) + ".")
+    if contact:
+        parts.append(f"To ask a person: {contact}.")
+    return " ".join(parts), searched, closest, contact
+
+
+def _scoped(con: sqlite3.Connection, cites: list[dict], flags: list[str]) -> None:
+    """Name the people a cited document's rules apply to, on the citation and as a flag on the answer."""
+    from .index import scope_of
+    for c in cites:
+        label = scope_of(con, c["doc_id"])
+        if label:
+            c["scope"] = label
+            note = f"applies to {label} only ({c['doc_title']})"
+            if note not in flags:
+                flags.append(note)
+
+
+WORDY = re.compile(r"[a-z][a-z0-9]{3,}")
+FIGURE = re.compile(r"\d[\d,.]*\d|\d")
+
+
+def _known(word: str, pool: set[str]) -> bool:
+    if word in pool or word.rstrip("s") in pool or word + "s" in pool:
+        return True
+    return len(word) >= 6 and any(p[:5] == word[:5] for p in pool if len(p) >= 5)
+
+
+def unsupported(text: str, given: dict, question: str, min_share: float = 0.6) -> str:
+    """The first sentence of a model's answer its cited sections do not support, or "". A figure must appear in a
+    section the sentence cites (or, with no mark, in any section the answer cites), and most of its words must too.
+    Lexical and deterministic: a net under the model, not a proof; the evaluation's judge is the deeper check."""
+    text = re.sub(r"([.!?])\s*((?:\[s\d+\]\s*)+)", lambda m: " " + m.group(2).strip() + m.group(1), text)
+    cited_all = [sid for sid in dict.fromkeys(re.findall(r"\[(s\d+)\]", text)) if sid in given]
+    q_words = set(WORDY.findall(question.lower()))
+    for sent in split_sentences(text):
+        marks = [sid for sid in re.findall(r"\[(s\d+)\]", sent) if sid in given] or cited_all
+        bare = re.sub(r"\[s\d+\]", " ", sent)
+        pool_text = " ".join(given[sid].text for sid in marks).lower()
+        flat = pool_text.replace(",", "")
+        if any(f.replace(",", "").rstrip(".") not in flat for f in FIGURE.findall(bare)):
+            return bare.strip()
+        pool = set(WORDY.findall(pool_text)) | q_words
+        words = [w for w in WORDY.findall(bare.lower()) if w not in S.STOP]
+        if words and sum(_known(w, pool) for w in words) / len(words) < min_share:
+            return bare.strip()
+    return ""
 
 
 def citation(n: int, h: S.Hit) -> dict:
@@ -124,6 +199,9 @@ def generated(llm, cfg, question: str, hits: list[S.Hit]) -> tuple[str, list[dic
     text = str(data.get("answer", "")).strip()
     if not text or not cited or len(cited) != len(raw_cites):
         return "", [], "rejected: every citation must name a section it was given and quote it word for word"
+    loose = unsupported(text, given, question)
+    if loose:
+        return "", [], f"rejected: a sentence its sections do not support (\"{loose[:90]}\")"
     order = {sid: n for n, sid in enumerate(dict.fromkeys(cited), 1)}
     for sid, n in order.items():
         text = text.replace(f"[{sid}]", f"[{n}]")
@@ -197,7 +275,10 @@ def answer(con: sqlite3.Connection, cfg, question: str, user: str, strategy: str
     else:
         text, cites = extractive(question, hits, cs, int(cfg["answer"]["max_sentences"]))
         reason = "" if text else "no sentence in the best sections mentions the question's words"
+    _scoped(con, cites, flags)
     ans = Answer(question, user, text or REFUSAL, not text, reason, strategy, cites, [h.node_id for h in hits], flags)
+    if not text:
+        ans.text, ans.searched, ans.closest, ans.contact = refusal(con, cfg, cs, hits)
     ans.ai_generated = by_model and bool(text) and not any(f.endswith("extractive answer used") for f in flags)
     if guard is not None and text:
         ans.text, ans.redactions = guard.redact(ans.text, cfg["guard"]["redact"])
@@ -237,7 +318,10 @@ def _hybrid(con, cfg, question: str, user: str, groups: list[str], cs: list[S.Co
     elif ok:
         text, cites = extractive(question, hits, cs, int(cfg["answer"]["max_sentences"]), hybrid.pick(question, hits, cfg, cs, int(cfg["answer"]["max_sentences"])))
         reason = "" if text else "no sentence in the best sections answers the question"
+    _scoped(con, cites, flags)
     ans = Answer(question, user, text or REFUSAL, not text, reason, "hybrid", cites, [h.node_id for h in hits], flags)
+    if not text:
+        ans.text, ans.searched, ans.closest, ans.contact = refusal(con, cfg, cs, hits)
     ans.ai_generated = by_model and bool(text) and not any(f.endswith("extractive answer used") for f in flags)
     if guard is not None and text:
         ans.text, ans.redactions = guard.redact(ans.text, cfg["guard"]["redact"])

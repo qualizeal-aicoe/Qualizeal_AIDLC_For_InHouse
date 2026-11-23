@@ -265,9 +265,18 @@ def t_project_memory(a):
         return memory.undo(proj)
     if act == "search":
         return memory.search(proj, str(a.get("query") or ""), bool(a.get("everywhere")))
+    if act == "confirm":                                 # correct a note that no longer holds first (save); this keeps the rest
+        return memory.confirm(proj)
     t = memory.read(proj)
-    return {"notes": t or "(no notes yet)", "characters": len(t), "budget": memory.BUDGET,
-            "note": "Draft what is worth keeping, show it to the person, and save only the text they approved."}
+    out = {"notes": t or "(no notes yet)", "characters": len(t), "budget": memory.BUDGET,
+           "note": "Draft what is worth keeping, show it to the person, and save only the text they approved."}
+    rows = memory.verify(proj) if t else []
+    if rows:                                         # notes that name their source, checked against it now
+        out["sourced"], out["stale"] = len(rows), [r for r in rows if r["stale"]]
+        if out["stale"]:
+            out["note"] = ("A stale note's source changed or is gone since it was kept. Read the source, then confirm the "
+                           "note (its line) if it still holds, or save a corrected one.")
+    return out
 
 
 def t_decisions(a):
@@ -374,10 +383,11 @@ TOOLS = {
                S(args=ARR, project_dir=STR), ["args"]),
     "ctx": (t_ctx, "Keep large output out of the conversation. args: [run, \"<command>\", --intent, WORDS] (no credentials; a short view plus matching lines, full output kept) | [batch, cmd1, cmd2, --query, WORDS] | [peek, <file>] | [defs, <path>] | [index, <path>] | [search, \"words\"] | [get, <id>, --lines, a-b | --grep, W] | [stats] | [resume].",
             S(args=ARR, project_dir=STR), ["args"]),
-    "project_memory": (t_project_memory, "This project's confirmed notes, read at every session start. action: show | save (text; mode replace, append or tidy; the person approves "
-                                         "the exact text first) | history | undo | search (query; everywhere: every workspace project, each hit names its project).",
-                       S(action={"type": "string", "enum": ["show", "save", "history", "undo", "search"]}, text=STR, mode={"type": "string", "enum": ["replace", "append", "tidy"]},
-                         query=STR, everywhere=BOOL, project_dir=STR), []),
+    "project_memory": (t_project_memory, "Confirmed project notes, read at session start. action: show (marks stale ones) | save (text; mode replace, append "
+                                         "or tidy; approved first; a code note ends (from path#function)) | history | undo | search (query; everywhere: "
+                                         "all projects) | confirm (the stale notes still hold; approved first).",
+                       S(action={"type": "string", "enum": ["show", "save", "history", "undo", "search", "confirm"]}, text=STR,
+                         mode={"type": "string", "enum": ["replace", "append", "tidy"]}, query=STR, everywhere=BOOL, project_dir=STR), []),
     "decisions": (t_decisions, "Team decisions tied to code (docs/decisions/). args: [list] | [show, ID] | [for, PATH] | [check] | [stale] | [template] | [note, --replaces ID] with text (the person approves it first).",
                   S(args=ARR, text=STR, project_dir=STR), []),
     "redteam": (t_redteam, "Run the guard's red-team suite.", S(), []),
