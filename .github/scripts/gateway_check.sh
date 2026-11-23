@@ -9,7 +9,7 @@ studio=$(pwd)
 work="${RUNNER_TEMP:-/tmp}/gateway"
 rm -rf "$work" && mkdir -p "$work"
 QZ=(uv run -q --no-project --python ">=3.11,<3.14" --with "pyyaml==6.0.3" --with "opentelemetry-proto==1.45.2" python -I -X utf8 "$studio/plugins/qz-aidlc/scripts/qz.py")
-LITELLM=(uvx --from "litellm[proxy]==1.110.0" litellm)
+LITELLM=(uvx --from "litellm[proxy,proxy-runtime]==1.110.0" litellm)   # proxy-runtime: the OpenTelemetry packages the Langfuse callback needs
 KIT=(uv run -q --no-project --python ">=3.11,<3.14" python -I -X utf8 .claude/qz/scripts/qz.py)   # the project's own kit
 "${LITELLM[@]}" --help > /dev/null    # installed once, before anything waits on it
 provider_key="sk-provider-$(openssl rand -hex 16)"

@@ -147,9 +147,12 @@ def test_nothing_the_plugins_ship_is_ignored_by_git(tmp_path):
     for m in (REPO / "plugins").glob("*/MANIFEST.sha256"):
         files |= {f"{m.parent.relative_to(REPO).as_posix()}/{ln.split('  ', 1)[1]}" for ln in m.read_text(encoding="utf-8").splitlines() if "  " in ln}
     subprocess.run(["git", "init", "-q", str(tmp_path / "g")], check=True, capture_output=True)
-    r = subprocess.run(["git", "-c", "core.excludesFile=", f"--git-dir={tmp_path / 'g' / '.git'}", f"--work-tree={REPO}", "check-ignore", "--no-index", "--stdin"],
-                       input="\n".join(sorted(files)) + "\n", capture_output=True, text=True, timeout=60)
-    assert r.stdout.strip() == "", f"git ignores files the plugin ships:\n{r.stdout}"
+    # NUL-separated (-z): a text-mode pipe on Windows adds a carriage return to each path, and a path ending in one
+    # matches `.env.*` but not `!.env.example`.
+    r = subprocess.run(["git", "-c", "core.excludesFile=", f"--git-dir={tmp_path / 'g' / '.git'}", f"--work-tree={REPO}", "check-ignore", "--no-index", "--stdin", "-z"],
+                       input=("\0".join(sorted(files)) + "\0").encode("utf-8"), capture_output=True, timeout=60)
+    ignored = [x for x in r.stdout.decode("utf-8").split("\0") if x]
+    assert not ignored, "git ignores files the plugin ships:\n" + "\n".join(ignored)
 
 
 def test_a_release_builds_from_the_repository_with_its_own_notes(tmp_path):

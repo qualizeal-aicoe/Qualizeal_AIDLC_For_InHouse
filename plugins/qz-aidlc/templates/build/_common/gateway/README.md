@@ -19,7 +19,7 @@ in `litellm.yaml` here. Nothing else about the agent changes: the same tools, th
 2. `docker compose -f gateway/compose.yaml up --build`
 3. Ask the agent as in the README ("Serve it"); each call shows in Langfuse under the run.
 
-Without Docker: `uvx --from 'litellm[proxy]==1.110.0' litellm --config gateway/litellm.yaml`, with the same variables
+Without Docker: `uvx --from 'litellm[proxy,proxy-runtime]==1.110.0' litellm --config gateway/litellm.yaml`, with the same variables
 in that shell, then start the agent with `AGENT_MODE=live AGENT_GATEWAY=litellm AGENT_GATEWAY_KEY=...` and no
 provider key in its environment.
 

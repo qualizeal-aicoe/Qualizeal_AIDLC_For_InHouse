@@ -267,7 +267,7 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
         assert meta["verified"].startswith("RUN:") and json.loads((dest / "evals" / "eval.json").read_text())["adapter"]["command"] == meta["adapter"]
         for f in ("CLAUDE.md", "README.md", "docs/runbook.md", ".github/workflows/ci.yml", ".claude/qz/scripts/qz.py", *own_files[name]):
             assert (dest / f).exists(), (name, f)
-        assert not [p for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in str(p) and p.suffix in (".py", ".md", ".json", ".yml") and "__NAME__" in p.read_text(encoding="utf-8", errors="ignore")]
+        assert not [p for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in p.as_posix() and p.suffix in (".py", ".md", ".json", ".yml") and "__NAME__" in p.read_text(encoding="utf-8", errors="ignore")]
         assert qz(dest, "vendor", ".", "--check").stdout.startswith("Vendored kit: in sync")
     # The staged knowledge-app kit carries no agent eval kit; tests/test_rag_kit.py checks it stage by stage.
     assert {k: (m.get("common"), m.get("kit"), bool(build.staging(k))) for k, m in every.items() if k not in stacks and k not in servers} == {
@@ -276,7 +276,7 @@ def test_scaffolds_materialise_clean_and_carry_the_kit(tmp_path):
         assert meta["verified"].startswith("RUN:"), name
         dest = tmp_path / name
         qz(tmp_path, "build", "new", name, str(dest), "--name", "Order Support")
-        left = [str(p) for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in str(p) and p.suffix in (".py", ".ts", ".cs", ".go", ".md", ".json", ".yml", ".mod")
+        left = [str(p) for p in dest.rglob("*") if p.is_file() and ".claude/qz" not in p.as_posix() and p.suffix in (".py", ".ts", ".cs", ".go", ".md", ".json", ".yml", ".mod")
                 and any(tok in p.read_text(encoding="utf-8", errors="ignore") for tok in ("__NAME__", "__SLUG__", "__MODULE__", "__ADAPTER__", "__SETUP_STEPS__", "__POLICY__"))]
         assert not left, left
         cfg = json.loads((dest / "evals" / "eval.json").read_text())
