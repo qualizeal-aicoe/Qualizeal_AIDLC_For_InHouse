@@ -1,0 +1,182 @@
+# Plans this project on Azure with no subscription: the providers are mocked, so nothing is reached or created.
+# `tofu test` runs it here and in CI. The values below are examples, not the client's.
+mock_provider "azurerm" {
+  mock_data "azurerm_client_config" {
+    defaults = {
+      tenant_id       = "00000000-0000-0000-0000-000000000001"
+      object_id       = "00000000-0000-0000-0000-000000000002"
+      subscription_id = "00000000-0000-0000-0000-000000000000"
+    }
+  }
+  # Values the provider would return, in the shape its checks expect.
+  mock_resource "azurerm_resource_group" {
+    defaults = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mock" }
+  }
+  mock_resource "azurerm_log_analytics_workspace" {
+    defaults = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mock/providers/Microsoft.OperationalInsights/workspaces/log-mock" }
+  }
+  mock_resource "azurerm_user_assigned_identity" {
+    defaults = {
+      id           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mock/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-mock"
+      principal_id = "00000000-0000-0000-0000-000000000003"
+      client_id    = "00000000-0000-0000-0000-000000000004"
+    }
+  }
+  mock_resource "azurerm_key_vault" {
+    defaults = {
+      id        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mock/providers/Microsoft.KeyVault/vaults/kvmock"
+      vault_uri = "https://kvmock.vault.azure.net/"
+    }
+  }
+  mock_resource "azurerm_container_app_environment" {
+    defaults = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mock/providers/Microsoft.App/managedEnvironments/cae-mock" }
+  }
+  mock_resource "azurerm_cognitive_account" {
+    defaults = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mock/providers/Microsoft.CognitiveServices/accounts/mock" }
+  }
+  mock_resource "azurerm_cognitive_account_project" {
+    defaults = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mock/providers/Microsoft.CognitiveServices/accounts/mock/projects/mock-project" }
+  }
+}
+mock_provider "azapi" {}
+mock_provider "random" {
+  mock_resource "random_string" {
+    defaults = { result = "abc123" }
+  }
+}
+
+variables {
+  subscription_id          = "00000000-0000-0000-0000-000000000000"
+  agent_image              = "example.azurecr.io/__SLUG__:1.0.0"
+  gateway_image            = "example.azurecr.io/__SLUG__-gateway:1.0.0"
+  registry_server          = "example.azurecr.io"
+  oidc_issuer              = "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000001/v2.0"
+  oidc_audience            = "api://__SLUG__"
+  langfuse_host            = "https://langfuse.example.com"
+  claude_organization_name = "Example Client"
+  claude_country_code      = "US"
+  claude_industry          = "technology"
+  start_app                = true
+}
+
+run "plan" {
+  command = plan
+
+  assert {
+    condition     = azurerm_key_vault.app.rbac_authorization_enabled == true && azurerm_key_vault.app.purge_protection_enabled == true
+    error_message = "The vault uses RBAC and keeps deleted keys recoverable."
+  }
+  assert {
+    condition     = azurerm_role_assignment.read_keys.role_definition_name == "Key Vault Secrets User"
+    error_message = "The app's identity may read the keys and nothing more."
+  }
+  # @if service
+  assert {
+    condition     = length(azurerm_container_app.app) == 1 && azurerm_container_app.app[0].ingress[0].external_enabled == false
+    error_message = "The app is reached inside its environment only, until someone puts the client's front door in front."
+  }
+  assert {
+    condition     = azurerm_container_app.app[0].template[0].min_replicas == 1 && azurerm_container_app.app[0].template[0].max_replicas == 1
+    error_message = "One replica: its state database has one writer."
+  }
+  assert {
+    condition     = azurerm_container_app.app[0].identity[0].type == "UserAssigned"
+    error_message = "The app acts as its own managed identity."
+  }
+  # @end
+  # @if gateway
+  assert {
+    condition     = length(azurerm_container_app.app[0].template[0].container) == 2
+    error_message = "The agent and the model gateway share one app."
+  }
+  assert {
+    condition     = !anytrue([for e in azurerm_container_app.app[0].template[0].container[0].env : contains(["ANTHROPIC_API_KEY", "AZURE_AI_API_KEY", "AZURE_OPENAI_API_KEY", "AZURE_CLIENT_SECRET", "LANGFUSE_SECRET_KEY"], e.name)])
+    error_message = "No provider key reaches the agent's container: it holds the gateway's key only."
+  }
+  assert {
+    condition     = one([for e in azurerm_container_app.app[0].template[0].container[0].env : e if e.name == "AGENT_GATEWAY_KEY"]).secret_name == "gateway-key"
+    error_message = "The agent's gateway key comes from Key Vault, never from a value in the plan."
+  }
+  assert {
+    condition     = alltrue([for s in azurerm_container_app.app[0].secret : s.value == null && strcontains(s.key_vault_secret_id, "/secrets/__SLUG__-")])
+    error_message = "Every key the app holds is a reference to Key Vault, with no value."
+  }
+  assert {
+    condition     = one([for e in azurerm_container_app.app[0].template[0].container[0].env : e.value if e.name == "AGENT_GATEWAY_URL"]) == "http://127.0.0.1:4000"
+    error_message = "The agent reaches the gateway on localhost, in its own app."
+  }
+  assert {
+    condition     = length(azurerm_cognitive_account.foundry) == 1 && azurerm_cognitive_account.foundry[0].kind == "AIServices"
+    error_message = "The models are in a Foundry resource of the client's own."
+  }
+  assert {
+    condition     = alltrue([for d in concat(azapi_resource.claude, azapi_resource.claude_small) : d.body.properties.model.format == "Anthropic" && d.body.properties.modelProviderData.organizationName == "Example Client"])
+    error_message = "Claude is deployed in Foundry with the client's own details for Anthropic's terms."
+  }
+  # @end
+  # @if nogateway
+  assert {
+    condition     = length(azurerm_cognitive_account.foundry) == 0 && length(azapi_resource.claude) == 0
+    error_message = "A project without the gateway deploys no model."
+  }
+  # @end
+  # @if job
+  assert {
+    condition     = length(azurerm_container_app_job.app) == 1 && length(azurerm_container_app.app) == 0
+    error_message = "A project that runs to completion is a Container Apps job started by hand."
+  }
+  # @end
+}
+# @if service
+
+run "the_first_apply_starts_nothing" {
+  command = plan
+  variables {
+    start_app = false
+  }
+  assert {
+    condition     = length(azurerm_container_app.app) == 0
+    error_message = "The first apply creates the vault and starts nothing, so no revision starts before a person sets the keys."
+  }
+}
+
+run "not_the_whole_internet" {
+  command = plan
+  variables {
+    public      = true
+    allowed_ips = ["0.0.0.0/0"]
+  }
+  expect_failures = [var.allowed_ips]
+}
+# @end
+# @if gateway
+
+run "the_terms_are_the_clients_to_accept" {
+  command = plan
+  variables {
+    claude_organization_name = ""
+  }
+  # @if claude
+  expect_failures = [azapi_resource.claude]
+  # @end
+  # @if noclaude
+  expect_failures = [azapi_resource.claude_small]
+  # @end
+}
+
+run "an_agent_needs_its_identity_provider" {
+  command = plan
+  variables {
+    oidc_issuer = ""
+  }
+  expect_failures = [azurerm_container_app.app]
+}
+# @end
+
+run "an_image_needs_a_release_tag" {
+  command = plan
+  variables {
+    agent_image = "registry.example.com/__SLUG__"
+  }
+  expect_failures = [var.agent_image]
+}

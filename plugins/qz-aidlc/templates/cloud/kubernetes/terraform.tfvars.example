@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars (git ignores it) and fill in. No key goes here: keys live in the cloud's secret store.
+kube_context  = "my-cluster"
+agent_image   = "registry.example.com/my-app:1.0.0"
+gateway_image = "registry.example.com/my-app-gateway:1.0.0"   # an agent only
+secret_store  = "cloud-secrets"                                # the ClusterSecretStore External Secrets Operator uses
+oidc_issuer   = "https://login.example.com/"                   # an agent only
+oidc_audience = "my-app"
+langfuse_host = "https://langfuse.example.com"
+# ingress_namespaces = ["ingress-nginx"]
+# sie_extra_values   = ["<the YAML of SIE's values-gke.yaml>"]   # SIE's profile for your cloud; never telemetry or auth

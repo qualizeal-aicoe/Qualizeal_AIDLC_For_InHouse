@@ -1,7 +1,7 @@
 {
   "title": "Claude Agent SDK (TypeScript)",
   "summary": "query() with in-process MCP tools (zod schemas), canUseTool as the approval gate, no built-in tools, turn and budget limits, OpenTelemetry spans.",
-  "verified": "RUN: type-checked with tsc 7.0.2 against @anthropic-ai/claude-agent-sdk 0.3.329 and OpenTelemetry JS (api 1.10, sdk-trace 3.1), and tests plus gold set ran here against the offline stub (same tools, same permission callback). The live query() path is type-checked only: no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (node:sqlite) and answered from another process, the refund made once after a crash, and the HTTP interface, all in its tests and gold set.",
+  "verified": "RUN: type-checked with tsc 7.0.2 against @anthropic-ai/claude-agent-sdk 0.3.329 and OpenTelemetry JS (api 1.10, sdk-trace 3.1), and tests plus gold set ran here against the offline stub (same tools, same permission callback). The live query() path is type-checked only: no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (node:sqlite) and answered from another process, the refund made once after a crash, and the HTTP interface, all in its tests and gold set. 1.4.0: every model call through the LiteLLM gateway with AGENT_GATEWAY=litellm, its wiring tested here against a stand-in provider, and the gold set run in the Studio's CI through the real LiteLLM 1.110.0 proxy against stand-ins, with the keys and the traces checked. The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied.",
   "stack_line": "A Claude Agent SDK agent in TypeScript (@anthropic-ai/claude-agent-sdk 0.3).",
   "policy": "src/policy.ts",
   "agent_dir": "src/",
@@ -121,6 +121,18 @@
         "purpose": "the model: prompts, tool results and replies",
         "processor": "Anthropic",
         "region": "TODO: the processing region agreed for this account"
+      },
+      {
+        "host": "localhost",
+        "purpose": "the model gateway beside the agent (AGENT_GATEWAY=litellm): every model call goes through it",
+        "processor": "the gateway runs where the agent runs; the providers it forwards to are named in gateway/litellm.yaml",
+        "region": "local"
+      },
+      {
+        "host": "127.0.0.1",
+        "purpose": "the model gateway beside the agent (AGENT_GATEWAY=litellm): every model call goes through it",
+        "processor": "the gateway runs where the agent runs; the providers it forwards to are named in gateway/litellm.yaml",
+        "region": "local"
       }
     ],
     "answers": {
@@ -143,5 +155,27 @@
     "0.0.0.0"
   ],
   "serve_cmd": "npm run serve",
-  "answer_cmd": "npx tsx src/runs.ts answer <thread> --approve"
+  "answer_cmd": "npx tsx src/runs.ts answer <thread> --approve",
+  "gateway": {
+    "models": [
+      [
+        "agent-model",
+        "anthropic/claude-sonnet-5-5",
+        "ANTHROPIC_API_KEY",
+        25
+      ],
+      [
+        "agent-model-small",
+        "anthropic/claude-haiku-5-5",
+        "ANTHROPIC_API_KEY",
+        10
+      ],
+      [
+        "agent-model-fallback",
+        "ollama_chat/qwen3:8b",
+        "",
+        0
+      ]
+    ]
+  }
 }

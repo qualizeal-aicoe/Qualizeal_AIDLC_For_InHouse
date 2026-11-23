@@ -38,10 +38,11 @@ public static class Policy
 
     /// <summary>Go-live gates 3 and 6, residency and network: the only hosts the agent may call. Each is in
     /// .qz/golive.json with its region.</summary>
-    public static readonly string[] AllowedHosts = ["api.anthropic.com"];
+    public static readonly string[] AllowedHosts = ["api.anthropic.com", "localhost", "127.0.0.1"];   // localhost: the model gateway beside the agent
 
-    /// <summary>Where the live model is called: ANTHROPIC_BASE_URL, or the Anthropic API.</summary>
-    public static string ModelUrl => Environment.GetEnvironmentVariable("ANTHROPIC_BASE_URL") is { Length: > 0 } url ? url : "https://api.anthropic.com";
+    /// <summary>Where the live model is called: the model gateway when it is on, else ANTHROPIC_BASE_URL or the Anthropic API.</summary>
+    public static string ModelUrl => Gateway.On ? Gateway.Url
+        : Environment.GetEnvironmentVariable("ANTHROPIC_BASE_URL") is { Length: > 0 } url ? url : "https://api.anthropic.com";
 
     public const string System = """
         You are the order support assistant for __NAME__.
@@ -55,7 +56,8 @@ public static class Policy
     /// <summary>Cost lever: easy turns go to the smaller model when AGENT_MODEL_SMALL is set; anything that could
     /// move money, and anything unclear, goes to the main model. A rule decides, not a model call.</summary>
     public static string PickModel(string message) =>
-        SmallModel.Length > 0 && !Hard.IsMatch(message ?? "") ? SmallModel : Model;
+        Gateway.On ? Gateway.Model(small: !Hard.IsMatch(message ?? ""))   // the gateway's names: the gateway picks the provider
+        : SmallModel.Length > 0 && !Hard.IsMatch(message ?? "") ? SmallModel : Model;
 
     // The HTTP interface (Server.cs). Who asks comes from the identity provider (AGENT_IDENTITY: demo, oidc or proxy);
     // their groups name their role here, first match wins. Approving a waiting action needs an approver group, and

@@ -48,7 +48,11 @@ HARD = re.compile(r"\b(refund|cancel|charge|money|pay|complain|dispute|wrong|bro
 
 
 def pick_model(message: str) -> str:
-    """The model for this turn: the small one for an easy question, the main one otherwise."""
+    """The model for this turn: the small one for an easy question, the main one otherwise. With the gateway on, these
+    are the gateway's model names (AGENT_GATEWAY_MODEL and AGENT_GATEWAY_MODEL_SMALL), and the gateway picks the provider."""
+    from . import gateway
+    if gateway.on():
+        return gateway.model(small=not HARD.search(message or ""))
     return SMALL_MODEL if SMALL_MODEL and not HARD.search(message or "") else (MODEL or LOCAL_MODEL)
 
 

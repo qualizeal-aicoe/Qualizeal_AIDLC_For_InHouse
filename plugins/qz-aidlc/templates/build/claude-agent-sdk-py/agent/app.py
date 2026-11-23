@@ -12,7 +12,8 @@ import warnings
 from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ClaudeSDKClient, PermissionResultAllow, PermissionResultDeny,
                               ResultMessage, TextBlock, ToolUseBlock)
 
-from . import guardrails, policy
+from . import durable, gateway, guardrails, policy
+from .telemetry import tracer
 from .tools import RESULTS, SERVER, TOOLS
 
 # One line per run (tools and their status, tokens, whether it waits): never the message or the reply. Claude Code's own
@@ -46,10 +47,28 @@ def options(gate, model: str | None = None) -> ClaudeAgentOptions:
     return ClaudeAgentOptions(                           # the SDK caches the system prompt and tools itself
         model=model or policy.MODEL, system_prompt=policy.SYSTEM, mcp_servers={policy.SERVER: SERVER}, tools=[],          # no built-in tools: no shell, no file access
         allowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in policy.READ_ONLY if t in policy.ROLES.get(guardrails.role(), ())], can_use_tool=gate,
-        max_turns=policy.MAX_TURNS, max_budget_usd=policy.MAX_BUDGET_USD, setting_sources=[], permission_mode="default")
+        max_turns=policy.MAX_TURNS, max_budget_usd=policy.MAX_BUDGET_USD, setting_sources=[], permission_mode="default",
+        env=gateway.claude_code_env(model or policy.MODEL) if gateway.on() else {})     # the model gateway, when on: gateway/litellm.yaml
 
 
 async def run_async(message: str, approve: bool | None = None) -> dict:
+    with tracer().start_as_current_span("agent.run") as span:          # the gateway's record of each call joins this trace
+        if durable.THREAD.get():
+            span.set_attribute("langfuse.session.id", durable.THREAD.get())
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.input", message)
+        out = await _run(message, approve)
+        span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in out["tool_calls"]]))
+        for k in ("input_tokens", "output_tokens"):
+            span.set_attribute(f"gen_ai.usage.{k}", out["usage"].get(k, 0))
+        if out.get("cost_usd"):
+            span.set_attribute("gen_ai.usage.cost", out["cost_usd"])
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.output", out["output"])
+        return out
+
+
+async def _run(message: str, approve: bool | None = None) -> dict:
     calls: list[dict] = []
     seen: list[tuple[str, dict]] = []
     RESULTS.set(seen)                                    # the tools add what they returned; matched to the calls below

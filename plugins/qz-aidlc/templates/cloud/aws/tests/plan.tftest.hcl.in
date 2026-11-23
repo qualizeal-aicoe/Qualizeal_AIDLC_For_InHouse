@@ -1,0 +1,149 @@
+# Plans this project on AWS with no account: the provider is mocked, so nothing is reached or created.
+# `tofu test` runs it here and in CI. The values below are examples, not the client's.
+mock_provider "aws" {
+  mock_data "aws_caller_identity" {
+    defaults = { account_id = "123456789012" }
+  }
+  mock_data "aws_partition" {
+    defaults = { partition = "aws" }
+  }
+  # Values the provider would return, in the shape its checks expect.
+  mock_resource "aws_iam_role" {
+    defaults = { arn = "arn:aws:iam::123456789012:role/mock" }
+  }
+  mock_resource "aws_secretsmanager_secret" {
+    defaults = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:mock-AbCdEf" }
+  }
+  mock_resource "aws_ecs_cluster" {
+    defaults = { id = "arn:aws:ecs:us-east-1:123456789012:cluster/mock", arn = "arn:aws:ecs:us-east-1:123456789012:cluster/mock" }
+  }
+  mock_resource "aws_ecs_task_definition" {
+    defaults = { arn = "arn:aws:ecs:us-east-1:123456789012:task-definition/mock:1" }
+  }
+  mock_resource "aws_security_group" {
+    defaults = { id = "sg-0123456789abcdef0" }
+  }
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = { arn = "arn:aws:logs:us-east-1:123456789012:log-group:mock" }
+  }
+}
+
+variables {
+  vpc_id        = "vpc-0123456789abcdef0"
+  subnet_ids    = ["subnet-0123456789abcdef0"]
+  allowed_cidrs = ["10.0.0.0/16"]
+  agent_image   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/__SLUG__:1.0.0"
+  gateway_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/__SLUG__-gateway:1.0.0"
+  oidc_issuer   = "https://login.example.com/"
+  oidc_audience = "__SLUG__"
+  langfuse_host = "https://langfuse.example.com"
+  start_app     = true
+}
+
+run "plan" {
+  command = plan
+
+  assert {
+    condition     = aws_ecs_task_definition.app.network_mode == "awsvpc" && contains(aws_ecs_task_definition.app.requires_compatibilities, "FARGATE")
+    error_message = "The task runs on Fargate in awsvpc mode, where its containers share localhost."
+  }
+  assert {
+    condition     = aws_iam_role.execution.name != aws_iam_role.task.name
+    error_message = "The role that starts the task is not the role the containers act as."
+  }
+  assert {
+    condition     = alltrue([for c in jsondecode(aws_ecs_task_definition.app.container_definitions) : c.user != "0" && c.privileged == false && contains(c.linuxParameters.capabilities.drop, "ALL")])
+    error_message = "Every container runs as a user, unprivileged, with every capability dropped."
+  }
+  assert {
+    condition     = aws_cloudwatch_log_group.app.retention_in_days >= 365
+    error_message = "The logs, the audit lines among them, are kept for a year."
+  }
+  # @if service
+  assert {
+    condition     = length(aws_ecs_service.app) == 1 && aws_ecs_service.app[0].network_configuration[0].assign_public_ip == false
+    error_message = "The service runs with no public address."
+  }
+  assert {
+    condition     = aws_ecs_service.app[0].desired_count == 1 && aws_ecs_service.app[0].deployment_minimum_healthy_percent == 0 && aws_ecs_service.app[0].deployment_maximum_percent == 100
+    error_message = "One task, replaced rather than doubled: its state database has one writer."
+  }
+  # @end
+  # @if gateway
+  assert {
+    condition     = length(jsondecode(aws_ecs_task_definition.app.container_definitions)) == 2
+    error_message = "The agent and the model gateway share one task."
+  }
+  assert {
+    condition     = !anytrue([for e in concat(jsondecode(aws_ecs_task_definition.app.container_definitions)[0].environment, jsondecode(aws_ecs_task_definition.app.container_definitions)[0].secrets) : contains(["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "LANGFUSE_SECRET_KEY"], e.name)])
+    error_message = "No provider key reaches the agent's container: it holds the gateway's key only."
+  }
+  assert {
+    condition     = contains([for e in jsondecode(aws_ecs_task_definition.app.container_definitions)[0].secrets : e.name], "AGENT_GATEWAY_KEY") && !contains([for e in jsondecode(aws_ecs_task_definition.app.container_definitions)[0].environment : e.name], "AGENT_GATEWAY_KEY")
+    error_message = "The agent's gateway key comes from Secrets Manager when the task starts, never from a value in the plan."
+  }
+  assert {
+    condition     = one([for e in jsondecode(aws_ecs_task_definition.app.container_definitions)[0].environment : e.value if e.name == "AGENT_GATEWAY_URL"]) == "http://127.0.0.1:4000"
+    error_message = "The agent reaches the gateway on localhost, in its own task."
+  }
+  assert {
+    condition     = length(aws_iam_role_policy.bedrock) == 1 && alltrue([for a in jsondecode(aws_iam_role_policy.bedrock[0].policy).Statement[0].Resource : startswith(a, "arn:aws:bedrock:") && a != "*"])
+    error_message = "The task role may invoke the gateway's Bedrock models and nothing else."
+  }
+  assert {
+    condition     = length(aws_secretsmanager_secret.keys) == 4
+    error_message = "Four keys are named in Secrets Manager (the gateway's key, the trace header, two Langfuse keys), with no value in the plan."
+  }
+  # @end
+  # @if nogateway
+  assert {
+    condition     = length(aws_secretsmanager_secret.keys) == 0 && length(aws_iam_role_policy.bedrock) == 0
+    error_message = "A project without the gateway names no keys and calls no model."
+  }
+  # @end
+  # @if job
+  assert {
+    condition     = length(aws_ecs_service.app) == 0
+    error_message = "A project that runs to completion is a task definition someone starts, not a service."
+  }
+  # @end
+}
+# @if service
+
+run "the_first_apply_starts_nothing" {
+  command = plan
+  variables {
+    start_app = false
+  }
+  assert {
+    condition     = length(aws_ecs_service.app) == 0
+    error_message = "The first apply names the keys and starts nothing, so no task starts before a person sets the keys."
+  }
+}
+
+run "not_the_whole_internet" {
+  command = plan
+  variables {
+    allowed_cidrs = ["0.0.0.0/0"]
+  }
+  expect_failures = [var.allowed_cidrs]
+}
+# @end
+# @if gateway
+
+run "an_agent_needs_its_identity_provider" {
+  command = plan
+  variables {
+    oidc_issuer = ""
+  }
+  expect_failures = [aws_ecs_task_definition.app]
+}
+# @end
+
+run "an_image_needs_a_release_tag" {
+  command = plan
+  variables {
+    agent_image = "registry.example.com/__SLUG__"
+  }
+  expect_failures = [var.agent_image]
+}

@@ -1,0 +1,123 @@
+# Plans this project on Google Cloud with no account: the provider is mocked, so nothing is reached or created.
+# `tofu test` runs it here and in CI. The values below are examples, not the client's.
+mock_provider "google" {
+  mock_resource "google_service_account" {
+    defaults = {
+      email  = "mock-app@example-project.iam.gserviceaccount.com"
+      member = "serviceAccount:mock-app@example-project.iam.gserviceaccount.com"
+    }
+  }
+  mock_resource "google_secret_manager_secret" {
+    defaults = { id = "projects/example-project/secrets/mock" }
+  }
+}
+
+variables {
+  project_id    = "example-project"
+  agent_image   = "us-docker.pkg.dev/example-project/apps/__SLUG__:1.0.0"
+  gateway_image = "us-docker.pkg.dev/example-project/apps/__SLUG__-gateway:1.0.0"
+  oidc_issuer   = "https://login.example.com/"
+  oidc_audience = "__SLUG__"
+  langfuse_host = "https://langfuse.example.com"
+  start_app     = true
+}
+
+run "plan" {
+  command = plan
+
+  assert {
+    condition     = length(google_service_account.app.account_id) >= 6 && length(google_service_account.app.account_id) <= 30
+    error_message = "The app has a service account of its own, with a name Google accepts."
+  }
+  # @if service
+  assert {
+    condition     = length(google_cloud_run_v2_service.app) == 1 && google_cloud_run_v2_service.app[0].ingress != "INGRESS_TRAFFIC_ALL"
+    error_message = "The service is reached through the client's load balancer, not straight from the internet."
+  }
+  assert {
+    condition     = google_cloud_run_v2_service.app[0].template[0].scaling[0].max_instance_count == 1
+    error_message = "One instance: its state database has one writer."
+  }
+  assert {
+    condition     = google_cloud_run_v2_service.app[0].template[0].service_account == "mock-app@example-project.iam.gserviceaccount.com"
+    error_message = "The service runs as its own account, not the project's default compute account."
+  }
+  # @end
+  # @if gateway
+  assert {
+    condition     = length(google_cloud_run_v2_service.app[0].template[0].containers) == 2 && google_cloud_run_v2_service.app[0].template[0].containers[0].depends_on[0] == "gateway"
+    error_message = "The agent and the model gateway share one instance, and the agent starts after the gateway."
+  }
+  assert {
+    condition     = !anytrue([for e in google_cloud_run_v2_service.app[0].template[0].containers[0].env : contains(["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS", "LANGFUSE_SECRET_KEY"], e.name)])
+    error_message = "No provider key reaches the agent's container: it holds the gateway's key only."
+  }
+  assert {
+    condition     = one([for e in google_cloud_run_v2_service.app[0].template[0].containers[0].env : e if e.name == "AGENT_GATEWAY_KEY"]).value_source[0].secret_key_ref[0].secret == "__SLUG__-gateway-key"
+    error_message = "The agent's gateway key comes from Secret Manager, never from a value in the plan."
+  }
+  assert {
+    condition     = one([for e in google_cloud_run_v2_service.app[0].template[0].containers[0].env : e.value if e.name == "AGENT_GATEWAY_URL"]) == "http://127.0.0.1:4000"
+    error_message = "The agent reaches the gateway on localhost, in its own instance."
+  }
+  assert {
+    condition     = length(google_project_iam_member.models) == 1 && google_project_iam_member.models[0].role == "roles/aiplatform.user"
+    error_message = "The account may call the models on Agent Platform, by IAM, with no key."
+  }
+  assert {
+    condition     = length(google_secret_manager_secret.keys) == 4
+    error_message = "Four keys are named in Secret Manager (the gateway's key, the trace header, two Langfuse keys), with no value in the plan."
+  }
+  # @end
+  # @if nogateway
+  assert {
+    condition     = length(google_secret_manager_secret.keys) == 0 && length(google_project_iam_member.models) == 0
+    error_message = "A project without the gateway names no keys and calls no model."
+  }
+  # @end
+  # @if job
+  assert {
+    condition     = length(google_cloud_run_v2_job.app) == 1 && length(google_cloud_run_v2_service.app) == 0
+    error_message = "A project that runs to completion is a Cloud Run job, which runs only when someone executes it."
+  }
+  # @end
+}
+# @if service
+
+run "the_first_apply_starts_nothing" {
+  command = plan
+  variables {
+    start_app = false
+  }
+  assert {
+    condition     = length(google_cloud_run_v2_service.app) == 0
+    error_message = "The first apply names the keys and starts nothing, so no revision starts before a person adds the keys."
+  }
+}
+
+run "not_open_to_the_internet" {
+  command = plan
+  variables {
+    ingress = "INGRESS_TRAFFIC_ALL"
+  }
+  expect_failures = [var.ingress]
+}
+# @end
+# @if gateway
+
+run "an_agent_needs_its_identity_provider" {
+  command = plan
+  variables {
+    oidc_issuer = ""
+  }
+  expect_failures = [google_cloud_run_v2_service.app]
+}
+# @end
+
+run "an_image_needs_a_release_tag" {
+  command = plan
+  variables {
+    agent_image = "registry.example.com/__SLUG__"
+  }
+  expect_failures = [var.agent_image]
+}

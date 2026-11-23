@@ -1,0 +1,7 @@
+# OpenTofu's working files and state: the state lives in the client's backend, never in git. The values file holds
+# IDs and addresses for one environment; keep it in the pipeline's settings.
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars

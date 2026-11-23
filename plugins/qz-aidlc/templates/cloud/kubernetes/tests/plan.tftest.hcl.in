@@ -1,0 +1,123 @@
+# Plans this project on Kubernetes with no cluster: both providers are mocked, so nothing is reached or created.
+# `tofu test` runs it here and in CI. The values below are examples, not the client's.
+mock_provider "kubernetes" {}
+mock_provider "helm" {}
+
+variables {
+  agent_image   = "registry.example.com/__SLUG__:1.0.0"
+  gateway_image = "registry.example.com/__SLUG__-gateway:1.0.0"
+  oidc_issuer   = "https://login.example.com/"
+  oidc_audience = "__SLUG__"
+  langfuse_host = "https://langfuse.example.com"
+}
+
+run "plan" {
+  command = plan
+
+  assert {
+    condition     = kubernetes_namespace_v1.app.metadata[0].labels["pod-security.kubernetes.io/enforce"] == "restricted"
+    error_message = "The app's namespace enforces the restricted pod security standard."
+  }
+  assert {
+    condition     = kubernetes_service_account_v1.app.automount_service_account_token == false
+    error_message = "The app gets no Kubernetes API token."
+  }
+  # @if service
+  assert {
+    condition     = length(kubernetes_deployment_v1.app) == 1 && length(kubernetes_cron_job_v1.app) == 0
+    error_message = "An HTTP service runs as a Deployment, not a job."
+  }
+  assert {
+    condition     = kubernetes_deployment_v1.app[0].spec[0].replicas == "1" && kubernetes_deployment_v1.app[0].spec[0].strategy[0].type == "Recreate"
+    error_message = "One replica, replaced rather than doubled: the state database has one writer."
+  }
+  assert {
+    condition     = kubernetes_service_v1.app[0].spec[0].type == "ClusterIP"
+    error_message = "The app is reachable inside the cluster only, until someone puts an ingress in front of it."
+  }
+  assert {
+    condition     = alltrue([for c in kubernetes_deployment_v1.app[0].spec[0].template[0].spec[0].container : c.security_context[0].allow_privilege_escalation == false && c.security_context[0].run_as_non_root == true && contains(c.security_context[0].capabilities[0].drop, "ALL")])
+    error_message = "Every container runs as a user, cannot escalate, and drops every capability."
+  }
+  # @end
+  # @if gateway
+  assert {
+    condition     = length(kubernetes_deployment_v1.app[0].spec[0].template[0].spec[0].container) == 2
+    error_message = "The agent and the model gateway share one pod."
+  }
+  assert {
+    condition     = !anytrue([for e in kubernetes_deployment_v1.app[0].spec[0].template[0].spec[0].container[0].env : contains(["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AWS_SECRET_ACCESS_KEY", "SIE_AUTH_TOKEN", "LANGFUSE_SECRET_KEY"], e.name)])
+    error_message = "No provider key reaches the agent's container: it holds the gateway's key only."
+  }
+  assert {
+    condition     = one([for e in kubernetes_deployment_v1.app[0].spec[0].template[0].spec[0].container[0].env : e if e.name == "AGENT_GATEWAY_KEY"]).value_from[0].secret_key_ref[0].name == "__SLUG__-agent-keys"
+    error_message = "The agent's gateway key comes from a Secret, never a value in the plan."
+  }
+  assert {
+    condition     = one([for e in kubernetes_deployment_v1.app[0].spec[0].template[0].spec[0].container[0].env : e if e.name == "AGENT_GATEWAY_URL"]).value == "http://127.0.0.1:4000"
+    error_message = "The agent reaches the gateway on localhost, in its own pod."
+  }
+  assert {
+    condition     = one([for e in kubernetes_deployment_v1.app[0].spec[0].template[0].spec[0].container[0].env : e if e.name == "AGENT_IDENTITY"]).value == "oidc"
+    error_message = "The agent checks each caller's OIDC token; demo identities are off."
+  }
+  assert {
+    condition     = kubernetes_manifest.gateway_keys[0].manifest.kind == "ExternalSecret" && kubernetes_manifest.gateway_keys[0].manifest.spec.secretStoreRef.kind == "ClusterSecretStore"
+    error_message = "The provider keys come from the cloud's secret store through External Secrets Operator."
+  }
+  assert {
+    condition     = length(helm_release.sie) == 1 && yamldecode(helm_release.sie[0].values[0]).telemetry.enabled == false
+    error_message = "SIE's telemetry is off."
+  }
+  assert {
+    condition     = yamldecode(helm_release.sie[0].values[0]).gateway.auth.mode == "token" && yamldecode(helm_release.sie[0].values[0]).gateway.auth.tokenSecretName == "sie-gateway-token"
+    error_message = "SIE's gateway asks for a token, and the token comes from the cloud's secret store."
+  }
+  assert {
+    condition     = yamldecode(helm_release.sie[0].values[0]).workers.auth.enabled == true && yamldecode(helm_release.sie[0].values[0]).workers.networkPolicy.enabled == true
+    error_message = "SIE's workers take requests from its gateway only."
+  }
+  # @end
+  # @if nogateway
+  assert {
+    condition     = length(kubernetes_manifest.agent_keys) == 0 && length(helm_release.sie) == 0
+    error_message = "A project without the gateway needs no keys and no SIE."
+  }
+  # @end
+  # @if job
+  assert {
+    condition     = length(kubernetes_cron_job_v1.app) == 1 && length(kubernetes_deployment_v1.app) == 0
+    error_message = "A project that runs to completion is a job, not a Deployment."
+  }
+  assert {
+    condition     = kubernetes_cron_job_v1.app[0].spec[0].suspend == true
+    error_message = "The job starts suspended: it runs only when someone starts it."
+  }
+  # @end
+}
+# @if gateway
+
+run "telemetry_stays_off" {
+  command = plan
+  variables {
+    sie_extra_values = ["telemetry:\n  enabled: true\n"]
+  }
+  expect_failures = [var.sie_extra_values]
+}
+
+run "an_agent_needs_its_identity_provider" {
+  command = plan
+  variables {
+    oidc_issuer = ""
+  }
+  expect_failures = [kubernetes_deployment_v1.app]
+}
+# @end
+
+run "an_image_needs_a_release_tag" {
+  command = plan
+  variables {
+    agent_image = "registry.example.com/__SLUG__"
+  }
+  expect_failures = [var.agent_image]
+}

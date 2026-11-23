@@ -1,0 +1,18 @@
+# SIE's chart, set to its secure combination. Before chart 0.13.0 every line below is unsafe at its default
+# (telemetry on, no token on the gateway or the workers, no network policy), so each one is set here and
+# `qz cloud lint` fails CI if any of them goes back to its default. Source: the chart's README, "Securing the cluster".
+telemetry:
+  enabled: false                 # the workers send no usage telemetry
+gateway:
+  auth:
+    mode: token                  # every request to SIE's gateway carries a token
+    tokenSecretName: sie-gateway-token   # copied from the cloud's secret store by External Secrets Operator (sie.tf)
+    tokenSecretKey: SIE_AUTH_TOKEN
+    generateToken: false         # the token is the client's, kept in their secret store, not one the chart makes up
+workers:
+  auth:
+    enabled: true                # the workers take requests from the gateway only, with a token the chart generates
+  networkPolicy:
+    enabled: true
+hfToken:
+  create: false                  # a Hugging Face token, when a gated model needs one, comes from the secret store too

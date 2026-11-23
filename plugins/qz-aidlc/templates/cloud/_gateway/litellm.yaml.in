@@ -1,0 +1,27 @@
+# The model gateway (LiteLLM proxy, MIT) for __NAME__ on __CLOUD__. `qz cloud add` wrote it from the starter's own
+# model names, so the agent asks for the same names here as on a laptop; only where each one goes has changed.
+#
+# It is built into the gateway image (Dockerfile here): change a model here, build the image, roll it out.
+# Credentials come from the gateway container's own environment (os.environ/...) or from the cloud's role for it,
+# never from this file and never from the agent.
+model_list:
+__MODEL_LIST__
+
+router_settings:
+  # When a model fails, is unreachable or has spent its budget, the call goes to the next name on its list.
+  fallbacks: [{"agent-model": ["agent-model-fallback"]}, {"agent-model-small": ["agent-model-fallback"]}]
+  num_retries: 2
+  timeout: 60
+
+litellm_settings:
+  # One record per model call (model, tokens, cost, latency) in Langfuse, inside the agent's run trace. The gateway's
+  # container holds LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY and LANGFUSE_HOST. Using the cloud's own trace service
+  # instead: remove this line and point the agent's OTEL_EXPORTER_OTLP_ENDPOINT at a collector (README, "Traces").
+  callbacks: ["langfuse_otel"]
+  # No prompt or answer text in any log or trace. Turn it off only by a team decision recorded in docs/decisions/.
+  turn_off_message_logging: true
+  redact_user_api_key_info: true
+
+general_settings:
+  # The gateway's own key, from the cloud's secret store. The agent sends it; nothing else does.
+  master_key: os.environ/LITELLM_MASTER_KEY

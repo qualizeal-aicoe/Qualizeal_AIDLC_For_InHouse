@@ -219,7 +219,7 @@ func Answer(ctx context.Context, thread string, approve bool, approver string) (
 		case !known:
 			return Result{}, fmt.Errorf("run %s waits on %s, which is not on this agent's tool list", thread, c.Name)
 		case approve:
-			calls[i].Status, calls[i].Result = "ok", tool.Run(ctx, c.Args)
+			calls[i].Status, calls[i].Result = "ok", runTool(ctx, tool, c.Args)
 		default:
 			calls[i].Status = "denied"
 		}
@@ -287,6 +287,12 @@ func record(who Who, message string, res Result, runErr error, id string) error 
 func run(ctx context.Context, model Model, message string, approve Approver, role string) (Result, error) {
 	ctx, span := otel.Tracer("__SLUG__").Start(ctx, "agent.run")
 	defer span.End()
+	if t := ThreadOf(ctx); t != "" {
+		span.SetAttributes(attribute.String("langfuse.session.id", t)) // a thread's runs and answers group as one session
+	}
+	if ContentInTraces() {
+		span.SetAttributes(attribute.String("langfuse.observation.input", message))
+	}
 	tools := ToolsFor(role, Tools())
 	byName := map[string]Tool{}
 	for _, t := range tools {
@@ -322,12 +328,12 @@ func run(ctx context.Context, model Model, message string, approve Approver, rol
 				span.SetAttributes(attribute.String("agent.gate", "pending"))
 				return res, nil
 			case approved:
-				call.Status, out = "ok", tool.Run(ctx, call.Args)
+				call.Status, out = "ok", runTool(ctx, tool, call.Args)
 			default:
 				call.Status, out = "denied", map[string]any{"ok": false, "error": "A person declined this action. Do not retry it."}
 			}
 		default:
-			call.Status, out = "ok", tool.Run(ctx, call.Args)
+			call.Status, out = "ok", runTool(ctx, tool, call.Args)
 		}
 		if call.Status == "ok" {
 			call.Result = out // what the tool returned: the grounded check and the effects read it
@@ -343,6 +349,9 @@ func run(ctx context.Context, model Model, message string, approve Approver, rol
 		names[i] = c.Name + ":" + c.Status
 	}
 	span.SetAttributes(attribute.String("agent.tool_calls", strings.Join(names, ",")), attribute.Int64("gen_ai.usage.input_tokens", res.Usage.InputTokens), attribute.Int64("gen_ai.usage.output_tokens", res.Usage.OutputTokens))
+	if ContentInTraces() {
+		span.SetAttributes(attribute.String("langfuse.observation.output", res.Output))
+	}
 	return res, nil
 }
 

@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars (git ignores it) and fill in. No key goes here: keys live in Secrets Manager.
+region        = "us-east-1"
+vpc_id        = "vpc-0123456789abcdef0"
+subnet_ids    = ["subnet-0123456789abcdef0", "subnet-0fedcba9876543210"]   # private, reaching Bedrock
+allowed_cidrs = ["10.0.0.0/16"]                                            # your load balancer or network
+agent_image   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:1.0.0"
+gateway_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app-gateway:1.0.0"   # an agent only
+oidc_issuer   = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example"   # an agent only
+oidc_audience = "my-app"
+langfuse_host = "https://langfuse.example.com"
+start_app     = false   # true once each key has its value in Secrets Manager
+# target_group_arn = "arn:aws:elasticloadbalancing:..."
+# kms_key_arn      = "arn:aws:kms:..."

@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars (git ignores it) and fill in. No key goes here: keys live in Secret Manager.
+project_id      = "my-project"
+region          = "us-central1"
+vertex_location = "global"
+agent_image     = "us-docker.pkg.dev/my-project/apps/my-app:1.0.0"
+gateway_image   = "us-docker.pkg.dev/my-project/apps/my-app-gateway:1.0.0"   # an agent only
+oidc_issuer     = "https://login.example.com/"                              # an agent only
+oidc_audience   = "my-app"
+langfuse_host   = "https://langfuse.example.com"
+start_app       = false   # true once each secret has a version
+# kms_key = "projects/my-project/locations/us/keyRings/ring/cryptoKeys/key"

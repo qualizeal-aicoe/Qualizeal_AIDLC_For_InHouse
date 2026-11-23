@@ -18,11 +18,15 @@ BLOCKED_TERMS: list[str] = []   # words or phrases a reply must never contain (g
 ROLES = {"support": ["get_order", "issue_refund"], "viewer": ["get_order"]}
 ROLE = os.environ.get("AGENT_ROLE", "support")
 # Gates 3 and 6, residency and network: the only hosts the agent may call. Each is in .qz/golive.json with its region.
-ALLOWED_HOSTS = ["api.anthropic.com"]
+ALLOWED_HOSTS = ["api.anthropic.com", "localhost", "127.0.0.1"]        # localhost: the model gateway beside the agent (AGENT_GATEWAY_URL)
 
 
 def model_url() -> str:
-    """Where Claude Code, under the SDK, sends prompts: the Anthropic API unless a cloud provider is chosen."""
+    """Where Claude Code, under the SDK, sends prompts: the model gateway when it is on, else the Anthropic API unless a
+    cloud provider is chosen."""
+    from . import gateway
+    if gateway.on():
+        return gateway.url()
     if os.environ.get("CLAUDE_CODE_USE_BEDROCK"):
         return f"https://bedrock-runtime.{os.environ.get('AWS_REGION', 'us-east-1')}.amazonaws.com"
     if os.environ.get("CLAUDE_CODE_USE_VERTEX"):
@@ -55,7 +59,11 @@ HARD = re.compile(r"\b(refund|cancel|charge|money|pay|complain|dispute|wrong|bro
 
 
 def pick_model(message: str) -> str:
-    """The model for this turn: the small one for an easy question, the main one otherwise."""
+    """The model for this turn: the small one for an easy question, the main one otherwise. With the gateway on, these
+    are the gateway's model names (AGENT_GATEWAY_MODEL and AGENT_GATEWAY_MODEL_SMALL), and the gateway picks the provider."""
+    from . import gateway
+    if gateway.on():
+        return gateway.model(small=not HARD.search(message or ""))
     return SMALL_MODEL if SMALL_MODEL and not HARD.search(message or "") else MODEL
 
 

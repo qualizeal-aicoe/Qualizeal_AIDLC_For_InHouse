@@ -1,7 +1,7 @@
 {
   "title": "Vectorless RAG knowledge assistant (Python)",
   "summary": "Cited answers over a document set with no vector database: a heading tree and SQLite FTS5 BM25, refusals, access control in SQL, guardrails against planted instructions, and a gate on 40 golden questions. Web pages come in through an allow-listed crawler. A model is an optional switch.",
-  "verified": "RUN: the 74 tests (the crawler's against a local web server) and the 40 golden questions ran here on Python 3.13 and 3.11 with the offline stub model: BM25 alone 35 of 40, with synonyms 39 of 40, tree navigation with synonyms 40 of 40, 0 safety violations; the image built and its gate passed 40 of 40 inside the container with no network. NOT RUN: the anthropic provider against the live API (no route to it from here); its request is tested with a fake transport.",
+  "verified": "RUN: the 74 tests (the crawler's against a local web server) and the 40 golden questions ran here on Python 3.13 and 3.11 with the offline stub model: BM25 alone 35 of 40, with synonyms 39 of 40, tree navigation with synonyms 40 of 40, 0 safety violations; the image built and its gate passed 40 of 40 inside the container with no network. NOT RUN: the anthropic provider against the live API (no route to it from here); its request is tested with a fake transport. 1.4.0: The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied.",
   "stack_line": "A vectorless retrieval-augmented assistant in Python 3.11+ (standard library; pypdf for PDF).",
   "policy": "vrag.toml",
   "agent_dir": "vrag/",

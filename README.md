@@ -1,4 +1,4 @@
-# QualiZeal AI-DLC Studio · 1.3.0
+# QualiZeal AI-DLC Studio · 1.4.0
 
 How the QualiZeal AI Center of Excellence (AI CoE) builds with Claude Code, in one install. An AI full-stack developer
 or a generative AI (GenAI) engineer gets tested starters for the stacks our projects use, lanes that carry a piece of
@@ -55,23 +55,24 @@ that runs on the first day and already has the parts teams tend to skip: a perso
 limits sit in one policy file, every step is traced, an offline stub model lets the tests run with no key, a gold set
 of evaluation cases gates each change, and CI and a runbook come with it. Every agent starter also keeps a run that
 waits for a person across restarts, makes each change only once, and serves an HTTP interface where an approver answers
-what waits; who asks comes from the client's identity provider.
+what waits; who asks comes from the client's identity provider. One setting sends every model call through a model
+gateway (LiteLLM) that alone holds the provider keys, with each call's tokens and cost traced in Langfuse.
 
 | Starter | What it is | Checked in CI on every push |
 |---|---|---|
-| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 32 tests and 16 gold cases at three levels, with interrupt and resume from its SQLite saver, a restart between the approval request and the answer, and the HTTP interface; Windows and Linux |
-| `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 34 tests and 16 gold cases at three levels, with an approval, a declined refund, a resume from saved state in another process, and the HTTP interface; Windows and Linux |
-| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 31 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, and the HTTP interface; Windows and Linux |
-| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 18 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, and the HTTP interface; Linux |
+| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 39 tests and 16 gold cases at three levels, with interrupt and resume from its SQLite saver, a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
+| `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 41 tests and 16 gold cases at three levels, with an approval, a declined refund, a resume from saved state in another process, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
+| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 38 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
+| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 25 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
 | `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 8 tests and 9 contract cases through a real MCP client; Windows and Linux |
 | `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler; a re-index embeds only the sections that changed | 85 tests; 41 of 43 golden questions with the real models, against 38 for keyword search alone; no safety violations; Windows and Linux |
 | `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 74 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
 | `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 18 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
 | `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 54 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
 | `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 31 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
-| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 32 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, and the HTTP interface; Linux |
-| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 22 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, and the HTTP interface on ASP.NET Core; Linux |
-| `go-anthropic` | Go on the Anthropic API | vet, 22 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, and the HTTP interface; Linux |
+| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 39 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
+| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 28 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface on ASP.NET Core, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
+| `go-anthropic` | Go on the Anthropic API | vet, 26 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
 
 The Python starters use uv with a lock file, so a laptop gets the versions CI tested (the Strands starter keeps a
 requirements file). Only the TypeScript starter needs
@@ -83,6 +84,29 @@ their gate) with no network and no key, runs as a non-root user, has a health ch
 run ledgers (its `.dockerignore` keeps them out). Each project's `docs/release.md` is the release recipe: one image per
 release tag, shadow, a small share of traffic, then everyone, and a rollback that points back at the previous tag. The
 Studio's CI builds all 13 images on a release branch, on a tag, or when asked, and runs each check inside the image.
+
+## Your client's cloud
+
+`qz cloud show azure` (or `aws`, `gcp`, `kubernetes`) gives the cloud's own service for each layer (models, the
+gateway, search, document parsing, identity, secrets, tracing and containers), the open option beside it, and where
+each fact comes from and the day it was checked. `qz cloud check` names any fact older than 90 days.
+
+`qz cloud add <cloud>` in a starter project writes `cloud/<cloud>/`: OpenTofu files (Terraform-compatible) that put
+the project on that cloud as an HTTP service or a job, a README of what a person does before the first apply, and
+plan tests that need no cloud account (`tofu test`).
+
+| Cloud | Where it runs | Claude, and the open-weight model, through | Keys in |
+|---|---|---|---|
+| AWS | ECS on Fargate, no public IP | Bedrock: Claude through a cross-region inference profile, and gpt-oss-120b; the task's role may call only those | Secrets Manager |
+| Azure | Container Apps, internal ingress | Microsoft Foundry: Claude (its deployment accepts Anthropic's terms through the Azure Marketplace) and gpt-oss-120b | Key Vault |
+| Google Cloud | Cloud Run, internal ingress | Vertex AI: Claude and gpt-oss-120b, as the service's own service account, with no key | Secret Manager |
+| Kubernetes | A Deployment, or a suspended CronJob, in a restricted namespace with a network policy | The Claude API, and an open-weight model on SIE from its Helm chart, telemetry off and tokens on | The cloud's secret store, through External Secrets Operator |
+
+In an agent starter the model gateway runs beside the agent, and the agent's own model names map to the cloud's
+models, so nothing in the agent changes. The templates name every key and never hold its value: the first apply
+creates the secret-store entries empty and starts nothing, a person sets the values, then applies again. Nobody at
+QualiZeal applies them; CI lints, policy-scans, validates and plans all four for all 13 starters with no cloud
+account. Each cloud's README ends with what the template does not do.
 
 ## The QualiZeal standards
 
@@ -178,6 +202,10 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
   from the proxy's own addresses. Demo users are refused in production, approving needs an approver group, and nobody
   approves their own request. A waiting run lives in the state database, and each change a tool makes carries a key
   per call, so a retry after a crash never refunds, sends or writes twice.
+- Behind the model gateway the agent holds only the gateway's key, and refuses to start while a provider key is in its
+  environment; the gateway adds the provider's key, from its own environment or the cloud's secret store. The cloud
+  templates name keys and never hold a value, and `qz cloud lint` fails any resource that would put one in a plan or
+  state.
 - Content from tickets, pages, files and tools is data. Text that addresses the model is flagged: documents that carry
   it are quarantined from the Knowledge Fabric, and both RAG kits quarantine such sentences when they read a document.
 - The text-to-SQL starter only reads, and only what the asker's role may read: the SQL is checked as a parsed tree,
@@ -289,7 +317,7 @@ deletes a branch once its head is the head of a merged pull request, and keeps a
 | [docs/QUICK-GUIDE.md](docs/QUICK-GUIDE.md) | Every command, the QualiZeal names, and how to spend fewer tokens |
 | [docs/DEMO-VECTORLESS-RAG.md](docs/DEMO-VECTORLESS-RAG.md) | A longer session that builds the vectorless kit live, one story at a time |
 | [docs/GITHUB-AGENT.md](docs/GITHUB-AGENT.md) | The GitHub agent, set up from the website |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | What 1.1 adds and why: all-in-one solutions with CI/CD, your client's cloud (Azure, AWS, Google Cloud or Kubernetes, with open models on SIE), small models for narrow decisions, document parsing you can measure, durable runs, changes mid-run, LiteLLM and Langfuse, CrewAI with A2A, n8n and Dify, CopilotKit, Cursor and Codex |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What comes next and why: all-in-one solutions with CI/CD, small models for narrow decisions, document parsing you can measure, changes mid-run, team decisions across branches, CrewAI with A2A, n8n and Dify, CopilotKit, LlamaIndex, Agno and DSPy, Cursor and Codex, and the Studio measured against plain Claude Code |
 | [docs/HISTORY.md](docs/HISTORY.md) | Releases 0.4.0 to 0.10.0, as described at the time |
 | [LAYERS.md](LAYERS.md) | What is AWS AI-DLC and what is ours |
 | [CREDITS.md](CREDITS.md) | The projects that shaped the Studio, and their licences |

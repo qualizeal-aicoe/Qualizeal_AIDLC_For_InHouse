@@ -5,6 +5,7 @@ import json
 from claude_agent_sdk import create_sdk_mcp_server, tool
 
 from . import durable, policy
+from .telemetry import tool_span
 
 _ORDERS = {
     "ORD-1001": {"status": "shipped", "total": 129.00, "carrier": "DHL", "note": ""},
@@ -26,14 +27,16 @@ def _out(body: dict, name: str) -> dict:
 
 @tool("get_order", "Look up one order by its number (for example ORD-1001). Read-only.", {"order_id": str})
 async def get_order(args: dict) -> dict:
-    oid = str(args["order_id"]).strip().upper()
-    o = _ORDERS.get(oid)
-    return _out({"found": False, "order_id": oid} if o is None else {"found": True, "order_id": oid, **o}, "get_order")
+    with tool_span("get_order"):
+        oid = str(args["order_id"]).strip().upper()
+        o = _ORDERS.get(oid)
+        return _out({"found": False, "order_id": oid} if o is None else {"found": True, "order_id": oid, **o}, "get_order")
 
 
 @tool("issue_refund", "Refund an order. Moves money and cannot be undone: it runs only after a person approves.", {"order_id": str, "amount": float, "reason": str})
 async def issue_refund(args: dict) -> dict:
-    return _out(_refund(str(args["order_id"]), float(args["amount"]), str(args.get("reason", ""))), "issue_refund")
+    with tool_span("issue_refund"):
+        return _out(_refund(str(args["order_id"]), float(args["amount"]), str(args.get("reason", ""))), "issue_refund")
 
 
 

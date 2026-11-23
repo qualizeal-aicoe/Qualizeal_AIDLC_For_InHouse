@@ -21,3 +21,8 @@ def tracer():
         trace.set_tracer_provider(provider)
         _ready = True
     return trace.get_tracer("__NAME__")
+
+
+def tool_span(name: str):
+    """One span per tool call, named for the tool. Its arguments and result stay out of the trace: they can hold people's data."""
+    return tracer().start_as_current_span(f"tool {name}", attributes={"gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": name})

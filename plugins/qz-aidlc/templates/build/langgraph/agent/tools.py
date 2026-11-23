@@ -2,6 +2,7 @@
 from langchain_core.tools import tool
 
 from . import durable
+from .telemetry import tool_span
 
 _ORDERS = {
     "ORD-1001": {"status": "shipped", "total": 129.00, "carrier": "DHL", "note": ""},
@@ -13,14 +14,16 @@ _ORDERS = {
 @tool
 def get_order(order_id: str) -> dict:
     """Look up one order by its number (for example ORD-1001). Read-only."""
-    o = _ORDERS.get(order_id.strip().upper())
-    return {"found": False, "order_id": order_id} if o is None else {"found": True, "order_id": order_id.strip().upper(), **o}
+    with tool_span("get_order"):
+        o = _ORDERS.get(order_id.strip().upper())
+        return {"found": False, "order_id": order_id} if o is None else {"found": True, "order_id": order_id.strip().upper(), **o}
 
 
 @tool
 def issue_refund(order_id: str, amount: float, reason: str) -> dict:
     """Refund an order. Moves money and cannot be undone: it runs only after a person approves."""
-    return _refund(order_id, amount, reason)
+    with tool_span("issue_refund"):
+        return _refund(order_id, amount, reason)
 
 
 

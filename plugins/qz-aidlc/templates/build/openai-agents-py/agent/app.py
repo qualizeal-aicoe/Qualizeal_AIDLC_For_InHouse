@@ -11,7 +11,7 @@ from agents.exceptions import MaxTurnsExceeded
 from agents.items import ToolCallItem, ToolCallOutputItem
 from agents.run_state import RunState
 
-from . import guardrails, policy
+from . import durable, gateway, guardrails, policy
 from .telemetry import tracer
 from .tools import TOOLS
 
@@ -22,6 +22,12 @@ def _model(model_id: str | None = None):
     if os.environ.get("AGENT_MODE", "stub") == "stub":
         from .stub import StubModel
         return StubModel()
+    if gateway.on():                                      # every call through the model gateway (gateway/litellm.yaml)
+        from agents import OpenAIChatCompletionsModel
+        from openai import AsyncOpenAI
+        guardrails.check_endpoint(gateway.url())
+        return OpenAIChatCompletionsModel(model=model_id or gateway.model(), openai_client=AsyncOpenAI(
+            base_url=gateway.url() + "/v1", api_key=gateway.key(), http_client=gateway.httpx_client(True, policy.REQUEST_TIMEOUT_S)))
     if policy.MODEL:                                      # OpenAI, chosen by setting AGENT_MODEL; OPENAI_API_KEY from the environment
         guardrails.check_endpoint(os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com")      # go-live gates 3 and 6
         return model_id or policy.MODEL                   # OpenAI caches repeated prompt prefixes of 1,024 tokens or more itself
@@ -43,6 +49,10 @@ async def arun(message: str, approve: bool | None = None, agent: Agent | None = 
     result["state"] (save it, then call resume() when the person answers)."""
     agent = agent or build(policy.pick_model(message))
     with tracer().start_as_current_span("agent.run") as span:
+        if durable.THREAD.get():
+            span.set_attribute("langfuse.session.id", durable.THREAD.get())     # a thread's runs and answers group as one session
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.input", message)
         try:
             result = await Runner.run(agent, message, max_turns=policy.MAX_TURNS)
             gate = "none"
@@ -63,6 +73,8 @@ async def arun(message: str, approve: bool | None = None, agent: Agent | None = 
         span.set_attribute("agent.tool_calls", json.dumps([f"{c['name']}:{c['status']}" for c in out["tool_calls"]]))
         span.set_attribute("gen_ai.usage.input_tokens", out["usage"]["input_tokens"])
         span.set_attribute("gen_ai.usage.output_tokens", out["usage"]["output_tokens"])
+        if gateway.content_in_traces():
+            span.set_attribute("langfuse.observation.output", out["output"])
         return out
 
 
