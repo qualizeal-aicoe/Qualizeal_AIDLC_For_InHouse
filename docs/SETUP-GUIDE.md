@@ -225,12 +225,13 @@ When it blocks something, the message names the rule (for example `QZ-SH-GIT-PUS
 
 ## Not proven yet
 
-Run on 23 November 2026 for 1.0.2, as for 1.0.1 that morning: the test suite, the guard's red-team, the doctor and
-the bootstrap (check only) in continuous integration (CI) on Windows and Linux; every starter's tests and gold set;
-the marketplace added from GitHub and both plugins installed by Claude Code; the handbook demo end to end. The
-README's "What was run" has the counts.
+Run on 23 November 2026 for 1.2.0, as for 1.1.0 and 1.0.2 earlier that day: the test suite, the guard's red-team,
+the Studio's own evals and the harness bench, the doctor and the bootstrap (check only) in continuous integration (CI)
+on Windows, Linux and macOS; every starter's tests and gold set, in its container too; the testing lane against
+recorded trackers and through the credential proxy; the marketplace added from GitHub and both plugins installed by
+Claude Code. The README's "What was run" has the counts.
 
-Not yet: an attendee's own laptop (the first bootstrap on a QualiZeal machine is the real test); macOS in CI (it runs
-on a release tag, or by hand); a live model behind any starter or kit; an interactive Claude Code session with the
-hooks; the GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this
+Not yet: an attendee's own laptop (the first bootstrap on a QualiZeal machine is the real test); a live Azure DevOps
+or Jira project for the testing lane; a live model behind any starter or kit; an interactive Claude Code session with
+the hooks; the GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this
 repository. Do one dry run with the AI CoE before the wider pilot.
