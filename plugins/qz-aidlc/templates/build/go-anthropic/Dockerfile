@@ -13,7 +13,9 @@ RUN go vet ./... && go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="
 # The gold set runs here, in its own stage, through the project's own adapter (go run ./cmd/evaladapter):
 # `docker build --target gold .` fails when a case fails. python3 runs the vendored QualiZeal kit.
 FROM build AS gold
-RUN command -v python3 >/dev/null || (apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*)
+ARG DEBIAN_FRONTEND=noninteractive
+RUN command -v python3 >/dev/null || (apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+    && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*)
 ENV AGENT_MODE=stub
 RUN python3 .claude/qz/scripts/qz.py eval run --label container
 

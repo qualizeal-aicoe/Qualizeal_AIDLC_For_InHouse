@@ -9,6 +9,7 @@ Usage: python container_check.py <starter name> <project folder>     (the image 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -17,9 +18,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def sh(cmd: str | list[str], cwd: Path, timeout: int = 900) -> subprocess.CompletedProcess:
+def sh(cmd: str | list[str], cwd: Path, timeout: int = 900, stream: bool = False) -> subprocess.CompletedProcess:
     shell = isinstance(cmd, str)
     print(f"$ {cmd if shell else ' '.join(cmd)}", flush=True)
+    if stream:                    # a long build writes straight to the job log, so a stall shows the step it stopped on
+        try:
+            return subprocess.run(cmd, cwd=cwd, shell=shell, text=True, timeout=timeout,
+                                  env={**os.environ, "BUILDKIT_PROGRESS": "plain"})
+        except subprocess.TimeoutExpired:
+            print(f"FAIL: not finished after {timeout // 60} minutes; the last lines above show the step it stopped on", flush=True)
+            return subprocess.CompletedProcess(cmd, 124)
     r = subprocess.run(cmd, cwd=cwd, shell=shell, text=True, capture_output=True, timeout=timeout)
     tail = (r.stdout + r.stderr).strip().splitlines()[-12:]
     print("\n".join("  " + line for line in tail), flush=True)
@@ -33,7 +41,7 @@ def main() -> int:
     if "--network none" not in check:
         print(f"FAIL: the container check must run with no network: {check}")
         return 1
-    if sh(check, proj).returncode != 0:
+    if sh(check, proj, stream=True).returncode != 0:
         print("FAIL: the container check")
         return 1
     cfg = json.loads(subprocess.run(["docker", "image", "inspect", "app:ci", "--format", "{{json .Config}}"],

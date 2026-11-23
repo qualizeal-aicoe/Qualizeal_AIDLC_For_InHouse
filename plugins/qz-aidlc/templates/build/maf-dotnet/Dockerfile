@@ -11,7 +11,10 @@ RUN dotnet test tests/Agent.Tests -c Release && dotnet publish src/Agent -c Rele
 # The gold set runs here, in its own stage, against the published build: `docker build --target gold .` fails
 # when a case fails. The cases run the same Agent.dll the final image ships, from inside the project (out/).
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS gold
-RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+    && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends python3 \
+    && rm -rf /var/lib/apt/lists/*
 ENV AGENT_MODE=stub
 WORKDIR /src
 COPY . .
