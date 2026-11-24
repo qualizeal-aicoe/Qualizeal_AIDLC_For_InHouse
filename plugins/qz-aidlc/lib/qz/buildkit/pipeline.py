@@ -231,6 +231,20 @@ def github(s: dict) -> dict[str, str]:
 
 # --- Azure Pipelines ---------------------------------------------------------------------------------------------
 
+def _strings(x):
+    """Azure Pipelines' own schema types its scalars as strings (any of them may be a template expression), and Azure
+    reads "0" and "false" as it reads 0 and false: every number and true or false is written as a string."""
+    if isinstance(x, dict):
+        return {k: _strings(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_strings(v) for v in x]
+    if isinstance(x, bool):
+        return "true" if x else "false"
+    if isinstance(x, (int, float)):
+        return str(x)
+    return x
+
+
 def azure(s: dict) -> dict[str, str]:
     v = s["versions"]
     setup = [{"checkout": "self", "fetchDepth": 0},
@@ -275,7 +289,7 @@ def azure(s: dict) -> dict[str, str]:
                                                              "env": {"DEPLOY_COMMAND": "$(DEPLOY_COMMAND)"}}]}}}}]})
         prev = n
     doc = {"trigger": {"branches": {"include": ["main", "master"]}}, "pr": {"branches": {"include": ["*"]}}, "stages": stages}
-    return {"azure-pipelines.yml": HEADER + dump(doc) + "\n"}
+    return {"azure-pipelines.yml": HEADER + dump(_strings(doc)) + "\n"}
 
 
 # --- GitLab CI ---------------------------------------------------------------------------------------------------
