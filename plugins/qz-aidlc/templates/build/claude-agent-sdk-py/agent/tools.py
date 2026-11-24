@@ -1,4 +1,6 @@
-"""Tools, served to the agent through an in-process MCP server. Sample data stands in for your order system."""
+"""Tools, served to the agent through an in-process MCP server. Sample data stands in for your order system.
+search_knowledge asks the knowledge service (agent/knowledge.py) and is on only where KNOWLEDGE_URL is set."""
+import asyncio
 import contextvars
 import json
 
@@ -39,6 +41,13 @@ async def issue_refund(args: dict) -> dict:
         return _out(_refund(str(args["order_id"]), float(args["amount"]), str(args.get("reason", ""))), "issue_refund")
 
 
+@tool("search_knowledge", "Look up the company's own documents (policies, procedures, product facts) and get an answer that cites them, "
+      "or a plain \"the documents do not say\". Use it for how things are done here, not for an order. Read-only.", {"question": str})
+async def search_knowledge(args: dict) -> dict:
+    with tool_span("search_knowledge"):
+        from . import guardrails, knowledge
+        found = await asyncio.to_thread(knowledge.ask, str(args.get("question", "")), guardrails.actor(), guardrails.role())
+        return _out(found, "search_knowledge")
 
 
 def _payments(order_id: str, amount: float, reason: str, key: str) -> dict:
@@ -75,5 +84,5 @@ def _refund(order_id: str, amount: float, reason: str) -> dict:
     return durable.once("issue_refund", {"order_id": oid, "amount": amount, "reason": reason}, lambda key: _payments(oid, amount, reason, key))
 
 
-TOOLS = {"get_order": get_order, "issue_refund": issue_refund}
+TOOLS = {"get_order": get_order, "issue_refund": issue_refund, "search_knowledge": search_knowledge}
 SERVER = create_sdk_mcp_server(name=policy.SERVER, version="1.0.0", tools=list(TOOLS.values()))

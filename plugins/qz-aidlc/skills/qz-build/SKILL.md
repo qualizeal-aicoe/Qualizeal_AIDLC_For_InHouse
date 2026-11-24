@@ -1,6 +1,6 @@
 ---
 name: qz-build
-description: Start an agent project on Claude Agent SDK, LangGraph, AWS Strands, Microsoft Agent Framework or Go
+description: Start an agent project on Claude Agent SDK, LangGraph, AWS Strands, Microsoft Agent Framework or Go, or a whole solution with its documents and pipeline
 argument-hint: "[details]"
 disable-model-invocation: true
 ---

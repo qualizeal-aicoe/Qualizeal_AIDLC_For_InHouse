@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "knowledge": {
+      "command": "uv",
+      "args": ["run", "--directory", "knowledge", "-m", "arag", "mcp"]
+    }
+  }
+}

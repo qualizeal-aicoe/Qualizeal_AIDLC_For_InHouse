@@ -1,7 +1,7 @@
 {
   "title": "Go agent on the Anthropic API",
   "summary": "A hand-written tool loop on anthropic-sdk-go behind a small Model interface, an approval gate before side-effecting tools, a turn limit, and OpenTelemetry (the SDK emits a span per request).",
-  "verified": "RUN: go vet and go test passed here and the gold set ran against the offline stub with Go 1.26 and anthropic-sdk-go 1.84.0. The live Messages API path compiled against the SDK; no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (modernc.org/sqlite, pure Go) and answered from another process, the refund made once after a crash, and the HTTP interface with OIDC token checks, all in its tests and gold set. 1.4.0: every model call through the LiteLLM gateway with AGENT_GATEWAY=litellm, its wiring tested here against a stand-in provider, and the gold set run in the Studio's CI through the real LiteLLM 1.110.0 proxy against stand-ins, with the keys and the traces checked. The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied.",
+  "verified": "RUN: go vet and go test passed here and the gold set ran against the offline stub with Go 1.26 and anthropic-sdk-go 1.84.0. The live Messages API path compiled against the SDK; no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (modernc.org/sqlite, pure Go) and answered from another process, the refund made once after a crash, and the HTTP interface with OIDC token checks, all in its tests and gold set. 1.4.0: every model call through the LiteLLM gateway with AGENT_GATEWAY=litellm, its wiring tested here against a stand-in provider, and the gold set run in the Studio's CI through the real LiteLLM 1.110.0 proxy against stand-ins, with the keys and the traces checked. The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied. 1.5.0: search_knowledge against a stand-in knowledge service in its tests (8 of them); `qz build solution` composed it with the hybrid kit as its knowledge service, and the solution's generated GitHub check job ran here step by step: the gold set, the knowledge gate, both together through the agent's adapter, and the 8 acceptance cases over HTTP, 8 of 8.",
   "stack_line": "A Go agent on the Anthropic API (anthropic-sdk-go 1.84). There is no official Claude Agent SDK for Go, so the loop is explicit.",
   "policy": "internal/agent/policy.go",
   "agent_dir": "internal/agent/",
@@ -62,9 +62,7 @@
       "internal/agent/server.go#NewServer",
       "internal/agent/durable.go"
     ],
-    "knowledge": {
-      "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
-    },
+    "knowledge": "internal/agent/knowledge.go",
     "tracing": "internal/agent/telemetry.go",
     "tests": [
       "internal/agent/agent_test.go",

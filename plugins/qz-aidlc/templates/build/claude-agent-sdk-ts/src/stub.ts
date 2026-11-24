@@ -1,22 +1,33 @@
 /** A scripted stand-in for the model, for offline runs and CI. It follows fixed rules and calls the same tools
  *  through the same permission callback, so it proves the wiring, not the quality of a model's answers. */
 import type { CanUseTool } from "@anthropic-ai/claude-agent-sdk";
+import { toolsFor } from "./guardrails.ts";
+import { reply } from "./knowledge.ts";
 import { policy } from "./policy.ts";
 import { handlers } from "./tools.ts";
 import type { ToolCall } from "./agent.ts";
 
 type Step = { say: string } | { call: string; args: Record<string, unknown> };
 
+const ORDER = /\bORD-\d+\b/i;
+// A question about how things are done here, for the knowledge service when there is one (KNOWLEDGE_URL).
+const KNOWLEDGE = /\b(polic(?:y|ies)|handbook|procedures?|warranty|return window|refund window|limits?|how long|how many days|eligible|allowed to)\b/i;
+
 export const NOT_ALLOWED = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help.";
 
 /** A model only calls the tools it was given, so a tool outside `available` (the role's tools) is never called. */
 export function decide(userText: string, results: Map<string, any>, available?: string[]): Step {
-  const d = decideAll(userText, results);
+  const d = decideAll(userText, results, available);
   return "call" in d && available && !available.includes(d.call) ? { say: NOT_ALLOWED } : d;
 }
 
-function decideAll(userText: string, results: Map<string, any>): Step {
-  const m = /\bORD-\d+\b/i.exec(userText ?? "");
+function decideAll(userText: string, results: Map<string, any>, available?: string[]): Step {
+  const known = results.get("search_knowledge");
+  if (known) return { say: reply(known) };   // the knowledge service answered: say it, with its source
+  if (available?.includes("search_knowledge") && !ORDER.test(userText ?? "") && KNOWLEDGE.test(userText ?? "")) {
+    return { call: "search_knowledge", args: { question: userText } };
+  }
+  const m = ORDER.exec(userText ?? "");
   if (!m) return { say: "I can help once I have an order number, for example ORD-1001." };
   const oid = m[0].toUpperCase();
   const order = results.get("get_order");
@@ -37,7 +48,7 @@ export async function runStub(message: string, canUseTool: CanUseTool, calls: To
   for (let turn = 0; turn < policy.maxTurns; turn++) {
     usage.input_tokens += Math.floor((message.length + JSON.stringify([...results]).length) / 4) + 60;
     usage.output_tokens += 24;
-    const d = decide(message, results, policy.roles[role] ?? []);
+    const d = decide(message, results, toolsFor(role));
     if ("say" in d) return { text: d.say, usage };
     let allowed = true;
     let denial = "";

@@ -1,0 +1,26 @@
+# The whole solution on a laptop: the agent's HTTP interface, and the knowledge service beside it.
+#
+#   docker compose up --build
+#
+# The agent: http://127.0.0.1:8080 (README: "Serve it"). It runs on the offline stub until you set AGENT_MODE=live and
+# a key (see the README), and asks the documents through its search_knowledge tool.
+# The knowledge service shares the agent's network: the agent reaches it at 127.0.0.1:8765 and nothing else can, so the
+# identity headers it trusts (who is asking, and their role) can only come from the agent. Documents are indexed inside
+# its image when it is built: they stay on this machine.
+services:
+  agent:
+    build: .
+    command: __SERVE_JSON__
+    ports:
+      - "127.0.0.1:8080:8080"                        # this machine only
+    environment:
+      AGENT_MODE: ${AGENT_MODE:-stub}
+      AGENT_IDENTITY: ${AGENT_IDENTITY:-demo}        # demo users on a laptop; oidc or proxy anywhere shared
+      KNOWLEDGE_URL: http://127.0.0.1:8765
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+
+  knowledge:
+    build: ./knowledge
+    network_mode: "service:agent"                    # inside the agent's network: reachable only from the agent
+    depends_on: [agent]
+    command: ["uv", "run", "-m", "arag", "serve", "--host", "127.0.0.1", "--port", "8765"]

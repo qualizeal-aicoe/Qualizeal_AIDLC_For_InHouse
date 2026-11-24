@@ -7,7 +7,7 @@ import { query, type CanUseTool, type Options } from "@anthropic-ai/claude-agent
 import { SpanStatusCode } from "@opentelemetry/api";
 import { createHash, randomUUID } from "node:crypto";
 import { append as audit } from "./audit.ts";
-import { AI_NOTICE, checkEndpoint, effects, mask, outcome, screenInput, screenOutput, ungrounded } from "./guardrails.ts";
+import { AI_NOTICE, caller, checkEndpoint, effects, mask, outcome, screenInput, screenOutput, toolsFor, ungrounded } from "./guardrails.ts";
 import { load, newThread, save, thread } from "./durable.ts";
 import { afterApproval, modelUrl, pickModel, policy } from "./policy.ts";
 import * as gateway from "./gateway.ts";
@@ -37,7 +37,7 @@ export type RunResult = { output: string; tool_calls: ToolCall[]; usage: { input
 export function makeGate(approve: boolean | undefined, calls: ToolCall[], role: string = policy.role): CanUseTool {
   return async (toolName, input) => {
     const short = toolName.split("__").pop() ?? toolName;
-    if (!(policy.roles[role] ?? []).includes(short)) {   // go-live gate 2: the caller's role
+    if (!toolsFor(role).includes(short)) {   // go-live gate 2: the caller's role
       calls.push({ name: short, args: input, status: "not_allowed" });
       return { behavior: "deny", message: `The ${role} role may not use ${short}. Say so; do not retry it.` };
     }
@@ -57,8 +57,8 @@ export function makeGate(approve: boolean | undefined, calls: ToolCall[], role: 
 export function options(gate: CanUseTool, model: string = policy.model, role: string = policy.role): Options {
   return {   // the SDK caches the system prompt and tools itself
     model, systemPrompt: policy.system, mcpServers: { [policy.server]: server }, tools: [],   // no built-in tools: no shell, no file access
-    allowedTools: policy.readOnly.filter((t) => (policy.roles[role] ?? []).includes(t)).map((t) => `mcp__${policy.server}__${t}`), canUseTool: gate,
-    disallowedTools: [...policy.readOnly, ...policy.needsApproval].filter((t) => !(policy.roles[role] ?? []).includes(t)).map((t) => `mcp__${policy.server}__${t}`),   // never shown to the model
+    allowedTools: policy.readOnly.filter((t) => toolsFor(role).includes(t)).map((t) => `mcp__${policy.server}__${t}`), canUseTool: gate,
+    disallowedTools: [...policy.readOnly, ...policy.needsApproval].filter((t) => !toolsFor(role).includes(t)).map((t) => `mcp__${policy.server}__${t}`),   // never shown to the model
     maxTurns: policy.maxTurns, maxBudgetUsd: policy.maxBudgetUsd, settingSources: [], permissionMode: "default",
     ...(gateway.on() ? { env: { ...process.env, ...gateway.claudeCodeEnv(model) } } : {}),   // the model gateway: gateway/litellm.yaml
   };
@@ -66,7 +66,7 @@ export function options(gate: CanUseTool, model: string = policy.model, role: st
 
 export async function run(message: string, approve?: boolean, who: Who = {}, threadId?: string): Promise<RunResult> {
   const t = threadId || newThread();
-  return thread.run(t, () => runIn(t, message, approve, who));
+  return caller.run({ role: who.role || policy.role, actor: who.actor || policy.actor }, () => thread.run(t, () => runIn(t, message, approve, who)));
 }
 
 async function runIn(t: string, message: string, approve: boolean | undefined, who: Who): Promise<RunResult> {
@@ -111,7 +111,7 @@ export async function answer(t: string, approve: boolean, approver?: string): Pr
     return { ...(saved.answer ? JSON.parse(saved.answer) : { output: "", tool_calls: saved.calls, usage: { input_tokens: 0, output_tokens: 0 }, cost_usd: null,
       awaiting_approval: false }), thread_id: t, already_answered: true };
   }
-  return thread.run(t, async () => {
+  return caller.run({ role: saved.role || policy.role, actor: saved.actor || policy.actor }, () => thread.run(t, async () => {
     const calls: ToolCall[] = saved.calls.map((c: ToolCall) => ({ ...c }));
     for (const c of calls) {
       if (c.status !== "pending") continue;
@@ -135,7 +135,7 @@ export async function answer(t: string, approve: boolean, approver?: string): Pr
     record(approver ?? saved.actor, saved.role, saved.message, r, t);
     keep(t, r, saved.message, saved.role, saved.actor, approver ?? saved.actor);
     return r;
-  });
+  }));
 }
 
 /** One audit line per tool call and one for the run: masked arguments, never the reply or the message itself. The run

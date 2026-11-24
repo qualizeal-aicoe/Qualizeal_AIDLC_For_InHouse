@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "lib"))
 from qz import brand  # noqa: E402
 from qz.auditkit import aiact, cost, oss, standards  # noqa: E402
 
-STARTERS = sorted(d.name for d in (ROOT / "templates" / "build").iterdir() if d.is_dir() and not d.name.startswith("_"))
+STARTERS = sorted(d.name for d in (ROOT / "templates" / "build").iterdir() if (d / "scaffold.json").is_file())   # never a stray run folder
 
 
 def qz(proj: Path, *args: str, env: dict | None = None):

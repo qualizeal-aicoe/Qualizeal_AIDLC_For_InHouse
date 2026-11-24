@@ -21,6 +21,8 @@ from . import index
 STATIC = Path(__file__).parent / "static"
 MAX_BODY = 8_192
 MAX_QUESTION = 500
+CHUNK_SIZE = re.compile(rb"[0-9A-Fa-f]{1,8}")
+TIMEOUT_S = 30   # a client that sends nothing for this long is dropped, so a slow one cannot hold a thread for ever
 
 
 class AnswerCache:
@@ -103,11 +105,40 @@ def feedback(cfg, gold: bool = False, yes: bool = False) -> dict:
     return out
 
 
+def read_body(handler) -> bytes | None:
+    """The request's body, sent with a Content-Length or in chunks (.NET's HttpClient and Node send JSON in chunks), and
+    never more than MAX_BODY + 1 bytes: None when it is malformed."""
+    if "chunked" in (handler.headers.get("Transfer-Encoding") or "").lower():
+        out = b""
+        while True:
+            size = handler.rfile.readline(64).split(b";")[0].strip()
+            if not CHUNK_SIZE.fullmatch(size):      # hex digits only: no sign, no prefix, no empty line
+                return None
+            n = int(size, 16)
+            if n == 0:
+                handler.rfile.readline(64)          # the blank line after the last chunk
+                return out
+            want = min(n, MAX_BODY + 1 - len(out))  # never read, or hold, more than the limit allows
+            part = handler.rfile.read(want)
+            if len(part) < want:
+                return None                         # the client stopped part-way through a chunk
+            out += part
+            if len(out) > MAX_BODY:
+                return out                          # too large: the caller refuses it
+            handler.rfile.readline(64)              # the CRLF after each chunk
+    try:
+        size = int(handler.headers.get("Content-Length") or 0)
+    except ValueError:
+        return None
+    return handler.rfile.read(min(size, MAX_BODY + 1)) if size > 0 else b""
+
+
 def make_handler(cfg, con, llm):
     cache = AnswerCache(int(cfg["answer"].get("cache", 256)))
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "arag"
+        timeout = TIMEOUT_S
 
         def log_message(self, fmt, *args):  # the audit log records questions; keep the console quiet
             return
@@ -140,11 +171,11 @@ def make_handler(cfg, con, llm):
         def do_POST(self):
             if self.path not in ("/api/ask", "/api/feedback"):
                 return self._json(404, {"error": "not found"})
-            size = int(self.headers.get("Content-Length") or 0)
-            if size <= 0 or size > MAX_BODY:
-                return self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE if size > MAX_BODY else 400, {"error": "bad request size"})
+            raw = read_body(self)
+            if raw is None or not raw or len(raw) > MAX_BODY:
+                return self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE if raw and len(raw) > MAX_BODY else 400, {"error": "bad request size"})
             try:
-                data = json.loads(self.rfile.read(size))
+                data = json.loads(raw)
                 demo = str(data.get("as", "employee"))
                 if cfg["identity"].get("mode", "demo") == "demo" and demo not in cfg["users"]:
                     return self._json(400, {"error": "unknown user"})

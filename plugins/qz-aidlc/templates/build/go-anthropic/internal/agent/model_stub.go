@@ -10,6 +10,8 @@ import (
 var (
 	orderRx  = regexp.MustCompile(`(?i)\bORD-\d+\b`)
 	refundRx = regexp.MustCompile(`(?i)\brefund`)
+	// a question about how things are done here, for the knowledge service when there is one (KNOWLEDGE_URL).
+	knowledgeRx = regexp.MustCompile(`(?i)\b(polic(?:y|ies)|handbook|procedures?|warranty|return window|refund window|limits?|how long|how many days|eligible|allowed to)\b`)
 )
 
 // StubModel is a scripted stand-in for the model, for offline runs and CI. It follows fixed rules, so it proves
@@ -43,6 +45,12 @@ func (StubModel) Next(_ context.Context, transcript []Turn, tools []Tool) (Step,
 		}
 		step.Call = &Call{ID: fmt.Sprintf("tu_%d", len(results)+1), Name: name, Args: args}
 		return step, nil
+	}
+	if known, asked := results["search_knowledge"]; asked { // the knowledge service answered: say it, with its source
+		return say("%s", KnowledgeReply(known))
+	}
+	if given["search_knowledge"] && !orderRx.MatchString(user) && knowledgeRx.MatchString(user) {
+		return call("search_knowledge", map[string]any{"question": user})
 	}
 	oid := strings.ToUpper(orderRx.FindString(user))
 	if oid == "" {

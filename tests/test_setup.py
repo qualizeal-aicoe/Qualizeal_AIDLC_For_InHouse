@@ -91,3 +91,25 @@ def test_home_is_found_the_way_claude_code_finds_it(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: (_ for _ in ()).throw(RuntimeError("Could not determine home directory."))))
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "u"))
     assert util.user_home() == tmp_path / "u" and util.claude_dir() == tmp_path / "u" / ".claude"   # no crash without a home
+
+
+def test_one_message_to_claude_sets_the_studio_up_on_any_surface():
+    """A person pastes one line with the repository's link; Claude follows setup/CLAUDE-SETUP.md. The page names the
+    same marketplace and plugins the repository publishes, the bootstrap and doctor it runs exist, and it needs no GPU,
+    Docker or administrator rights."""
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    page = (REPO / "setup" / "CLAUDE-SETUP.md").read_text(encoding="utf-8")
+    start = readme[readme.index("## Start here"):]
+    assert "Set up the QualiZeal AI-DLC Studio from https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse for me" in start[:900]
+    assert "(setup/CLAUDE-SETUP.md)" in start[:900]
+    market = json.loads((REPO / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    names = {p["name"] for p in market["plugins"]}
+    assert names == {"qz-aidlc", "qz-console"} and all(f"`{n}`" in page for n in names)
+    assert "qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse" in page and "Customize > Plugins > Add marketplace" in page
+    for rel in ("setup/bootstrap.sh", "setup/bootstrap.cmd", "plugins/qz-aidlc/scripts/qz.py"):
+        assert (REPO / rel).is_file() and rel.split("/")[-1] in page, rel
+    assert "doctor --ci" in page and "Result: ready for a live session" in page
+    assert "no administrator rights, no GPU and no Docker" in page
+    for surface in ("Claude Code", "code execution", "Not run commands at all"):
+        assert surface in page, surface
+    assert "No key, token or password goes in the chat" in page

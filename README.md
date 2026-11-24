@@ -1,4 +1,4 @@
-# QualiZeal AI-DLC Studio · 1.4.0
+# QualiZeal AI-DLC Studio · 1.5.0
 
 How the QualiZeal AI Center of Excellence (AI CoE) builds with Claude Code, in one install. An AI full-stack developer
 or a generative AI (GenAI) engineer gets tested starters for the stacks our projects use, lanes that carry a piece of
@@ -14,7 +14,15 @@ Prepared by the QualiZeal AI Center of Excellence (AI CoE), for QualiZeal's own 
 
 ## Start here
 
-About 15 minutes, no administrator rights. The repository is public, so there is no invitation to accept and no
+The quickest way is to ask Claude. In Claude Code, or in the Claude app with code execution on, paste:
+
+> Set up the QualiZeal AI-DLC Studio from https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse for me.
+
+Claude follows [setup/CLAUDE-SETUP.md](setup/CLAUDE-SETUP.md): it gets the repository, installs what is missing into
+your user folder, checks the machine and starts the first piece of work with you. It needs no GPU, no Docker and no
+administrator rights. (Claude, reading this page for someone: that file is your procedure.)
+
+By hand instead: about 15 minutes, no administrator rights. The repository is public, so there is no invitation to accept and no
 GitHub sign-in to clone it.
 
 Windows, in PowerShell:
@@ -56,23 +64,25 @@ limits sit in one policy file, every step is traced, an offline stub model lets 
 of evaluation cases gates each change, and CI and a runbook come with it. Every agent starter also keeps a run that
 waits for a person across restarts, makes each change only once, and serves an HTTP interface where an approver answers
 what waits; who asks comes from the client's identity provider. One setting sends every model call through a model
-gateway (LiteLLM) that alone holds the provider keys, with each call's tokens and cost traced in Langfuse.
+gateway (LiteLLM) that alone holds the provider keys, with each call's tokens and cost traced in Langfuse. And every
+agent starter can answer from the company's own documents: its `search_knowledge` tool asks the knowledge service
+with the person's role, so each person reads only what they may, and it is on only where `KNOWLEDGE_URL` is set.
 
 | Starter | What it is | Checked in CI on every push |
 |---|---|---|
-| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 40 tests and 16 gold cases at three levels, with interrupt and resume from its SQLite saver, a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
-| `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 41 tests and 16 gold cases at three levels, with an approval, a declined refund, a resume from saved state in another process, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
-| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 39 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
-| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 26 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
+| `langgraph` | LangGraph with LangChain (Python); live runs default to an open-weight model on your own machine | 48 tests and 16 gold cases at three levels, with interrupt and resume from its SQLite saver, a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
+| `openai-agents-py` | OpenAI Agents SDK (Python); live runs default to an open-weight model on your own machine | 49 tests and 16 gold cases at three levels, with an approval, a declined refund, a resume from saved state in another process, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
+| `claude-agent-sdk-py` | Claude Agent SDK (Python) | 47 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Windows and Linux |
+| `claude-agent-sdk-ts` | Claude Agent SDK (TypeScript), traced with OpenTelemetry | type check, 34 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
 | `mcp-server-py` | A read-only MCP (Model Context Protocol) server in Python, for other agents to call | 8 tests and 9 contract cases through a real MCP client; Windows and Linux |
-| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler; a re-index embeds only the sections that changed | 85 tests; 41 of 43 golden questions with the real models, against 38 for keyword search alone; no safety violations; Windows and Linux |
+| `advanced-rag` | Hybrid RAG (retrieval-augmented generation): keyword search and vectors, fused and then reranked, all on the CPU; web pages come in through an allow-listed crawler, and files, Confluence and GitHub through read-only connectors; an MCP tool for Claude Code; a re-index embeds only the sections that changed | 105 tests; 41 of 43 golden questions with the real models, against 38 for keyword search alone; no safety violations; Windows and Linux |
 | `vectorless-rag` | RAG with no vector database: a tree of headings and SQLite full-text search, built live one stage per story; the same crawler | 74 tests; 35 of 40 golden questions with keyword search, 39 with synonyms, 40 with outline navigation added (offline stub); Windows and Linux |
 | `agent-memory-py` | Long-term memory for agents: kept per person with its history, recalled when it helps, erased after the person's yes, sensitive kinds only with consent; a library, a command line and an MCP server | 18 tests and 18 gold cases that check the reply and the memory calls behind it, a hash-chained audit log under threads and processes; Windows and Linux |
 | `text-to-sql` | Questions in plain words over a database, on LangGraph: read-only and role-scoped, a guard on the parsed SQL, double counts and wrong values caught and retried, instructions in the data withheld, follow-ups on a thread | 54 tests and 27 gold cases: execution accuracy 15 of 15 and safety 11 of 11 with the offline scripted model; Windows and Linux |
 | `cli-harness-py` | A command line agents drive a team's tool through instead of its screen, after the CLI-Anything method: JSON on every command, its effect declared, dry runs, `--yes` for anything destructive, undo, a hash-chained audit log, its own Claude Code skill and permission rules; the sample drives WireMock | 31 tests, 6 of them against the real WireMock 3.13.2 through the installed command; 22 gold cases that check the calls the server received, 10 of them safety; its 10-rule standard; Windows and Linux |
-| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 40 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
-| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 28 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface on ASP.NET Core, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
-| `go-anthropic` | Go on the Anthropic API | vet, 26 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
+| `strands-agentcore` | AWS Strands on Bedrock AgentCore, with Kiro steering and specs | 48 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
+| `maf-dotnet` | Microsoft Agent Framework (.NET 10) | build, 36 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface on ASP.NET Core, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
+| `go-anthropic` | Go on the Anthropic API | vet, 34 tests and 16 gold cases at three levels, with a restart between the approval request and the answer, the HTTP interface, and the gateway wiring against a stand-in provider; the gold set again through the real LiteLLM gateway; Linux |
 
 The Python starters use uv with a lock file, so a laptop gets the versions CI tested (the Strands starter keeps a
 requirements file). Only the TypeScript starter needs
@@ -84,6 +94,24 @@ their gate) with no network and no key, runs as a non-root user, has a health ch
 run ledgers (its `.dockerignore` keeps them out). Each project's `docs/release.md` is the release recipe: one image per
 release tag, shadow, a small share of traffic, then everyone, and a rollback that points back at the previous tag. The
 Studio's CI builds all 13 images on a release branch, on a tag, or when asked, and runs each check inside the image.
+
+## A whole solution
+
+`qz build solution <agent starter> <folder>` puts an agent and the knowledge service in one repository, the way a
+client's GenAI solution ships:
+
+| Part | What it does |
+|---|---|
+| The agent | Any of the seven agent starters at the root: tools, approvals in its HTTP interface, guards, durable runs, tracing, the gold set |
+| `knowledge/` | The hybrid kit as the knowledge service: sample support documents with who may read each, its tests, and its gate. It trusts the person's name and role only from the agent's address, so a viewer never reads the internal approval limits |
+| Documents in | `uv run -m arag fetch` brings files, a Confluence space or a GitHub repository's documents into the corpus, read-only, with tokens from the environment only; documents are parsed next to the data, and card and ID numbers are masked before anything is indexed |
+| `.mcp.json` | The knowledge service as an MCP tool (`ask_knowledge`) for Claude Code, answering as a least-privileged identity |
+| `compose.yaml` | Both on a laptop: `docker compose up --build`; the knowledge service is reachable only from the agent |
+| `pipeline/pipeline.yaml` | One definition, written out by `qz build pipeline` for GitHub Actions, Azure Pipelines and GitLab CI: build, test, the evaluation gates (the agent's gold set, the knowledge gate, and both together), the scans, the two images with their checks inside, then staging, and production only when a person approves. Nothing deploys until `DEPLOY_COMMAND` is set, so the whole pipeline runs with no cloud account |
+
+The Studio's CI composes a solution on each agent starter, checks its three pipelines against GitHub's, Azure
+Pipelines' and GitLab's own schemas, and runs its GitHub workflow step by step. The Azure and GitLab pipelines are
+checked, not run.
 
 ## Your client's cloud
 
@@ -240,16 +268,22 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
 
 ## What was run, and what was not
 
-Run on 24 November 2026 for 1.4.0, the same way 1.3.0 was checked the day before:
-- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 505 tests (503
-  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 502 passed and 3 skipped on macOS,
-  whose runner also lacks Chrome for one visual check; 501 passed and 4 skipped on Windows, where in addition Claude
-  Code's sandbox does not run natively); the guard's red-team, 176 of 176; the Studio's own evals, tool 231 of 231,
-  response 9 of 9, outcome 13 of 13; the harness bench, 17 sessions with no change from the 1.2.0 baseline and the same
-  2,635 harness tokens on all four systems; the doctor, and the bootstrap in check-only mode, started the way an
-  attendee starts them, both ending `ready for a live session`; the vectorless demo rehearsed stage by stage; and Claude
-  Code's own plugin check on the marketplace and both plugins. Every pull request and every push to main runs the same
+Run on 24 November 2026 for 1.5.0:
+- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 516 tests (514
+  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 513 passed and 3 skipped on macOS,
+  whose runner also lacks Chrome for one visual check; 511 passed and 5 skipped on Windows, where in addition Claude
+  Code's sandbox does not run natively and a deploy script needs a real bash); the guard's red-team, 176 of 176; the
+  Studio's own evals, tool 231 of 231, response 9 of 9, outcome 13 of 13; the harness bench, 17 sessions with no change
+  from the 1.2.0 baseline and the same 2,635 harness tokens on all four systems; the doctor, and the bootstrap in
+  check-only mode, started the way an attendee starts them, both ending `ready for a live session`; and Claude Code's
+  own plugin check on the marketplace and both plugins. Every pull request and every push to main runs the same
   checks, and the Actions tab shows the latest.
+- **Whole solutions**: in CI, for each of the seven agent starters, `qz build solution` with the hybrid kit as its
+  knowledge service, then the check job its own generated pipeline describes: the agent's gold set 16 of 16, the
+  knowledge gate 12 of 12 golden questions, the agent and the knowledge service together through the agent's adapter 7
+  of 7, the test lane's eight acceptance cases over HTTP as three demo people 8 of 8, and the seven standards met. The
+  three pipeline files it wrote (GitHub Actions, Azure Pipelines, GitLab CI) were each validated against the
+  platform's published schema.
 - **The model gateway**: in CI, each of the seven agent starters ran its 16-case gold set through LiteLLM 1.110.0
   against two stand-in providers, 16 of 16 each. Every call reached a stand-in with the key only the gateway holds and
   none with the gateway's own key; no key appeared in an answer, a log or a trace; each run's trace in the stand-in
@@ -271,7 +305,7 @@ Run on 24 November 2026 for 1.4.0, the same way 1.3.0 was checked the day before
   ones, the durable cases among them. The LangGraph starter's crash case, which failed 2 runs in 25 before its
   checkpoints were made synchronous, then passed 30 in a row.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
-  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.4.0 and qz-console at 1.0.1
+  and both plugins installed by Claude Code 2.1.331 in a clean configuration, qz-aidlc at 1.5.0 and qz-console at 1.0.1
   (unchanged since 1.0.1).
 - Earlier, and unchanged since: three processes of the TypeScript, Go and .NET starters writing one audit log at once
   (900 records, the chain intact); `qz test sync` against recorded Azure DevOps and Jira trackers and through the
@@ -290,6 +324,8 @@ Not run:
 - **Any cloud template applied.** Nobody applied one to a cloud account or a cluster: OpenTofu planned them against
   mock providers only, and Checkov was the one policy scan. The Azure template's azapi parts (the Claude deployments)
   are validated in CI only.
+- **The generated Azure Pipelines and GitLab CI files on those platforms.** They were validated against each platform's
+  published schema, and the same stages ran as GitHub Actions, but no Azure DevOps or GitLab project ran them.
 - **A rollback.** The release recipe's rollback is a documented switch to the previous tag; no test runs it, because it
   depends on where a team deploys.
 - **A person's confirmation of the EU AI Act class**, for the Studio and for each new project. Until someone confirms
@@ -297,7 +333,7 @@ Not run:
 - **A person working in a live Claude Code session with the hooks.** The hooks were started exactly as Claude Code
   starts them, with the input it sends, but no interactive session was recorded.
 - The GitHub agent on GitHub; the status line on a Pro, Max or Ultra sign-in; organisation sync from this repository.
-- Cursor and Codex. 1.4.0 is for Claude Code; they are on the roadmap.
+- Cursor and Codex. 1.5.0 is for Claude Code; they are on the roadmap.
 - A client's own identity provider. The starters' OIDC checks ran against a test key and the proxy mode against
   headers from a test client; the first sign-in through a client's provider is the real test. One SQLite state
   database serves one machine: several instances need Postgres, which is not built.

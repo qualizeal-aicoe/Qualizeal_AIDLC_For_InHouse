@@ -25,6 +25,7 @@ DEFAULTS: dict = {
                "sentence_margin": 4.0, "sentence_min": -7.0},
     "hybrid": {"fetch_k": 20, "weights": [1.0, 1.0]},
     "trace": {"path": ".arag/traces"},
+    "mcp": {"user": "mcp", "groups": ["all"]},
 }
 
 

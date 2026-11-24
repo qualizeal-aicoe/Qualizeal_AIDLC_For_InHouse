@@ -6,8 +6,10 @@
 # the RAG demo rehearsed stage by stage;
 # and each starter built and tested with the offline stub (no keys, no model spend); each agent starter's gold set through
 # the real model gateway against stand-in providers; and every cloud template for every starter linted, policy-scanned,
-# validated and planned with no cloud account (nothing is ever applied). On a release branch's pull request, a tag, or
-# when asked, each starter's image is built too and its gold set run inside it with no network.
+# validated and planned with no cloud account (nothing is ever applied); a solution composed on each agent starter, its
+# own GitHub workflow run step by step and its three pipelines checked against their platforms' schemas. On a release
+# branch's pull request, a tag, or when asked, each starter's image is built too and its gold set run inside it with no
+# network.
 name: ci
 on:
   pull_request:
@@ -335,6 +337,58 @@ jobs:
           esac
       - name: Lint, policy scan, validate and plan tests for every starter, then the gateway's image
         run: bash .github/scripts/cloud_check.sh ${{ matrix.cloud }} "$RUNNER_TEMP/cloud"
+
+  solution:
+    # `qz build solution` on each agent starter: the composed repository's three pipelines checked against GitHub's,
+    # Azure Pipelines' and GitLab's own schemas, then its GitHub workflow run here step by step: the check job on every
+    # stack, the container job and the staging deploy on one. Production is never reached: it waits for a person.
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [langgraph, openai-agents-py, claude-agent-sdk-py, claude-agent-sdk-ts, go-anthropic, maf-dotnet, strands-agentcore]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        if: matrix.stack == 'strands-agentcore'
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        if: matrix.stack == 'claude-agent-sdk-ts'
+        with:
+          node-version: "22"
+      - uses: actions/setup-go@v5
+        if: matrix.stack == 'go-anthropic'
+        with:
+          go-version: "1.26"
+      - uses: actions/setup-dotnet@v4
+        if: matrix.stack == 'maf-dotnet'
+        with:
+          dotnet-version: "10.0.x"
+      - name: Compose the solution
+        run: |
+          uv run -q --no-project --python ">=3.11,<3.14" python -I -B -X utf8 plugins/qz-aidlc/scripts/qz.py build solution ${{ matrix.stack }} "$RUNNER_TEMP/sol" --name "Order Support"
+          cd "$RUNNER_TEMP/sol" && git init -q && git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm "The composed solution"
+      - name: Its three pipelines, each against its platform's own schema
+        working-directory: ${{ runner.temp }}/sol
+        run: |
+          cj=(uvx -q --from "check-jsonschema==0.33.0" check-jsonschema)
+          "${cj[@]}" --builtin-schema vendor.github-workflows .github/workflows/ci.yml .github/workflows/deploy.yml
+          "${cj[@]}" --builtin-schema vendor.azure-pipelines --regex-variant nonunicode azure-pipelines.yml   # its patterns use escapes Unicode mode refuses
+          "${cj[@]}" --builtin-schema vendor.gitlab-ci --regex-variant nonunicode .gitlab-ci.yml
+      - name: Its GitHub workflow's check job, step by step on this runner
+        run: uv run -q --no-project --python ">=3.11,<3.14" --with "pyyaml>=6,<7" python -I -X utf8 .github/scripts/workflow_steps.py "$RUNNER_TEMP/sol" .github/workflows/ci.yml check
+      - name: Its container job and its staging deploy, which deploys nothing with no cloud account (one stack; images take minutes)
+        if: matrix.stack == 'langgraph'
+        env:
+          UBUNTU_MIRROR: http://azure.archive.ubuntu.com/ubuntu/
+        run: |
+          w=(uv run -q --no-project --python ">=3.11,<3.14" --with "pyyaml>=6,<7" python -I -X utf8 .github/scripts/workflow_steps.py "$RUNNER_TEMP/sol" .github/workflows/ci.yml)
+          "${w[@]}" container
+          "${w[@]}" deploy-staging | tee "$RUNNER_TEMP/staging.log"
+          grep -q "nothing deployed" "$RUNNER_TEMP/staging.log"
 
   containers:
     # Each starter's image, built and checked the way the project's own CI checks it: the gold set (or the RAG gate)

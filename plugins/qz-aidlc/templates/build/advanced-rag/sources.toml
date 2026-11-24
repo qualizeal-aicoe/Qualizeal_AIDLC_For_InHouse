@@ -1,0 +1,30 @@
+# Documents from the team's own systems: `uv run -m arag fetch` copies them into corpus/fetched/ and enters each one in
+# the manifest with an owner and the groups that may read it; `uv run -m arag ingest` then indexes them. Read-only:
+# nothing is ever written back. Tokens come from the environment, never from this file. Every source names an owner
+# and acl, like every document in the manifest; a source without them is refused.
+
+allowed_hosts = []        # Confluence hosts outside atlassian.net (Data Center), e.g. ["wiki.example.com"]
+max_bytes = 5000000       # per document
+timeout_s = 30
+max_pages = 200           # per source
+
+# A folder (or one file) on this machine or a mounted share: Markdown, HTML, text, PDF and Word.
+# [[files]]
+# path = "/srv/shared/policies"
+# owner = "People team"
+# acl = ["all"]
+
+# A Confluence space, through the REST API v2. CONFLUENCE_EMAIL and CONFLUENCE_TOKEN (read-only) in the environment.
+# [[confluence]]
+# site = "yourco.atlassian.net"
+# space = "HR"
+# owner = "People team"
+# acl = ["all"]
+
+# A GitHub repository's documents. GITHUB_TOKEN in the environment for a private one (contents: read).
+# [[github]]
+# repo = "yourco/handbook"
+# branch = "main"                # empty: the default branch
+# paths = ["README.md", "docs/"]  # a file, or a folder ending in /
+# owner = "Engineering"
+# acl = ["all"]

@@ -80,13 +80,23 @@ public static class Tools
         });
     }
 
-    /// <summary>The tool list. Anything in Policy.NeedsApproval is wrapped so the framework asks before it runs.</summary>
+    [Description("Look up the company's own documents (policies, procedures, product facts) and get an answer that cites them, "
+        + "or a plain \"the documents do not say\". Use it for how things are done here, not for an order. Read-only.")]
+    public static Task<JsonElement> SearchKnowledge([Description("The question, in the person's words")] string question)
+    {
+        (string role, string actor) = Access.Caller;
+        return Knowledge.AskAsync(question, actor, role);
+    }
+
+    /// <summary>The tool list. Anything in Policy.NeedsApproval is wrapped so the framework asks before it runs.
+    /// search_knowledge asks the knowledge service (Knowledge.cs) and is on only where KNOWLEDGE_URL is set.</summary>
     public static IList<AITool> All()
     {
         AIFunction[] functions =
         [
             AIFunctionFactory.Create(GetOrder, name: "get_order"),
             AIFunctionFactory.Create(IssueRefund, name: "issue_refund"),
+            AIFunctionFactory.Create(SearchKnowledge, name: "search_knowledge"),
         ];
         return [.. functions.Select(f => Policy.NeedsApproval.Contains(f.Name) ? new ApprovalRequiredAIFunction(f) : (AITool)f)];
     }

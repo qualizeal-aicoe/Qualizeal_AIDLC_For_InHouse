@@ -3,6 +3,70 @@
 Notable changes to the QualiZeal AI-DLC Studio. Releases 0.4.0 to 0.10.0 are described in
 [docs/HISTORY.md](docs/HISTORY.md).
 
+## 1.5.0 · 24 November 2026
+
+All-in-one solutions: an agent and the knowledge service in one repository, with one pipeline definition that becomes
+GitHub Actions, Azure Pipelines or GitLab CI; every agent starter answers from the company's documents; and the Studio
+sets itself up from one message to Claude.
+
+### Added
+
+- **`qz build solution <agent starter> <folder>`**: any of the seven agent starters at the root and the hybrid kit in
+  `knowledge/` as the knowledge service, with sample support documents and who may read each, their golden questions,
+  and the threshold `arag calibrate` set on them. The knowledge service takes the person's name and role from the
+  agent's identity headers and trusts them only from the agent's address, so a viewer never reads the internal refund
+  limits. `compose.yaml` runs both on a laptop with the knowledge service reachable only from the agent;
+  `scripts/knowledge.sh` runs it without containers; `.mcp.json` registers it for Claude Code; `docs/solution.md` says
+  how the parts fit and where documents and personal data go. The kit's own sample handbook moves to its tests.
+- **Acceptance cases for the whole solution, in the test lane.** `tests/qz/cases.json` holds a story with four
+  acceptance criteria and eight reviewed, automated test cases (`qz test check` reads them), and
+  `tests/acceptance/run.py` runs them over HTTP against the running agent and knowledge service as three demo people
+  (a support person, an approver, a viewer): a policy answer with its source; the internal refund limit, which the
+  viewer is told the documents do not say and the support person gets; a refund that waits for a person, that nobody
+  approves for themselves and a viewer cannot approve, made once when the approver says yes; an instruction in the
+  message refused before anything is looked up; and a question the documents do not answer, with who can help. The
+  pipeline's accept stage starts both services and writes `reports/acceptance.xml`. All seven stacks: 8 of 8.
+- **One pipeline definition, three platforms.** `pipeline/pipeline.yaml` lists the stages as shell commands, and
+  `qz build pipeline` writes `.github/workflows/ci.yml` and `deploy.yml`, `azure-pipelines.yml` and `.gitlab-ci.yml`
+  from it: build, test, the evaluation gates (the agent's gold set, the knowledge gate, and the two together through
+  the agent's own adapter), the project audit and the seven standards, decisions and conventions on a request, the two
+  images with their checks inside, then deploy. Staging follows a green main branch; production waits for a person (on
+  GitHub a person starts the deploy workflow, on Azure Pipelines a manual validation that nobody approves for their own
+  run, on GitLab a manual job that blocks). `scripts/deploy.sh` deploys nothing until `DEPLOY_COMMAND` is set, so the
+  whole pipeline runs with no cloud account.
+- **`search_knowledge` in all seven agent starters**: a read-only tool that asks the knowledge service with the
+  person's name and role (`X-Forwarded-User`, `X-Forwarded-Groups`), on only where `KNOWLEDGE_URL` is set, for the
+  roles that list it. The host must be on the allowed list, the call never goes through an HTTP proxy, and the answer is
+  data that passes the same output filter, grounding check and audit log as any tool result. Each starter's offline stub
+  sends questions about how things are done here to it and says the answer with its source, or that the documents do
+  not say and who can help. 8 new tests in each starter, against a stand-in knowledge service.
+- **The hybrid kit as an MCP tool**: `uv run -m arag mcp` serves `ask_knowledge` over stdio (JSON-RPC 2.0) for Claude
+  Code, Claude Desktop or any MCP client. It answers for the identity in `[mcp]` (or a demo user with `--as`), never one
+  the model names; the tool takes a question and nothing else; answers are audited and guarded like the chat page's.
+- **Connectors**: `uv run -m arag fetch` copies what `sources.toml` lists into the corpus: a folder or share, a
+  Confluence space (REST API v2) or a GitHub repository's documents. Read-only, https only, tokens from the environment
+  only and sent only to their own host, a redirect to another host refused; keys, secrets and links out of a folder
+  are never copied; an unchanged document is left alone and `--prune` retires one gone from its source.
+- **Setting up from one message**: paste "Set up the QualiZeal AI-DLC Studio from
+  https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse for me" into Claude Code or the Claude app, and Claude
+  follows `setup/CLAUDE-SETUP.md`: where it is (Claude Code, the app with code execution, or the app without), the
+  steps for each, and the first piece of work. No GPU, no Docker, no administrator rights.
+
+### Changed
+
+- Each agent starter's solution part "knowledge" now names its knowledge client instead of "none".
+- The roadmap: 1.6.0 is production behaviour (shadow, assist and auto with a risk router; the remaining guardrail
+  layers; backpressure in the HTTP interface; the gateway's canary split, cache and eval-chosen routing; targets and
+  alerts; prompt caching, context limits and model licences, all on the CPU). The items after it move back one release.
+
+### Fixed
+
+- The hybrid kit's knowledge server read only bodies sent with a `Content-Length`, so a client that sends a chunked
+  body (the .NET `JsonContent`) got an empty question. It now reads chunked bodies too, within the same 8 KB limit: a
+  chunk size must be plain hexadecimal (a negative one would have read to the end of the stream), a claimed size past
+  the limit is never read or held, and a connection that sends nothing for 30 seconds is dropped, so a slow client
+  cannot hold a server thread. 7 new tests.
+
 ## 1.4.0 · 24 November 2026
 
 A model gateway that alone holds the keys, and the client's cloud: every model call an agent starter makes can go

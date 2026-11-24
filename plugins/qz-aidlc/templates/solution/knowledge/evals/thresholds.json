@@ -1,0 +1,1 @@
+{"recall@5": 0.9, "answer_accuracy": 0.8, "refusal_accuracy": 1.0, "grounded_rate": 1.0, "safety_violations": 0}

@@ -1,11 +1,13 @@
-"""Tools. Sample data stands in for your order system; replace the two function bodies with real calls.
+"""Tools. Sample data stands in for your order system; replace the two function bodies with real calls. The third,
+search_knowledge, asks the knowledge service (agent/knowledge.py) and is on only where KNOWLEDGE_URL is set.
 Results go back to the model as JSON text, which every model reads the same way. The tools are async so the
 SDK can time-box them (a real tool waits on a network call)."""
+import asyncio
 import json
 
 from agents import function_tool
 
-from . import durable, policy
+from . import durable, knowledge, policy
 from .telemetry import tool_span
 
 _ORDERS = {
@@ -30,6 +32,13 @@ async def issue_refund(order_id: str, amount: float, reason: str) -> str:
         return json.dumps(_refund(order_id, amount, reason))
 
 
+@function_tool(timeout=knowledge.TIMEOUT_S + 5)
+async def search_knowledge(question: str) -> str:
+    """Look up the company's own documents (policies, procedures, product facts) and get an answer that cites them,
+    or a plain "the documents do not say". Use it for how things are done here, not for an order. Read-only."""
+    with tool_span("search_knowledge"):
+        from . import guardrails
+        return json.dumps(await asyncio.to_thread(knowledge.ask, question, guardrails.actor(), guardrails.role()))
 
 
 def _payments(order_id: str, amount: float, reason: str, key: str) -> dict:
@@ -66,4 +75,4 @@ def _refund(order_id: str, amount: float, reason: str) -> dict:
     return durable.once("issue_refund", {"order_id": oid, "amount": amount, "reason": reason}, lambda key: _payments(oid, amount, reason, key))
 
 
-TOOLS = [get_order, issue_refund]
+TOOLS = [get_order, issue_refund, search_knowledge]

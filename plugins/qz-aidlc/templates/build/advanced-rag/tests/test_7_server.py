@@ -83,3 +83,55 @@ def test_thumbs_down_becomes_a_gold_candidate_only_with_a_yes_and_without_person
     assert done["written"] == 1 and "4111" not in rows and "555-123-4567" not in rows and "[card number removed]" in rows
     assert server.feedback(cfg, gold=True, yes=True)["written"] == 0                 # the same question is not proposed twice
 
+
+
+def test_a_body_sent_in_chunks_is_read_whole(url):
+    """.NET's HttpClient and Node send JSON in chunks, with no Content-Length: the answer is the same."""
+    import http.client
+    from urllib.parse import urlsplit
+    u = urlsplit(url)
+    body = json.dumps({"question": "How many days of annual leave do full-time employees get?", "as": "employee"}).encode()
+    con = http.client.HTTPConnection(u.hostname, u.port, timeout=10)
+    con.putrequest("POST", "/api/ask")
+    con.putheader("Content-Type", "application/json")
+    con.putheader("Transfer-Encoding", "chunked")
+    con.endheaders()
+    for part in (body[:20], body[20:]):
+        con.send(f"{len(part):x}\r\n".encode() + part + b"\r\n")
+    con.send(b"0\r\n\r\n")
+    r = con.getresponse()
+    out = json.loads(r.read())
+    assert r.status == 200 and out["citations"] and not out["refused"]
+
+
+def _chunked(url, raw: bytes):
+    import http.client
+    from urllib.parse import urlsplit
+    u = urlsplit(url)
+    con = http.client.HTTPConnection(u.hostname, u.port, timeout=10)
+    con.putrequest("POST", "/api/ask")
+    con.putheader("Content-Type", "application/json")
+    con.putheader("Transfer-Encoding", "chunked")
+    con.endheaders()
+    con.send(raw)
+    r = con.getresponse()
+    r.read()
+    return r.status
+
+
+@pytest.mark.parametrize("raw", [b"-5\r\n", b"0x10\r\n", b"\r\n", b"+10\r\n"])
+def test_a_chunk_size_that_is_not_plain_hex_is_refused(url, raw):
+    """A negative size would read to the end of the stream; a prefix or sign is not HTTP."""
+    assert _chunked(url, raw) == 400
+
+
+def test_a_huge_chunk_size_reads_no_more_than_the_limit(url):
+    """A client that claims a four-gigabyte chunk gets 413 after the limit, with nothing more read or held."""
+    from arag.server import MAX_BODY
+    assert _chunked(url, b"FFFFFFFF\r\n" + b"a" * (MAX_BODY + 1)) == 413
+
+
+def test_a_slow_client_is_dropped():
+    """A client that sends nothing cannot hold a server thread for ever: each connection has a socket timeout."""
+    from arag.server import TIMEOUT_S, make_handler
+    assert 0 < TIMEOUT_S <= 60 and make_handler({"answer": {}}, None, None).timeout == TIMEOUT_S

@@ -16,6 +16,7 @@
  * - Outcome: outcome() says how the run ended and effects() what it changed; a tool that changes something says so in
  *   its result ("effect").
  */
+import { AsyncLocalStorage } from "node:async_hooks";
 import { policy } from "./policy.ts";
 
 export const REFUSAL = "I can't act on that: it reads like an instruction to change how I work, not a question about an order. Ask me about an order instead.";
@@ -27,6 +28,17 @@ const CARD = /\b(?:\d[ -]?){12,18}\d\b/g;
 const NATIONAL_ID = /\b\d{3}-\d{2}-\d{4}\b/g;
 
 export type Screened = { text: string; blocked: boolean; findings: string[] };
+
+/** Who the current run acts for, and in which role: set by run() and answer() from whoever started the agent (an
+ *  interface: the identity provider), never by the message. Tools read it (the knowledge service applies their access). */
+export const caller = new AsyncLocalStorage<{ role: string; actor: string }>();
+
+/** Go-live gate 2: the tools this role may use. A role not in policy.roles gets none. The knowledge tool is on only where
+ *  a knowledge service is (KNOWLEDGE_URL, src/knowledge.ts). */
+export function toolsFor(role: string): string[] {
+  const knowledge = (process.env.KNOWLEDGE_URL ?? "").trim() !== "";
+  return (policy.roles[role] ?? []).filter((t) => knowledge || t !== "search_knowledge");
+}
 
 function luhn(digits: string): boolean {
   let total = 0;

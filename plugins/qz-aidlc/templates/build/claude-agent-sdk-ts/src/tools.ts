@@ -1,7 +1,10 @@
-/** Tools, served to the agent through an in-process MCP server. Sample data stands in for your order system. */
+/** Tools, served to the agent through an in-process MCP server. Sample data stands in for your order system.
+ *  search_knowledge asks the knowledge service (src/knowledge.ts) and is on only where KNOWLEDGE_URL is set. */
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { connect, once } from "./durable.ts";
+import { caller } from "./guardrails.ts";
+import * as knowledge from "./knowledge.ts";
 import { policy } from "./policy.ts";
 import { traced } from "./telemetry.ts";
 
@@ -51,7 +54,14 @@ export async function issueRefund(args: { order_id: string; amount: number; reas
   return out(await once("issue_refund", { order_id: id, amount: args.amount, reason: args.reason }, (key) => payments(id, args.amount, args.reason, key)));
 }
 
-export const handlers: Record<string, (args: any) => Promise<{ content: Array<{ type: "text"; text: string }> }>> = { get_order: traced("get_order", getOrder), issue_refund: traced("issue_refund", issueRefund) };
+/** The company's own documents, through the knowledge service, with the access of whoever the run acts for. */
+export async function searchKnowledge(args: { question: string }) {
+  const who = caller.getStore();
+  return out(await knowledge.ask(String(args.question ?? ""), who?.actor ?? policy.actor, who?.role ?? policy.role));
+}
+
+export const handlers: Record<string, (args: any) => Promise<{ content: Array<{ type: "text"; text: string }> }>> = { get_order: traced("get_order", getOrder),
+  issue_refund: traced("issue_refund", issueRefund), search_knowledge: traced("search_knowledge", searchKnowledge) };
 
 export const server = createSdkMcpServer({
   name: policy.server,
@@ -60,5 +70,8 @@ export const server = createSdkMcpServer({
     tool("get_order", "Look up one order by its number (for example ORD-1001). Read-only.", { order_id: z.string() }, handlers.get_order),
     tool("issue_refund", "Refund an order. Moves money and cannot be undone: it runs only after a person approves.",
       { order_id: z.string(), amount: z.number(), reason: z.string() }, handlers.issue_refund),
+    tool("search_knowledge", "Look up the company's own documents (policies, procedures, product facts) and get an answer that cites them, "
+      + "or a plain \"the documents do not say\". Use it for how things are done here, not for an order. Read-only.", { question: z.string() },
+      handlers.search_knowledge),
   ],
 });
