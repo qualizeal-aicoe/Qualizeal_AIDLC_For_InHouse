@@ -268,16 +268,22 @@ It was recorded with 1.0.0; since 1.0.1 a refusal also says what it looked for, 
 
 ## What was run, and what was not
 
-Run on 24 November 2026 for 1.4.0, the same way 1.3.0 was checked the day before:
-- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 505 tests (503
-  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 502 passed and 3 skipped on macOS,
-  whose runner also lacks Chrome for one visual check; 501 passed and 4 skipped on Windows, where in addition Claude
-  Code's sandbox does not run natively); the guard's red-team, 176 of 176; the Studio's own evals, tool 231 of 231,
-  response 9 of 9, outcome 13 of 13; the harness bench, 17 sessions with no change from the 1.2.0 baseline and the same
-  2,635 harness tokens on all four systems; the doctor, and the bootstrap in check-only mode, started the way an
-  attendee starts them, both ending `ready for a live session`; the vectorless demo rehearsed stage by stage; and Claude
-  Code's own plugin check on the marketplace and both plugins. Every pull request and every push to main runs the same
+Run on 24 November 2026 for 1.5.0:
+- **CI**, on Windows (Python 3.12), Linux (Python 3.11 and 3.13) and macOS (Python 3.12): the Studio's 516 tests (514
+  passed and 2 skipped on Linux, the two that need the internal pricing workbook; 513 passed and 3 skipped on macOS,
+  whose runner also lacks Chrome for one visual check; 511 passed and 5 skipped on Windows, where in addition Claude
+  Code's sandbox does not run natively and a deploy script needs a real bash); the guard's red-team, 176 of 176; the
+  Studio's own evals, tool 231 of 231, response 9 of 9, outcome 13 of 13; the harness bench, 17 sessions with no change
+  from the 1.2.0 baseline and the same 2,635 harness tokens on all four systems; the doctor, and the bootstrap in
+  check-only mode, started the way an attendee starts them, both ending `ready for a live session`; and Claude Code's
+  own plugin check on the marketplace and both plugins. Every pull request and every push to main runs the same
   checks, and the Actions tab shows the latest.
+- **Whole solutions**: in CI, for each of the seven agent starters, `qz build solution` with the hybrid kit as its
+  knowledge service, then the check job its own generated pipeline describes: the agent's gold set 16 of 16, the
+  knowledge gate 12 of 12 golden questions, the agent and the knowledge service together through the agent's adapter 7
+  of 7, the test lane's eight acceptance cases over HTTP as three demo people 8 of 8, and the seven standards met. The
+  three pipeline files it wrote (GitHub Actions, Azure Pipelines, GitLab CI) were each validated against the
+  platform's published schema.
 - **The model gateway**: in CI, each of the seven agent starters ran its 16-case gold set through LiteLLM 1.110.0
   against two stand-in providers, 16 of 16 each. Every call reached a stand-in with the key only the gateway holds and
   none with the gateway's own key; no key appeared in an answer, a log or a trace; each run's trace in the stand-in
@@ -299,7 +305,7 @@ Run on 24 November 2026 for 1.4.0, the same way 1.3.0 was checked the day before
   ones, the durable cases among them. The LangGraph starter's crash case, which failed 2 runs in 25 before its
   checkpoints were made synchronous, then passed 30 in a row.
 - **Installing from this repository**: the marketplace added from GitHub (the release branch, before it was merged)
-  and both plugins installed by Claude Code 2.1.330 in a clean configuration, qz-aidlc at 1.4.0 and qz-console at 1.0.1
+  and both plugins installed by Claude Code 2.1.331 in a clean configuration, qz-aidlc at 1.5.0 and qz-console at 1.0.1
   (unchanged since 1.0.1).
 - Earlier, and unchanged since: three processes of the TypeScript, Go and .NET starters writing one audit log at once
   (900 records, the chain intact); `qz test sync` against recorded Azure DevOps and Jira trackers and through the
@@ -318,6 +324,8 @@ Not run:
 - **Any cloud template applied.** Nobody applied one to a cloud account or a cluster: OpenTofu planned them against
   mock providers only, and Checkov was the one policy scan. The Azure template's azapi parts (the Claude deployments)
   are validated in CI only.
+- **The generated Azure Pipelines and GitLab CI files on those platforms.** They were validated against each platform's
+  published schema, and the same stages ran as GitHub Actions, but no Azure DevOps or GitLab project ran them.
 - **A rollback.** The release recipe's rollback is a documented switch to the previous tag; no test runs it, because it
   depends on where a team deploys.
 - **A person's confirmation of the EU AI Act class**, for the Studio and for each new project. Until someone confirms

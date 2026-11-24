@@ -238,18 +238,19 @@ When it blocks something, the message names the rule (for example `QZ-SH-GIT-PUS
 
 ## Not proven yet
 
-Run on 24 November 2026 for 1.4.0, as for 1.3.0 the day before: the test suite, the guard's red-team, the Studio's
-own evals and the harness bench, the doctor and the bootstrap (check only) in continuous integration (CI) on Windows,
-Linux and macOS; every starter's tests and gold set, in its container too, and each agent starter's HTTP interface
-healthy in its container; each agent starter's gold set through the real model gateway (LiteLLM) against stand-in
-providers, with the keys and the traces checked; every cloud template for every starter linted, policy-scanned,
-validated and planned with no cloud account, and the gateway's image healthy as a non-root user; the testing lane
-against recorded trackers and through the credential proxy; the marketplace added from GitHub and both plugins
-installed by Claude Code. The README's "What was run" has the counts.
+Run on 24 November 2026 for 1.5.0: the test suite, the guard's red-team, the Studio's own evals and the harness
+bench, the doctor and the bootstrap (check only) in continuous integration (CI) on Windows, Linux and macOS; every
+starter's tests and gold set, in its container too, and each agent starter's HTTP interface healthy in its container;
+each agent starter's gold set through the real model gateway (LiteLLM) against stand-in providers, with the keys and
+the traces checked; each agent starter as a whole solution with the knowledge service, its generated pipeline's check
+job passing and its pipeline files valid for GitHub Actions, Azure Pipelines and GitLab CI; every cloud template for
+every starter linted, policy-scanned, validated and planned with no cloud account, and the gateway's image healthy as
+a non-root user; the testing lane against recorded trackers and through the credential proxy; the marketplace added
+from GitHub and both plugins installed by Claude Code. The README's "What was run" has the counts.
 
 Not yet: an attendee's own laptop (the first bootstrap on a QualiZeal machine is the real test); a live Azure DevOps
 or Jira project for the testing lane; a live model behind any starter or kit, or behind the gateway; a live Langfuse;
-any cloud template applied to a real account or cluster; a client's own identity provider in front of a starter's
+the generated Azure Pipelines and GitLab CI files on those platforms (schema-checked only); any cloud template applied to a real account or cluster; a client's own identity provider in front of a starter's
 HTTP interface; an interactive Claude Code session with the hooks; the GitHub agent on GitHub; the status line on a
 Pro, Max or Ultra sign-in; organisation sync from this repository. Do one dry run with the AI CoE before the wider
 pilot.
