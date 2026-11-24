@@ -93,7 +93,8 @@ def test_azure_holds_production_on_a_manual_validation_nobody_approves_alone(sol
     job = stages["approve_production"]["jobs"][0]
     task = job["steps"][0]
     assert job["pool"] == "server" and task["task"] == "ManualValidation@1" and int(job["timeoutInMinutes"]) > int(task["timeoutInMinutes"])
-    assert task["inputs"]["notifyUsers"] == "" and task["inputs"]["allowApproversToApproveTheirOwnRuns"] is False   # a task's inputs keep their types
+    assert task["inputs"]["notifyUsers"] == "" and task["inputs"]["allowApproversToApproveTheirOwnRuns"] is False   # a task step keeps its types
+    assert isinstance(task["timeoutInMinutes"], int) and isinstance(job["timeoutInMinutes"], str)                     # each as its schema types it
     assert stages["production"]["dependsOn"] == "approve_production"
     assert any(s.get("task") == "UseDotNet@2" for s in stages["ci"]["jobs"][0]["steps"])
 

@@ -233,10 +233,12 @@ def github(s: dict) -> dict[str, str]:
 
 def _strings(x):
     """Azure Pipelines' own schema types its scalars as strings (any of them may be a template expression), and Azure
-    reads "0" and "false" as it reads 0 and false: every number and true or false is written as a string. A task's
-    inputs are the exception: each task's schema types its own inputs (ManualValidation's
-    allowApproversToApproveTheirOwnRuns is a true boolean), so they keep their types."""
+    reads "0" and "false" as it reads 0 and false: every number and true or false is written as a string. A task step
+    is the exception: the schema's task definition types its own keys (timeoutInMinutes is an integer) and each task's
+    inputs (ManualValidation's allowApproversToApproveTheirOwnRuns is a true boolean), so a task step keeps its types."""
     if isinstance(x, dict):
+        if "task" in x:
+            return dict(x)
         return {k: v if k == "inputs" else _strings(v) for k, v in x.items()}
     if isinstance(x, list):
         return [_strings(v) for v in x]
