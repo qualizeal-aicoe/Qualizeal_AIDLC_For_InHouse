@@ -9,6 +9,8 @@ from . import guardrails, policy
 from .tools import TOOLS
 
 ORDER = re.compile(r"\bORD-\d+\b", re.I)
+# A question about how things are done here, for the knowledge service when there is one (KNOWLEDGE_URL).
+KNOWLEDGE = re.compile(r"\b(polic(?:y|ies)|handbook|procedures?|warranty|return window|refund window|limits?|how long|how many days|eligible|allowed to)\b", re.I)
 
 
 NOT_ALLOWED = "That needs access your role does not have, so I have not done it. A colleague who handles refunds can help."
@@ -16,16 +18,21 @@ NOT_ALLOWED = "That needs access your role does not have, so I have not done it.
 
 def decide(user_text: str, results: list[tuple[str, dict]], available=None) -> dict:
     """A model only calls the tools it was given, so a tool outside `available` (the role's tools) is never called."""
-    d = _decide(user_text, results)
+    d = _decide(user_text, results, available)
     return {"say": NOT_ALLOWED} if "call" in d and available is not None and d["call"] not in available else d
 
 
-def _decide(user_text: str, results: list[tuple[str, dict]]) -> dict:
+def _decide(user_text: str, results: list[tuple[str, dict]], available=None) -> dict:
+    done = dict(results)
+    if "search_knowledge" in done:                       # the knowledge service answered: say it, with its source
+        from .knowledge import reply
+        return {"say": reply(done["search_knowledge"])}
+    if available is not None and "search_knowledge" in available and not ORDER.search(user_text or "") and KNOWLEDGE.search(user_text or ""):
+        return {"call": "search_knowledge", "args": {"question": user_text}}
     m = ORDER.search(user_text or "")
     if not m:
         return {"say": "I can help once I have an order number, for example ORD-1001."}
     oid = m.group(0).upper()
-    done = dict(results)
     if "get_order" not in done:
         return {"call": "get_order", "args": {"order_id": oid}}
     order = done["get_order"]
@@ -46,7 +53,7 @@ async def run_stub(message: str, can_use_tool, calls: list[dict]) -> tuple[str, 
     for _ in range(policy.MAX_TURNS):
         usage["input_tokens"] += (len(message) + sum(len(json.dumps(r)) for _, r in results)) // 4 + 60
         usage["output_tokens"] += 24
-        d = decide(message, results, [n for n in TOOLS if n in policy.ROLES.get(guardrails.role(), ())])
+        d = decide(message, results, [guardrails.tool_name(t) for t in guardrails.tools_for(TOOLS.values())])
         if "say" in d:
             return d["say"], usage
         full = f"mcp__{policy.SERVER}__{d['call']}"

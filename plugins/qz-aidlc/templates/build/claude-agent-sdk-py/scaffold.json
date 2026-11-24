@@ -1,7 +1,7 @@
 {
   "title": "Claude Agent SDK (Python)",
   "summary": "ClaudeSDKClient with in-process MCP tools, can_use_tool as the approval gate, no built-in tools, turn and budget limits.",
-  "verified": "RUN: tests and gold set ran here against the offline stub with claude-agent-sdk 0.2.186 (same tools, same permission callback). The live path was started once with 0.2.180: the SDK accepted these options and launched its bundled runtime, which stopped at sign-in because this sandbox holds no model credentials. No live model call was made. 1.3.0: runs that wait for a person kept in SQLite and answered from another process, the refund made once after a crash, and the HTTP interface, all in its tests and gold set. 1.4.0: every model call through the LiteLLM gateway with AGENT_GATEWAY=litellm, its wiring tested here against a stand-in provider, and the gold set run in the Studio's CI through the real LiteLLM 1.110.0 proxy against stand-ins, with the keys and the traces checked. Claude Code itself (the SDK's bundled runtime) ran the gateway gold set here against a stand-in provider: 16 of 16. The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied.",
+  "verified": "RUN: tests and gold set ran here against the offline stub with claude-agent-sdk 0.2.186 (same tools, same permission callback). The live path was started once with 0.2.180: the SDK accepted these options and launched its bundled runtime, which stopped at sign-in because this sandbox holds no model credentials. No live model call was made. 1.3.0: runs that wait for a person kept in SQLite and answered from another process, the refund made once after a crash, and the HTTP interface, all in its tests and gold set. 1.4.0: every model call through the LiteLLM gateway with AGENT_GATEWAY=litellm, its wiring tested here against a stand-in provider, and the gold set run in the Studio's CI through the real LiteLLM 1.110.0 proxy against stand-ins, with the keys and the traces checked. Claude Code itself (the SDK's bundled runtime) ran the gateway gold set here against a stand-in provider: 16 of 16. The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied. 1.5.0: search_knowledge against a stand-in knowledge service in its tests (8 of them); `qz build solution` composed it with the hybrid kit as its knowledge service, and the solution's generated GitHub check job ran here step by step: the gold set, the knowledge gate, both together through the agent's adapter, and the 8 acceptance cases over HTTP, 8 of 8.",
   "stack_line": "A Claude Agent SDK agent in Python (claude-agent-sdk 0.2).",
   "policy": "agent/policy.py",
   "agent_dir": "agent/",
@@ -70,9 +70,7 @@
       "agent/server.py#make_handler",
       "agent/durable.py"
     ],
-    "knowledge": {
-      "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
-    },
+    "knowledge": "agent/knowledge.py",
     "tracing": "agent/app.py",
     "tests": "tests",
     "evals": [

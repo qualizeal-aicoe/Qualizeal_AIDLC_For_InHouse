@@ -56,6 +56,12 @@ jwks_url = ""                       # oidc: the provider's signing keys (its dis
 groups_claim = "groups"
 trusted_proxies = ["127.0.0.1/32", "::1/128"]   # proxy: the only addresses identity headers are accepted from
 
+# `uv run -m arag mcp`: ask_knowledge for Claude Code and other MCP clients. It answers for this identity, set here by
+# whoever runs it, never by the model (--as picks a demo user instead).
+[mcp]
+user = "mcp"
+groups = ["all"]
+
 [audit]
 path = ".arag/audit.jsonl"
 store_question = true

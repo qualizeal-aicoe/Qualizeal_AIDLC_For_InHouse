@@ -1,7 +1,7 @@
 {
   "title": "Hybrid RAG knowledge assistant (Python)",
   "summary": "BM25 and dense vectors over only what the asker may read, fused by reciprocal rank and reranked by a cross-encoder (CPU, ONNX, no vector database); cited answers and refusals, a trace of every answer, portable knowledge cores, and a gate against BM25 alone, and web pages fetched into the corpus under an allow-list.",
-  "verified": "RUN: the 85 tests (the crawler's against a local web server) in CI on Linux and Windows with the offline embedder and reranker, and the 43 golden questions with bge-small-en-v1.5 and ms-marco-MiniLM-L-6-v2 on a Linux and a Windows CPU: hybrid 41 of 43 against 38 of 43 for BM25 alone, refusals 5 of 5, the 3 scope questions 3 of 3, 0 safety violations. NOT RUN: a model writing the answers. 1.4.0: The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied.",
+  "verified": "RUN: the 85 tests (the crawler's against a local web server) in CI on Linux and Windows with the offline embedder and reranker, and the 43 golden questions with bge-small-en-v1.5 and ms-marco-MiniLM-L-6-v2 on a Linux and a Windows CPU: hybrid 41 of 43 against 38 of 43 for BM25 alone, refusals 5 of 5, the 3 scope questions 3 of 3, 0 safety violations. NOT RUN: a model writing the answers. 1.4.0: The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied. 1.5.0: the MCP tool (ask_knowledge over stdio) and the connectors (files, Confluence, GitHub) in its tests; chunked request bodies read within the size limit, with hostile chunk sizes refused; 105 tests. As the knowledge service of a solution, its gate passed 12 of 12 on the support documents for all seven agent starters.",
   "stack_line": "A hybrid retrieval-augmented assistant in Python 3.11+ (SQLite FTS5, NumPy, fastembed ONNX models).",
   "policy": "arag.toml",
   "agent_dir": "arag/",
@@ -49,10 +49,15 @@
     "prompts": "arag/llm.py",
     "guardrails": "arag/guard.py",
     "limits": "arag.toml",
-    "api": "arag/server.py",
+    "api": [
+      "arag/server.py",
+      "arag/mcp.py"
+    ],
     "knowledge": [
       "corpus/manifest.json",
-      "web.toml"
+      "web.toml",
+      "sources.toml",
+      "arag/fetch.py"
     ],
     "tracing": [
       "arag/explain.py",

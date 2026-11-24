@@ -1,7 +1,7 @@
 {
   "title": "Microsoft Agent Framework (.NET)",
   "summary": "ChatClientAgent with ApprovalRequiredAIFunction for the approval gate, AgentSession for resume, output-token limit, UseOpenTelemetry, Anthropic provider for live runs.",
-  "verified": "RUN: built with the .NET SDK 10.0.404 against Microsoft.Agents.AI 1.28.0, and the xUnit tests plus gold set ran here against the offline stub chat client through the real framework, including approval request, approve and reject. The live Anthropic provider path compiled; no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (Microsoft.Data.Sqlite) and answered from another process, the refund made once after a crash, and the HTTP interface on ASP.NET Core with OIDC token checks, all in its tests and gold set. 1.4.0: every model call through the LiteLLM gateway with AGENT_GATEWAY=litellm, its wiring tested here against a stand-in provider, and the gold set run in the Studio's CI through the real LiteLLM 1.110.0 proxy against stand-ins, with the keys and the traces checked. The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied.",
+  "verified": "RUN: built with the .NET SDK 10.0.404 against Microsoft.Agents.AI 1.28.0, and the xUnit tests plus gold set ran here against the offline stub chat client through the real framework, including approval request, approve and reject. The live Anthropic provider path compiled; no live model call was made here. 1.3.0: runs that wait for a person kept in SQLite (Microsoft.Data.Sqlite) and answered from another process, the refund made once after a crash, and the HTTP interface on ASP.NET Core with OIDC token checks, all in its tests and gold set. 1.4.0: every model call through the LiteLLM gateway with AGENT_GATEWAY=litellm, its wiring tested here against a stand-in provider, and the gold set run in the Studio's CI through the real LiteLLM 1.110.0 proxy against stand-ins, with the keys and the traces checked. The cloud templates (qz cloud add) validated and planned for Azure, AWS, Google Cloud and Kubernetes in the Studio's CI with no cloud account; never applied. 1.5.0: search_knowledge against a stand-in knowledge service in its tests (8 of them); `qz build solution` composed it with the hybrid kit as its knowledge service, and the solution's generated GitHub check job ran here step by step: the gold set, the knowledge gate, both together through the agent's adapter, and the 8 acceptance cases over HTTP, 8 of 8.",
   "stack_line": "A Microsoft Agent Framework agent in C# on .NET 10 (Microsoft.Agents.AI 1.28).",
   "policy": "src/Agent/Policy.cs",
   "agent_dir": "src/Agent/",
@@ -68,9 +68,7 @@
       "src/Agent/Server.cs#Build",
       "src/Agent/Durable.cs"
     ],
-    "knowledge": {
-      "none": "answers from its tools (the order lookup), not from documents; a RAG kit joins as a tool when it needs them"
-    },
+    "knowledge": "src/Agent/Knowledge.cs",
     "tracing": "src/Agent/Telemetry.cs",
     "tests": "tests",
     "evals": [

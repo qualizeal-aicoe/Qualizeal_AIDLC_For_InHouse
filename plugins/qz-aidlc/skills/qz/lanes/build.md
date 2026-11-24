@@ -33,4 +33,12 @@ passed gate, build what it decided; if not, say that the stack is unconfirmed an
    writes `docs/solution.md`: the same eight sections for every solution, each with its evidence or what is missing.
    Pull requests and pushes wait for the person's yes.
 
+**A whole solution** (an agent that answers from the client's documents, with a pipeline to their platform):
+`qz build solution <agent stack> <dest> --name NAME` composes the agent at the root and the hybrid kit in `knowledge/`
+as the knowledge service, with compose, the MCP tool, the test lane's cases automated over HTTP, and one pipeline
+(`pipeline/pipeline.yaml`) written out for GitHub Actions, Azure Pipelines and GitLab CI. After editing the
+definition, `qz build pipeline` writes the three again. Put the client's documents in `knowledge/corpus` (or list them
+in `knowledge/sources.toml` and run `uv run -m arag fetch` there), write their golden questions, keep the access and
+refusal cases, and run `uv run -m arag calibrate` before the gate. Production always waits for a person.
+
 Several agents on one build (subagents, sessions, worktrees): plan it as tasks on the board, `references/board.md`.

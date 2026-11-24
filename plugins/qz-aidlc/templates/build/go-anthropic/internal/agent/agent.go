@@ -123,6 +123,7 @@ func RunAs(ctx context.Context, model Model, message string, approve Approver, w
 		thread = NewThread()
 		ctx = WithThread(ctx, thread)
 	}
+	ctx = WithWho(ctx, who)
 	in := ScreenInput(message)
 	var res Result
 	var err error
@@ -204,7 +205,7 @@ func Answer(ctx context.Context, thread string, approve bool, approver string) (
 	if approver == "" {
 		approver = s.Actor
 	}
-	ctx = WithThread(ctx, thread)
+	ctx = WithWho(WithThread(ctx, thread), Who{Role: s.Role, Actor: s.Actor})
 	byName := map[string]Tool{}
 	for _, t := range Tools() {
 		byName[t.Name] = t

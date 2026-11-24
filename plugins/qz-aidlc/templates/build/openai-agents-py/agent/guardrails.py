@@ -96,6 +96,7 @@ def screen_output(reply: str) -> Screened:
 
 
 _ROLE: contextvars.ContextVar[str] = contextvars.ContextVar("role", default="")
+_ACTOR: contextvars.ContextVar[str] = contextvars.ContextVar("actor", default="")
 
 
 def role() -> str:
@@ -103,13 +104,21 @@ def role() -> str:
     return _ROLE.get() or policy.ROLE
 
 
+def actor() -> str:
+    """Who the current run acts for (the knowledge service applies their access): set by guarded(); outside a run,
+    the configured one."""
+    return _ACTOR.get() or policy.ACTOR
+
+
 def tool_name(t) -> str:
     return str(getattr(t, "name", None) or getattr(t, "tool_name", None) or getattr(t, "__name__", ""))
 
 
 def tools_for(tools, who: str | None = None) -> list:
-    """Go-live gate 2: only the tools this role may use reach the model. A role not in policy.ROLES gets none."""
-    allowed = set(policy.ROLES.get(who or role(), ()))
+    """Go-live gate 2: only the tools this role may use reach the model. A role not in policy.ROLES gets none. The
+    knowledge tool is on only where a knowledge service is (KNOWLEDGE_URL)."""
+    from . import knowledge
+    allowed = set(policy.ROLES.get(who or role(), ())) - (set() if knowledge.on() else {"search_knowledge"})
     return [t for t in tools if tool_name(t) in allowed]
 
 
@@ -199,7 +208,7 @@ def guarded(run):
         from . import durable
         who, by = role or policy.ROLE, actor or policy.ACTOR
         thread = thread_id or durable.new_thread()
-        token, tt = _ROLE.set(who), durable.THREAD.set(thread)
+        token, tt, ta = _ROLE.set(who), durable.THREAD.set(thread), _ACTOR.set(by)
         inp = screen_input(message)
         try:
             if inp.blocked:
@@ -221,6 +230,7 @@ def guarded(run):
         finally:
             _ROLE.reset(token)
             durable.THREAD.reset(tt)
+            _ACTOR.reset(ta)
         result["thread_id"] = thread
         result = _finish(result, inp.text, mask(message)[0], who, by, inp.blocked)
         _keep(thread, result, inp.text, who, by)
@@ -265,7 +275,7 @@ def guarded_resume(resume):
             done = json.loads(saved["answer"]) if saved.get("answer") else {"output": "", "tool_calls": saved["calls"]}
             return {**done, "thread_id": thread, "already_answered": True}
         who, by = saved.get("role") or policy.ROLE, saved.get("actor") or policy.ACTOR
-        token, tt = _ROLE.set(who), durable.THREAD.set(thread)
+        token, tt, ta = _ROLE.set(who), durable.THREAD.set(thread), _ACTOR.set(by)
         try:
             result = resume(thread, approve, saved, **kwargs)
             out = screen_output(str(result.get("output") or ""))
@@ -280,6 +290,7 @@ def guarded_resume(resume):
         finally:
             _ROLE.reset(token)
             durable.THREAD.reset(tt)
+            _ACTOR.reset(ta)
         result["thread_id"], result["answered_by"] = thread, approver or by
         result = _finish(result, saved.get("message") or "", mask(saved.get("message") or "")[0], who, by, False)
         _keep(thread, result, saved.get("message") or "", who, by, answered_by=approver or by)

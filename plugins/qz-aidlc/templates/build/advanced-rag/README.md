@@ -57,6 +57,8 @@ re-indexing an unchanged corpus embeds nothing; the line it prints says how many
 | Every sentence of a written answer checked | A model's answer is shown only if each sentence's figures are in the section it cites and most of its words are too; otherwise the documents' own sentences are used, and the answer says so |
 | The refusal rate | `arag stats` reads it from the audit log, with the reasons. Too high: people ask what the documents do not cover. Too low: check the threshold |
 | Web pages as documents | `arag crawl` fetches the pages listed in `web.toml` (allowed hosts only, https, robots.txt obeyed, no private or metadata addresses, size limits) into `corpus/web/`, enters each in the manifest with an owner and readers, and skips unchanged pages; `--prune` retires pages gone from the site. `render = "lightpanda"` runs a page's JavaScript first. Then `arag ingest`, which flags hidden text in a page like in any document |
+| The team's own systems as documents | `arag fetch` copies what `sources.toml` lists into `corpus/fetched/`: a folder or share, a Confluence space (REST API v2, `CONFLUENCE_EMAIL` and `CONFLUENCE_TOKEN`) or a GitHub repository's documents (`GITHUB_TOKEN` for a private one). Read-only, https only, tokens only from the environment and only to their own host; keys, secrets and links out of a folder are never copied. Each document is entered with an owner and readers, an unchanged one is left alone, and `--prune` retires one gone from its source. Then `arag ingest` |
+| An MCP tool | `arag mcp` serves `ask_knowledge` over stdio, for Claude Code, Claude Desktop or any MCP client: the answer with its sources, or a refusal that says what it looked for and who to ask. It answers for the identity in `[mcp]` (or a demo user with `--as`), set by whoever starts it; the tool takes a question and nothing else. Every answer is audited and guarded like the chat page's |
 
 Settings are in `arag.toml`. Point `[corpus]` at your documents and `evals/golden.jsonl` at your questions.
 
@@ -69,6 +71,8 @@ Settings are in `arag.toml`. Point `[corpus]` at your documents and `evals/golde
 - The sentence check on written answers is lexical: an invented figure or an added claim is caught; a sentence that
   keeps the section's words but reverses their meaning is not. The evaluation's model judge is the deeper check.
 - Scope trusts the groups a person is given. In production they come from single sign-on, like access.
+- `arag mcp` answers for one identity per server process. A shared MCP server for many people should call `arag serve` over HTTP with each person's token instead.
+- The Confluence and GitHub connectors were tested against stand-ins of their APIs, not live sites. Run `arag fetch --dry-run` against yours first.
 - Search reads every vector a person may see for each question. That is fine to tens of thousands of sections.
   Beyond that, move the `vecs` table behind sqlite-vec or a vector database.
 - What was run: the tests on Python 3.11 to 3.13, and the golden set with both real models on a Linux CPU. A

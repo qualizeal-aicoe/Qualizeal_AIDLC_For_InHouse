@@ -17,6 +17,10 @@ public sealed partial class StubChatClient(IEnumerable<string>? given = null) : 
     [GeneratedRegex(@"\bORD-\d+\b", RegexOptions.IgnoreCase)]
     private static partial Regex OrderRx();
 
+    /// <summary>A question about how things are done here, for the knowledge service when there is one (KNOWLEDGE_URL).</summary>
+    [GeneratedRegex(@"\b(polic(?:y|ies)|handbook|procedures?|warranty|return window|refund window|limits?|how long|how many days|eligible|allowed to)\b", RegexOptions.IgnoreCase)]
+    private static partial Regex KnowledgeRx();
+
     public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
         List<ChatMessage> all = [.. messages];
@@ -71,6 +75,12 @@ public sealed partial class StubChatClient(IEnumerable<string>? given = null) : 
 
     private (string, Dictionary<string, object?>)? Decide(string user, Dictionary<string, JsonElement> results)
     {
+        if (results.TryGetValue("search_knowledge", out JsonElement known)) { _say = Knowledge.Reply(known); return null; }   // said with its source
+        if (_given?.Contains("search_knowledge") == true && !OrderRx().IsMatch(user) && KnowledgeRx().IsMatch(user))
+        {
+            return ("search_knowledge", new() { ["question"] = user });
+        }
+
         Match m = OrderRx().Match(user);
         if (!m.Success) { _say = "I can help once I have an order number, for example ORD-1001."; return null; }
         string oid = m.Value.ToUpperInvariant();

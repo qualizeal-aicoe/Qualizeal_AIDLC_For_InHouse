@@ -29,7 +29,7 @@ def make_gate(approve: bool | None, calls: list[dict]):
     approve: True or False is the person's answer; None means nobody has answered, so the action waits."""
     async def can_use_tool(tool_name: str, tool_input: dict, context) -> PermissionResultAllow | PermissionResultDeny:
         short = tool_name.split("__")[-1]
-        if short not in policy.ROLES.get(guardrails.role(), ()):                 # go-live gate 2: the caller's role
+        if short not in mine():                                                  # go-live gate 2: the caller's role
             calls.append({"name": short, "args": tool_input, "status": "not_allowed"})
             return PermissionResultDeny(message=f"The {guardrails.role()} role may not use {short}. Say so; do not retry it.")
         if short not in policy.NEEDS_APPROVAL:
@@ -43,12 +43,17 @@ def make_gate(approve: bool | None, calls: list[dict]):
     return can_use_tool
 
 
+def mine() -> list[str]:
+    """The tools this run's role may use (go-live gate 2); the knowledge tool only where KNOWLEDGE_URL is set."""
+    return [guardrails.tool_name(t) for t in guardrails.tools_for(TOOLS.values())]
+
+
 def options(gate, model: str | None = None) -> ClaudeAgentOptions:
-    mine = policy.ROLES.get(guardrails.role(), ())
+    mine_now = mine()
     return ClaudeAgentOptions(                           # the SDK caches the system prompt and tools itself
         model=model or policy.MODEL, system_prompt=policy.SYSTEM, mcp_servers={policy.SERVER: SERVER}, tools=[],          # no built-in tools: no shell, no file access
-        allowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in policy.READ_ONLY if t in mine], can_use_tool=gate,
-        disallowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in TOOLS if t not in mine],   # a tool the role lacks is never shown to the model
+        allowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in policy.READ_ONLY if t in mine_now], can_use_tool=gate,
+        disallowed_tools=[f"mcp__{policy.SERVER}__{t}" for t in TOOLS if t not in mine_now],   # a tool the role lacks is never shown to the model
         max_turns=policy.MAX_TURNS, max_budget_usd=policy.MAX_BUDGET_USD, setting_sources=[], permission_mode="default",
         env=gateway.claude_code_env(model or policy.MODEL) if gateway.on() else {})     # the model gateway, when on: gateway/litellm.yaml
 

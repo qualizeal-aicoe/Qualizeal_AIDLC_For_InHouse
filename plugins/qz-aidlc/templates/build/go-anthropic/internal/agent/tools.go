@@ -35,6 +35,7 @@ func str(args map[string]any, k string) string {
 }
 
 // Tools returns the agent's tool list. Replace the get_order body and payments (below) with calls to your systems.
+// search_knowledge asks the knowledge service (knowledge.go) and is on only where KNOWLEDGE_URL is set.
 func Tools() []Tool {
 	return []Tool{
 		{
@@ -54,6 +55,16 @@ func Tools() []Tool {
 			Properties: map[string]any{"order_id": map[string]any{"type": "string"}, "amount": map[string]any{"type": "number"}, "reason": map[string]any{"type": "string"}},
 			Required:   []string{"order_id", "amount", "reason"},
 			Run:        refund,
+		},
+		{
+			Name: "search_knowledge", Description: "Look up the company's own documents (policies, procedures, product facts) and get an answer " +
+				"that cites them, or a plain \"the documents do not say\". Use it for how things are done here, not for an order. Read-only.",
+			Properties: map[string]any{"question": map[string]any{"type": "string"}}, Required: []string{"question"},
+			Run: func(ctx context.Context, args map[string]any) map[string]any {
+				q, _ := args["question"].(string)
+				who := WhoOf(ctx)
+				return Ask(ctx, q, who.Actor, who.Role)
+			},
 		},
 	}
 }

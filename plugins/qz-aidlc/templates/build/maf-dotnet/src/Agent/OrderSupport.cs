@@ -61,6 +61,7 @@ public static class OrderSupport
     {
         string who = role ?? Policy.Role, by = actor ?? Policy.Actor, masked = Guardrails.Mask(message ?? "").Text, t = thread ?? Durable.NewThread();
         using IDisposable scope = Durable.Enter(t);
+        using IDisposable caller = Access.Enter(who, by);
         RunResult result;
         try
         {
@@ -109,6 +110,7 @@ public static class OrderSupport
 
         string by = approver ?? saved.actor;
         using IDisposable scope = Durable.Enter(thread);
+        using IDisposable caller = Access.Enter(saved.role, saved.actor);
         Dictionary<string, AIFunction> tools = Tools.All().OfType<AIFunction>().ToDictionary(f => f.Name);
         List<ToolCall> calls = [];
         foreach (ToolCall c in saved.calls)

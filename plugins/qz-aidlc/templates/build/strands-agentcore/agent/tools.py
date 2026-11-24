@@ -1,5 +1,6 @@
 """Tools. Sample data stands in for your order system; replace the two function bodies with real calls
-(or front them with AgentCore Gateway and keep the same names)."""
+(or front them with AgentCore Gateway and keep the same names). The third, search_knowledge, asks the knowledge
+service (agent/knowledge.py) and is on only where KNOWLEDGE_URL is set."""
 from strands import tool
 
 from . import durable
@@ -28,6 +29,12 @@ def issue_refund(order_id: str, amount: float, reason: str) -> dict:
     return _json(_refund(order_id, amount, reason))
 
 
+@tool
+def search_knowledge(question: str) -> dict:
+    """Look up the company's own documents (policies, procedures, product facts) and get an answer that cites them,
+    or a plain "the documents do not say". Use it for how things are done here, not for an order. Read-only."""
+    from . import guardrails, knowledge
+    return _json(knowledge.ask(question, guardrails.actor(), guardrails.role()))
 
 
 def _payments(order_id: str, amount: float, reason: str, key: str) -> dict:
@@ -64,4 +71,4 @@ def _refund(order_id: str, amount: float, reason: str) -> dict:
     return durable.once("issue_refund", {"order_id": oid, "amount": amount, "reason": reason}, lambda key: _payments(oid, amount, reason, key))
 
 
-TOOLS = [get_order, issue_refund]
+TOOLS = [get_order, issue_refund, search_knowledge]

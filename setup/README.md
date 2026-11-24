@@ -1,5 +1,8 @@
 # Setting up the QualiZeal AI-DLC Studio
 
+Or ask Claude to do it: paste "Set up the QualiZeal AI-DLC Studio from https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse for me" into Claude Code or the Claude app (code
+execution on). Claude follows [CLAUDE-SETUP.md](CLAUDE-SETUP.md).
+
 On a laptop, from the cloned repository:
 
 | System | Run | Checks only, installs nothing |

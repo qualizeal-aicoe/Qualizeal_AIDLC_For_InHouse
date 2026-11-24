@@ -5,6 +5,7 @@ that fits you; all of them end the same way, with `/qz-aidlc:qz-setup` inside Cl
 
 | Part | Who | Time |
 |---|---|---|
+| Z. Ask Claude | anyone: paste one line into Claude Code or the Claude app, and Claude does the rest ([setup/CLAUDE-SETUP.md](../setup/CLAUDE-SETUP.md)) | 5 minutes |
 | A. On a laptop, with the bootstrap | anyone who builds: hooks, agents, tools, starters and the console pane | 15 minutes |
 | B. On your own plan, in the Claude app | anyone with their own subscription who wants the skills on the web and phone | 3 minutes |
 | C. For the whole organisation | the admin of a Team or Enterprise organisation | 20 minutes, once |
@@ -16,6 +17,18 @@ What runs where: in the Claude app's chat (web and phone) only the skills run. C
 desktop app's Code tab, adds the hooks, the agents, the tools and the console pane.
 
 ---
+
+## Z. Ask Claude
+
+Paste this into Claude Code, or into the Claude app with code execution on:
+
+> Set up the QualiZeal AI-DLC Studio from https://github.com/qualizeal-aicoe/Qualizeal_AIDLC_For_InHouse for me.
+
+Claude reads [setup/CLAUDE-SETUP.md](../setup/CLAUDE-SETUP.md), works out where it is running, and does part A (Claude
+Code) or part B (the Claude app) for you: it gets the repository, installs what is missing into your user folder,
+runs the doctor and asks what you want to build first. The only steps it leaves to you are the ones only you can do:
+restarting Claude Code once, or adding the marketplace in the app's settings. No GPU, no Docker, no administrator
+rights.
 
 ## A. On a laptop, with the bootstrap
 

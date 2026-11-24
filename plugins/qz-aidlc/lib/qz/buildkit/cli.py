@@ -1,5 +1,11 @@
 """qz build list | new <stack> <dest> [--name "Order Support"] [--module example.com/x] [--no-kit] [--stage N]
              | stage <dest> <N> [--yes]
+             | solution <agent stack> <dest> [--name ...] [--module ...] [--no-kit]
+             | pipeline [<dest>] [--platform github|azure|gitlab ...]
+
+`qz build solution` puts an agent starter and the knowledge service (the hybrid kit) in one repository, with a compose
+file and one pipeline definition written out for GitHub Actions, Azure Pipelines and GitLab CI (buildkit/solution.py).
+`qz build pipeline` writes those three again after pipeline/pipeline.yaml changes (buildkit/pipeline.py).
 
 Starts an agent project on a chosen stack with the parts teams skip: one read tool, one side-effecting tool
 behind a human approval gate, hard limits in one file, tracing, an offline stub model, a gold set, CI, a runbook.
@@ -413,7 +419,19 @@ def main(name: str, rest: list[str]) -> None:
     x = sub.add_parser("new"); x.add_argument("stack"); x.add_argument("dest"); x.add_argument("--name", default=""); x.add_argument("--module"); x.add_argument("--no-kit", action="store_true")
     x.add_argument("--stage", type=int)
     st = sub.add_parser("stage"); st.add_argument("dest"); st.add_argument("stage", type=int); st.add_argument("--yes", action="store_true")
+    sub.add_parser("solution", add_help=False)
+    pl = sub.add_parser("pipeline"); pl.add_argument("dest", nargs="?", default="."); pl.add_argument("--platform", action="append", choices=["github", "azure", "gitlab"])
+    if rest[:1] == ["solution"]:
+        from .solution import main as solution_main
+        solution_main(rest[1:])
+        return
     a = ap.parse_args(rest)
+    if a.cmd == "pipeline":
+        from . import pipeline
+        dest = Path(a.dest).resolve()
+        for rel in pipeline.render(dest, pipeline.read_spec(dest), a.platform or pipeline.PLATFORMS):
+            print(f"  wrote {rel}")
+        return
     if a.cmd == "list":
         for k, m in stacks().items():
             staged = f" Stages 0 to {m['stages']}." if m.get("stages") else ""

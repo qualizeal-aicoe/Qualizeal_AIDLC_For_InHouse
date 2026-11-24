@@ -1,0 +1,13 @@
+{
+  "about": "Every document the assistant may answer from is listed here with its owner, version, status and the groups that may read it. A file that is not listed is not ingested. These are sample documents for __NAME__: replace them with your own, or bring them in with `uv run -m arag fetch` (sources.toml).",
+  "groups": {
+    "support": "the order support team: everything here",
+    "viewer": "people who may look orders up but not change them: not the internal approval limits"
+  },
+  "documents": {
+    "support/returns-policy.md": {"title": "Returns and refunds policy", "owner": "Customer support", "version": "1.0", "effective": "2026-01-01", "status": "current", "acl": ["support", "viewer"]},
+    "support/warranty.md": {"title": "Warranty", "owner": "Customer support", "version": "1.0", "effective": "2026-01-01", "status": "current", "acl": ["support", "viewer"]},
+    "support/shipping.md": {"title": "Shipping and delivery", "owner": "Logistics", "version": "1.0", "effective": "2026-01-01", "status": "current", "acl": ["support", "viewer"]},
+    "support/refund-approvals.md": {"title": "Refund approval limits", "owner": "Support operations", "version": "1.0", "effective": "2026-01-01", "status": "current", "acl": ["support"]}
+  }
+}

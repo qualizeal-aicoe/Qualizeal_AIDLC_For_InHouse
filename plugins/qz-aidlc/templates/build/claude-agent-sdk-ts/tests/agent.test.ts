@@ -33,13 +33,13 @@ test("live options expose no built-in tools and pre-approve only reads", () => {
   const o = options(makeGate(undefined, []));
   assert.deepEqual(o.tools, []);
   assert.deepEqual(o.allowedTools, ["mcp__orders__get_order"]);
-  assert.deepEqual(o.disallowedTools, []);
+  assert.deepEqual(o.disallowedTools, ["mcp__orders__search_knowledge"]);   // both order tools; no knowledge service here
   assert.equal(o.maxTurns, policy.maxTurns);
 });
 
 test("a tool the role lacks is never shown to the model", () => {
   const o = options(makeGate(undefined, []), policy.model, "viewer");
-  assert.deepEqual(o.disallowedTools, ["mcp__orders__issue_refund"]);
+  assert.deepEqual(o.disallowedTools, ["mcp__orders__search_knowledge", "mcp__orders__issue_refund"]);
   assert.deepEqual(o.allowedTools, ["mcp__orders__get_order"]);
 });
 
