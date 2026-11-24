@@ -376,8 +376,8 @@ jobs:
         run: |
           cj=(uvx -q --from "check-jsonschema==0.33.0" check-jsonschema)
           "${cj[@]}" --builtin-schema vendor.github-workflows .github/workflows/ci.yml .github/workflows/deploy.yml
-          "${cj[@]}" --builtin-schema vendor.azure-pipelines azure-pipelines.yml
-          "${cj[@]}" --builtin-schema vendor.gitlab-ci .gitlab-ci.yml
+          "${cj[@]}" --builtin-schema vendor.azure-pipelines --regex-variant nonunicode azure-pipelines.yml   # its patterns use escapes Unicode mode refuses
+          "${cj[@]}" --builtin-schema vendor.gitlab-ci --regex-variant nonunicode .gitlab-ci.yml
       - name: Its GitHub workflow's check job, step by step on this runner
         run: uv run -q --no-project --python ">=3.11,<3.14" --with "pyyaml>=6,<7" python -I -X utf8 .github/scripts/workflow_steps.py "$RUNNER_TEMP/sol" .github/workflows/ci.yml check
       - name: Its container job and its staging deploy, which deploys nothing with no cloud account (one stack; images take minutes)

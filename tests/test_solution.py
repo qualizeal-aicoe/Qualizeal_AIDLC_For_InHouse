@@ -107,6 +107,7 @@ def test_gitlab_production_is_a_manual_job_that_blocks(solutions):
     assert any("CI_MERGE_REQUEST_IID" in s for s in gl["check"]["script"])                 # request-only steps are guarded
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="bash on a Windows PATH is WSL's launcher; CI runs the script on Linux, and the solution's own pipelines run it")
 def test_the_deploy_script_deploys_nothing_without_a_command(solutions, tmp_path):
     d = solutions["langgraph"]
     env = {k: v for k, v in os.environ.items() if k not in ("DEPLOY_COMMAND",)}
